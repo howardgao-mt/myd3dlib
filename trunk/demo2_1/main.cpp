@@ -329,7 +329,9 @@ int WINAPI wWinMain(HINSTANCE hInstance,
 	// 启动DXUT
 	DXUTInit(true, true, NULL);
 	DXUTSetCursorSettings(true, true);
-	DXUTCreateWindow(L"demo2_2");
+	WCHAR szPath[MAX_PATH];
+	GetModuleFileName(GetModuleHandle(NULL), szPath, MAX_PATH);
+	DXUTCreateWindow(szPath);
 	DXUTCreateDevice(true, 800, 600);
 	DXUTMainLoop();
 
