@@ -42,12 +42,13 @@ protected:
 			return false;
 		}
 
-		IDirect3D9 * pD3D = DXUTGetD3D9Object();
-		if(FAILED(pD3D->CheckDeviceFormat(
-			pCaps->AdapterOrdinal, pCaps->DeviceType, AdapterFormat, D3DUSAGE_RENDERTARGET, D3DRTYPE_CUBETEXTURE, D3DFMT_R32F)))
-		{
-			return false;
-		}
+		//// 判断是否支持32位浮点贴图
+		//IDirect3D9 * pD3D = DXUTGetD3D9Object();
+		//if(FAILED(pD3D->CheckDeviceFormat(
+		//	pCaps->AdapterOrdinal, pCaps->DeviceType, AdapterFormat, D3DUSAGE_RENDERTARGET, D3DRTYPE_CUBETEXTURE, D3DFMT_R32F)))
+		//{
+		//	return false;
+		//}
 
 		return true;
 	}
@@ -56,10 +57,10 @@ protected:
 	{
 		DxutApp::OnInit();
 
-		// 初始化全局资源组
-		my::ResourceMgr::getSingleton().RegisterZipArchive(_T("Data.zip"));
+		// 初始化资源管理器收索路径
 		my::ResourceMgr::getSingleton().RegisterFileDir(_T("."));
 		my::ResourceMgr::getSingleton().RegisterFileDir(_T("..\\..\\Common\\medias"));
+		my::ResourceMgr::getSingleton().RegisterZipArchive(_T("Data.zip"));
 	}
 
 	HRESULT OnD3D9CreateDevice(
@@ -103,7 +104,6 @@ protected:
 		// 创建贴图
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("jack_texture.jpg")));
-			//my::ResourceMgr::getSingleton().OpenArchiveStream(_T("無題.bmp")));
 		FAILED_THROW_D3DEXCEPTION(D3DXCreateTextureFromFileInMemory(pd3dDevice, &(*cache)[0], cache->size(), &m_texture));
 
 		return S_OK;
@@ -125,20 +125,21 @@ protected:
 		m_camera.SetProjParams(D3DX_PI / 4, fAspectRatio, 0.1f, 1000.0f);
 		m_camera.SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
 
+		// 重置d3dx effect
 		FAILED_THROW_D3DEXCEPTION(m_effect->OnResetDevice());
 
-		// 创建shadow map render target
-		FAILED_THROW_D3DEXCEPTION(pd3dDevice->CreateTexture(
+		// 创建用于shadow map的render target，使用D3DXCreateTexture可以为不支持设备创建兼容贴图
+		FAILED_THROW_D3DEXCEPTION(D3DXCreateTexture(
+			pd3dDevice,
 			SHADOWMAP_SIZE,
 			SHADOWMAP_SIZE,
 			1,
 			D3DUSAGE_RENDERTARGET,
 			D3DFMT_R32F,
 			D3DPOOL_DEFAULT,
-			&m_shadowMapRT,
-			NULL));
+			&m_shadowMapRT));
 
-		// 创建shadow map depth scentil
+		// 创建用于shadow map的depth scentil
 		DXUTDeviceSettings d3dSettings = DXUTGetDeviceSettings();
 		FAILED_THROW_D3DEXCEPTION(pd3dDevice->CreateDepthStencilSurface(
 			SHADOWMAP_SIZE,
@@ -205,6 +206,7 @@ protected:
 		D3DXMatrixOrthoLH(&mProjLight, 50, 50, 25, 75);
 		D3DXMATRIXA16 mWorldViewProjLight = mWorld * mViewLight * mProjLight;
 
+		// 将shadow map作为render target，注意保存恢复原来的render target
 		HRESULT hr;
 		LPDIRECT3DSURFACE9 pOldRT = NULL;
 		V(pd3dDevice->GetRenderTarget(0, &pOldRT));
@@ -265,21 +267,6 @@ protected:
 			V(m_effect->SetMatrix("g_mWorldViewProjectionLight", &mWorldViewProjLight));
 			V(m_effect->SetTechnique("RenderScene"));
 
-			//struct
-			//{
-			//	D3DXVECTOR3 pos;
-			//	D3DXVECTOR3 normal;
-			//	D3DXVECTOR2 tex;
-			//} vertices[6] =
-			//{
-			//	{ D3DXVECTOR3(-10,  10, 0), D3DXVECTOR3(0, 0, 1), D3DXVECTOR2(0, 0) },
-			//	{ D3DXVECTOR3( 10,  10, 0), D3DXVECTOR3(0, 0, 1), D3DXVECTOR2(1, 0) },
-			//	{ D3DXVECTOR3(-10, -10, 0), D3DXVECTOR3(0, 0, 1), D3DXVECTOR2(0, 1) },
-			//	{ D3DXVECTOR3( 10,  10, 0), D3DXVECTOR3(0, 0, 1), D3DXVECTOR2(1, 0) },
-			//	{ D3DXVECTOR3( 10, -10, 0), D3DXVECTOR3(0, 0, 1), D3DXVECTOR2(1, 1) },
-			//	{ D3DXVECTOR3(-10, -10, 0), D3DXVECTOR3(0, 0, 1), D3DXVECTOR2(0, 1) },
-			//};
-
 			// 渲染模型的两个部分，注意，头发的部分不要背面剔除
 			UINT cPasses;
 			V(m_effect->Begin(&cPasses, 0));
@@ -290,9 +277,6 @@ protected:
 				V(m_mesh->DrawSubset(1));
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW));
 				V(m_mesh->DrawSubset(0));
-				//V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
-				//V(pd3dDevice->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1));
-				//V(pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, vertices, sizeof(vertices[0])));
 				V(m_effect->EndPass());
 			}
 			V(m_effect->End());
