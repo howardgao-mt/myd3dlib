@@ -12,7 +12,7 @@
 #include "DXUTsettingsdlg.h"
 #include "SDKmesh.h"
 #include "SDKmisc.h"
-#include "resource.h"
+//#include "resource.h"
 
 //#define DEBUG_VS   // Uncomment this line to debug vertex shaders 
 //#define DEBUG_PS   // Uncomment this line to debug pixel shaders 
