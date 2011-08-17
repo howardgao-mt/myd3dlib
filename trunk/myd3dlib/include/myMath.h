@@ -3,6 +3,8 @@
 
 #include <d3dx9math.h>
 
+#define cot(x)	tan(1.0f / (x))
+
 namespace my
 {
 	class Vector4;
@@ -501,6 +503,13 @@ namespace my
 		}
 
 	public:
+		Vector4 cross(const Vector4 & rhs, const Vector4 & srd) const
+		{
+			Vector4 ret;
+			D3DXVec4Cross((D3DXVECTOR4 *)&ret, (D3DXVECTOR4 *)this, (D3DXVECTOR4 *)&rhs, (D3DXVECTOR4 *)&srd);
+			return ret;
+		}
+
 		float dot(const Vector4 & rhs) const
 		{
 			return x * rhs.x + y * rhs.y + z * rhs.z + w * rhs.w;
@@ -631,11 +640,10 @@ namespace my
 
 		Matrix4 operator * (const Matrix4 & rhs) const
 		{
-			Matrix4 ret;
-			D3DXMatrixMultiply((D3DXMATRIX *)&ret, (D3DXMATRIX *)this, (D3DXMATRIX *)&rhs);
-			return ret;
-		}
-
+			return Matrix4(				_11 * rhs._11 + _12 * rhs._21 + _13 * rhs._31 + _14 * rhs._41,				_11 * rhs._12 + _12 * rhs._22 + _13 * rhs._32 + _14 * rhs._42,				_11 * rhs._13 + _12 * rhs._23 + _13 * rhs._33 + _14 * rhs._43,				_11 * rhs._14 + _12 * rhs._24 + _13 * rhs._34 + _14 * rhs._44,
+				_21 * rhs._11 + _22 * rhs._21 + _23 * rhs._31 + _24 * rhs._41,				_21 * rhs._12 + _22 * rhs._22 + _23 * rhs._32 + _24 * rhs._42,				_21 * rhs._13 + _22 * rhs._23 + _23 * rhs._33 + _24 * rhs._43,				_21 * rhs._14 + _22 * rhs._24 + _23 * rhs._34 + _24 * rhs._44,
+				_31 * rhs._11 + _32 * rhs._21 + _33 * rhs._31 + _34 * rhs._41,				_31 * rhs._12 + _32 * rhs._22 + _33 * rhs._32 + _34 * rhs._42,				_31 * rhs._13 + _32 * rhs._23 + _33 * rhs._33 + _34 * rhs._43,				_31 * rhs._14 + _32 * rhs._24 + _33 * rhs._34 + _34 * rhs._44,
+				_41 * rhs._11 + _42 * rhs._21 + _43 * rhs._31 + _44 * rhs._41,				_41 * rhs._12 + _42 * rhs._22 + _43 * rhs._32 + _44 * rhs._42,				_41 * rhs._13 + _42 * rhs._23 + _43 * rhs._33 + _44 * rhs._43,				_41 * rhs._14 + _42 * rhs._24 + _43 * rhs._34 + _44 * rhs._44);		}
 		Matrix4 operator * (float scaler) const
 		{
 			return Matrix4(
@@ -896,7 +904,7 @@ namespace my
 
 		//void Decompose(Vector3 & outScale, Quaternion & outRotation, Vector3 & outTranslation)
 		//{
-		//	D3DXMatrixDecompose((D3DXVECTOR3 *)&outScale, (D3DXVECTOR3 *)&outRotation, (D3DXVECTOR3 *)&outTranslation, (D3DXMATRIX *)this);
+		//	D3DXMatrixDecompose((D3DXVECTOR3 *)&outScale, (D3DXQUATERNION *)&outRotation, (D3DXVECTOR3 *)&outTranslation, (D3DXMATRIX *)this);
 		//}
 
 		float determinant(void) const
@@ -904,10 +912,9 @@ namespace my
 			return _11 * a11() - _12 * a12() + _13 * a13() - _14 * a14();
 		}
 
-		Matrix4 & SetIdentity(void)
+		static Matrix4 GetIdentity(void)
 		{
-			D3DXMatrixIdentity((D3DXMATRIX *)this);
-			return *this;
+			return Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 		}
 
 		Matrix4 inverse(void) const
@@ -915,10 +922,30 @@ namespace my
 			return adjoint() / determinant();
 		}
 
-		Matrix4 & SetLookAtLH(const Vector3 & eye, const Vector3 & at, const Vector3 & up)
+		static Matrix4 GetLookAtLH(const Vector3 & eye, const Vector3 & at, const Vector3 & up)
 		{
-			D3DXMatrixLookAtLH((D3DXMATRIX *)this, (D3DXVECTOR3 *)&eye, (D3DXVECTOR3 *)&at, (D3DXVECTOR3 *)&up);
-			return *this;
+			Vector3 zaxis = (at - eye).normalize();
+			Vector3 xaxis = up.cross(zaxis).normalize();
+			Vector3 yaxis = zaxis.cross(xaxis);
+
+			return Matrix4(
+				xaxis.x,			yaxis.x,			zaxis.x,			0,
+				xaxis.y,			yaxis.y,			zaxis.y,			0,
+				xaxis.z,			yaxis.z,			zaxis.z,			0,
+				-xaxis.dot(eye),	-yaxis.dot(eye),	-zaxis.dot(eye),	1);
+		}
+
+		static Matrix4 GetLookAtRH(const Vector3 & eye, const Vector3 & at, const Vector3 & up)
+		{
+			Vector3 zaxis = (eye - at).normalize();
+			Vector3 xaxis = up.cross(zaxis).normalize();
+			Vector3 yaxis = zaxis.cross(xaxis);
+
+			return Matrix4(
+				xaxis.x,			yaxis.x,			zaxis.x,			0,
+				xaxis.y,			yaxis.y,			zaxis.y,			0,
+				xaxis.z,			yaxis.z,			zaxis.z,			0,
+				-xaxis.dot(eye),	-yaxis.dot(eye),	-zaxis.dot(eye),	1);
 		}
 
 		Matrix4 multiply(const Matrix4 & rhs) const
@@ -931,64 +958,101 @@ namespace my
 			return multiply(rhs).transpose();
 		}
 
-		Matrix4 & SetLookAtRH(const Vector3 & eye, const Vector3 & at, const Vector3 & up)
+		static Matrix4 GetOrthoLH(float w, float h, float zn, float zf)
 		{
-			D3DXMatrixLookAtRH((D3DXMATRIX *)this, (D3DXVECTOR3 *)&eye, (D3DXVECTOR3 *)&at, (D3DXVECTOR3 *)&up);
-			return *this;
+			return Matrix4(
+				2 / w,	0,		0,					0,
+				0,		2 / h,	0,					0,
+				0,		0,		1 / (zf - zn),		0,
+				0,		0,		-zn / (zf - zn),	1);
 		}
 
-		Matrix4 & SetOrthoLH(float w, float h, float zn, float zf)
+		static Matrix4 GetOrthoRH(float w, float h, float zn, float zf)
 		{
-			D3DXMatrixOrthoLH((D3DXMATRIX *)this, w, h, zn, zf);
-			return *this;
+			return Matrix4(
+				2 / w,	0,		0,					0,
+				0,		2 / h,	0,					0,
+				0,		0,		1 / (zn - zf),		0,
+				0,		0,		zn / (zn - zf),		1);
 		}
 
-		Matrix4 & SetOrthoRH(float w, float h, float zn, float zf)
+		static Matrix4 GetOrthoOffCenterLH(float l, float r, float b, float t, float zn, float zf)
 		{
-			D3DXMatrixOrthoRH((D3DXMATRIX *)this, w, h, zn, zf);
-			return *this;
+			return Matrix4(
+				2 / (r - l),		0,					0,					0,
+				0,					2 / (t - b),		0,					0,
+				0,					0,					1 / (zf - zn),		0,
+				(l + r) / (l - r),	(t + b) / (b - t),	zn / (zn - zf),		1);
 		}
 
-		Matrix4 & SetOrthoOffCenterLH(float l, float r, float b, float t, float zn, float zf)
+		static Matrix4 GetOrthoOffCenterRH(float l, float r, float b, float t, float zn, float zf)
 		{
-			D3DXMatrixOrthoOffCenterLH((D3DXMATRIX *)this, l, r, b, t, zn, zf);
-			return *this;
+			return Matrix4(
+				2 / (r - l),		0,					0,					0,
+				0,					2 / (t - b),		0,					0,
+				0,					0,					1 / (zn - zf),		0,
+				(l + r) / (l - r),	(t + b) / (b - t),	zn / (zn - zf),		1);
 		}
 
-		Matrix4 & SetOrthoOffCenterRH(float l, float r, float b, float t, float zn, float zf)
+		static Matrix4 GetPerspectiveFovLH(float fovy, float aspect, float zn, float zf)
 		{
-			D3DXMatrixOrthoOffCenterRH((D3DXMATRIX *)this, l, r, b, t, zn, zf);
-			return *this;
+			float yScale = cot(fovy / 2);
+			float xScale = yScale / aspect;
+
+			return Matrix4(
+				xScale,	0,		0,						0,
+				0,		yScale,	0,						0,
+				0,		0,		zf / (zf - zn),			1,
+				0,		0,		-zn * zf / (zf - zn),	0);
+
 		}
 
-		Matrix4 & SetPerspectiveFovLH(float fovy, float aspect, float zn, float zf)
+		static Matrix4 GetPerspectiveFovRH(float fovy, float aspect, float zn, float zf)
 		{
-			D3DXMatrixPerspectiveFovLH((D3DXMATRIX *)this, fovy, aspect, zn, zf);
-			return *this;
+			float yScale = cot(fovy / 2);
+			float xScale = yScale / aspect;
+
+			return Matrix4(
+				xScale,	0,		0,						0,
+				0,		yScale,	0,						0,
+				0,		0,		zf / (zn - zf),			-1,
+				0,		0,		zn * zf / (zn - zf),	0);
 		}
 
-		Matrix4 & SetPerspectiveFovRH(float fovy, float aspect, float zn, float zf)
+		static Matrix4 GetPerspectiveLH(float w, float h, float zn, float zf)
 		{
-			D3DXMatrixPerspectiveFovRH((D3DXMATRIX *)this, fovy, aspect, zn, zf);
-			return *this;
+			return Matrix4(
+				2 * zn / w,	0,			0,						0,
+				0,			2 * zn / h,	0,						0,
+				0,			0,			zf / (zf - zn),			1,
+				0,			0,			zn * zf / (zn - zf),	0);
 		}
 
-		Matrix4 & SetPerspectiveLH(float w, float h, float zn, float zf)
+		static Matrix4 GetPerspectiveRH(float w, float h, float zn, float zf)
 		{
-			D3DXMatrixPerspectiveLH((D3DXMATRIX *)this, w, h, zn, zf);
-			return *this;
+			return Matrix4(
+				2 * zn / w,	0,			0,						0,
+				0,			2 * zn / h,	0,						0,
+				0,			0,			zf / (zn - zf),			-1,
+				0,			0,			zn * zf / (zn - zf),	0);
 		}
 
-		Matrix4 & SetPerspectiveRH(float w, float h, float zn, float zf)
+		static Matrix4 GetPerspectiveOffCenterLH(float l, float r, float b, float t, float zn, float zf)
 		{
-			D3DXMatrixPerspectiveRH((D3DXMATRIX *)this, w, h, zn, zf);
-			return *this;
+			return Matrix4(
+				2 * zn / (r - l),	0,					0,						0,
+				0,					2 * zn / (t - b),	0,						0,
+				(l + r) / (l - r),	(t + b) / (b - t),	zf / (zf - zn),			1,
+				0,					0,					zn * zf / (zn - zf),	0);
 		}
 
-		Matrix4 & SetPerspectiveOffCenterLH(float l, float r, float b, float t, float zn, float zf)
+		static Matrix4 GetPerspectiveOffCenterRH(float l, float r, float b, float t, float zn, float zf)
 		{
-			D3DXMatrixPerspectiveOffCenterLH((D3DXMATRIX *)this, l, r, b, t, zn, zf);
-			return *this;
+			return Matrix4(
+				2 * zn / (r - l),	0,					0,						0,
+				0,					2 * zn / (t - b),	0,						0,
+				(l + r) / (r - l),	(t + b) / (t - b),	zf / (zn - zf),			-1,
+				0,					0,					zn * zf / (zn - zf),	0);
 		}
 
 		Matrix4 & SetRotationAxis(const Vector3 & v, float angle)
@@ -1003,34 +1067,38 @@ namespace my
 		//	return *this;
 		//}
 
-		Matrix4 & SetRotationX(float angle)
+		static Matrix4 GetRotationX(float angle)
 		{
-			D3DXMatrixRotationX((D3DXMATRIX *)this, angle);
-			return *this;
+			float c = cos(angle);
+			float s = sin(angle);
+
+			return Matrix4(1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1);
 		}
 
-		Matrix4 & SetRotationY(float angle)
+		static Matrix4 GetRotationY(float angle)
 		{
-			D3DXMatrixRotationY((D3DXMATRIX *)this, angle);
-			return *this;
+			float c = cos(angle);
+			float s = sin(angle);
+
+			return Matrix4(c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1);
 		}
 
-		Matrix4 & SetRotationZ(float angle)
+		static Matrix4 GetRotationZ(float angle)
 		{
-			D3DXMatrixRotationZ((D3DXMATRIX *)this, angle);
-			return *this;
+			float c = cos(angle);
+			float s = sin(angle);
+
+			return Matrix4(c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 		}
 
-		Matrix4 & SetRotationYawPitchRoll(float yaw, float pitch, float roll)
+		static Matrix4 GetRotationYawPitchRoll(float yaw, float pitch, float roll)
 		{
-			D3DXMatrixRotationYawPitchRoll((D3DXMATRIX *)this, yaw, pitch, roll);
-			return *this;
+			return GetRotationZ(roll).rotationX(pitch).rotationY(yaw);
 		}
 
-		Matrix4 & SetScaling(float sx, float sy, float sz)
+		static Matrix4 GetScaling(float sx, float sy, float sz)
 		{
-			D3DXMatrixScaling((D3DXMATRIX *)this, sx, sy, sz);
-			return *this;
+			return Matrix4(sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sz, 0, 0, 0, 0, 1);
 		}
 
 		//Matrix4 & SetTransformation(
@@ -1071,17 +1139,18 @@ namespace my
 			return *this;
 		}
 
-		Matrix4 & SetTranslation(float x, float y, float z)
+		static Matrix4 GetTranslation(float x, float y, float z)
 		{
-			D3DXMatrixTranslation((D3DXMATRIX *)this, x, y, z);
-			return *this;
+			return Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1);
 		}
 
 		Matrix4 transpose(void)
 		{
-			Matrix4 ret;
-			D3DXMatrixTranspose((D3DXMATRIX *)&ret, (D3DXMATRIX *)this);
-			return ret;
+			return Matrix4(
+				_11, _21, _31, _41,
+				_12, _22, _32, _42,
+				_13, _23, _33, _43,
+				_14, _24, _34, _44);
 		}
 
 	public:
