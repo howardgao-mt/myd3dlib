@@ -373,15 +373,7 @@ namespace my
 		{
 		}
 
-		Vector4(float _x, float _y, float _z)
-			: x(_x)
-			, y(_y)
-			, z(_z)
-			, w(1)
-		{
-		}
-
-		Vector4(float _x, float _y, float _z, float _w)
+		Vector4(float _x, float _y, float _z, float _w = 1)
 			: x(_x)
 			, y(_y)
 			, z(_z)
@@ -563,6 +555,232 @@ namespace my
 		static const Vector4 unitZ;
 
 		static const Vector4 unitW;
+	};
+
+	class Quaternion
+	{
+	public:
+		float x, y, z, w;
+
+	public:
+		Quaternion(void)
+			: x(0)
+			, y(0)
+			, z(0)
+			, w(0)
+		{
+		}
+
+		Quaternion(float _x, float _y, float _z, float _w)
+			: x(_x)
+			, y(_y)
+			, z(_z)
+			, w(_w)
+		{
+		}
+
+	public:
+		Quaternion operator + (const Quaternion & rhs) const
+		{
+			return Quaternion(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w);
+		}
+
+		Quaternion operator + (float scaler) const
+		{
+			return Quaternion(x + scaler, y + scaler, z + scaler, w + scaler);
+		}
+
+		Quaternion operator - (const Quaternion & rhs) const
+		{
+			return Quaternion(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w);
+		}
+
+		Quaternion operator - (float scaler) const
+		{
+			return Quaternion(x - scaler, y - scaler, z - scaler, w - scaler);
+		}
+
+		Quaternion operator * (const Quaternion & rhs) const
+		{
+			//return Quaternion(
+			//	w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y,			//	w * rhs.y + y * rhs.w + z * rhs.x - x * rhs.z,			//	w * rhs.z + z * rhs.w + x * rhs.y - y * rhs.x,			//	w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z);
+
+			Quaternion ret;
+			D3DXQuaternionMultiply((D3DXQUATERNION *)&ret, (D3DXQUATERNION *)this, (D3DXQUATERNION *)&rhs);
+			return ret;
+		}
+
+		Quaternion operator * (float scaler) const
+		{
+			return Quaternion(x * scaler, y * scaler, z * scaler, w * scaler);
+		}
+
+		Quaternion operator / (const Quaternion & rhs) const
+		{
+			return *this * rhs.inverse();
+		}
+
+		Quaternion operator / (float scaler) const
+		{
+			return Quaternion(x / scaler, y / scaler, z / scaler, w / scaler);
+		}
+
+		Quaternion & operator += (const Quaternion & rhs)
+		{
+			x += rhs.x;
+			y += rhs.y;
+			z += rhs.z;
+			w += rhs.w;
+			return *this;
+		}
+
+		Quaternion & operator += (float scaler)
+		{
+			x += scaler;
+			y += scaler;
+			z += scaler;
+			w += scaler;
+			return *this;
+		}
+
+		Quaternion & operator -= (const Quaternion & rhs)
+		{
+			x -= rhs.x;
+			y -= rhs.y;
+			z -= rhs.z;
+			w -= rhs.w;
+			return *this;
+		}
+
+		Quaternion & operator -= (float scaler)
+		{
+			x -= scaler;
+			y -= scaler;
+			z -= scaler;
+			w -= scaler;
+			return *this;
+		}
+
+		Quaternion & operator *= (const Quaternion & rhs)
+		{
+			return *this = *this * rhs;
+		}
+
+		Quaternion & operator *= (float scaler)
+		{
+			x *= scaler;
+			y *= scaler;
+			z *= scaler;
+			w *= scaler;
+			return *this;
+		}
+
+		Quaternion & operator /= (const Quaternion & rhs)
+		{
+			return *this = *this * rhs.inverse();
+		}
+
+		Quaternion & operator /= (float scaler)
+		{
+			x /= scaler;
+			y /= scaler;
+			z /= scaler;
+			w /= scaler;
+			return *this;
+		}
+
+	public:
+		float dot(const Quaternion & rhs) const
+		{
+			return x * rhs.x + y * rhs.y + z * rhs.z + w * rhs.w;
+		}
+
+		static Quaternion GetIdentity(void)
+		{
+			return Quaternion(0, 0, 0, 1);
+		}
+
+		Quaternion inverse(void) const
+		{
+			Quaternion ret;
+			D3DXQuaternionInverse((D3DXQUATERNION *)&ret, (D3DXQUATERNION *)this);
+			return ret;
+		}
+
+		float length(void) const
+		{
+			return sqrt(lengthSq());
+		}
+
+		float lengthSq(void) const
+		{
+			return x * x + y * y + z * z + w * w;
+		}
+
+		Quaternion ln(void) const
+		{
+			Quaternion ret;
+			D3DXQuaternionLn((D3DXQUATERNION *)&ret, (D3DXQUATERNION *)this);
+			return ret;
+		}
+
+		Quaternion multiply(const Quaternion & rhs) const
+		{
+			return *this * rhs;
+		}
+
+		Quaternion normalize(void) const
+		{
+			float l = length();
+
+			return Quaternion(x / l, y / l, z / l, w / l);
+		}
+
+		Quaternion & normalizeSelf(void)
+		{
+			float l = length();
+			x /= l;
+			y /= l;
+			z /= l;
+			w /= l;
+			return *this;
+		}
+
+		static Quaternion GetRotationAxis(const Vector3 & v, float angle)
+		{
+			float c = cos(angle / 2);
+			float s = sin(angle / 2);
+
+			return Quaternion(v.x * s, v.y * s, v.z * s, c);
+		}
+
+		static Quaternion GetRotationMatrix(const Matrix4 & m);
+
+		static Quaternion GetRotationYawPitchRoll(float yaw, float pitch, float roll)
+		{
+			Quaternion ret;
+			D3DXQuaternionRotationYawPitchRoll((D3DXQUATERNION *)&ret, yaw, pitch, roll);
+			return ret;
+		}
+
+		Quaternion slerp(const Quaternion & rhs, float t) const
+		{
+			Quaternion ret;
+			D3DXQuaternionSlerp((D3DXQUATERNION *)&ret, (D3DXQUATERNION *)this, (D3DXQUATERNION *)&rhs, t);
+			return ret;
+		}
+
+		Quaternion squad(const Quaternion & a, const Quaternion & b, const Quaternion & c, float t) const
+		{
+			Quaternion ret;
+			D3DXQuaternionSquad((D3DXQUATERNION *)&ret, (D3DXQUATERNION *)this, (D3DXQUATERNION *)&a, (D3DXQUATERNION *)&b, (D3DXQUATERNION *)&c, t);
+			return ret;
+		}
+
+		void ToAxisAngle(Vector3 & outAxis, float & outAngle) const
+		{
+			D3DXQuaternionToAxisAngle((D3DXQUATERNION *)this, (D3DXVECTOR3 *)&outAxis, &outAngle);
+		}
 	};
 
 	class Matrix4
@@ -902,10 +1120,10 @@ namespace my
 				-a14(),  a24(), -a34(),  a44());
 		}
 
-		//void Decompose(Vector3 & outScale, Quaternion & outRotation, Vector3 & outTranslation)
-		//{
-		//	D3DXMatrixDecompose((D3DXVECTOR3 *)&outScale, (D3DXQUATERNION *)&outRotation, (D3DXVECTOR3 *)&outTranslation, (D3DXMATRIX *)this);
-		//}
+		void Decompose(Vector3 & outScale, Quaternion & outRotation, Vector3 & outTranslation)
+		{
+			D3DXMatrixDecompose((D3DXVECTOR3 *)&outScale, (D3DXQUATERNION *)&outRotation, (D3DXVECTOR3 *)&outTranslation, (D3DXMATRIX *)this);
+		}
 
 		float determinant(void) const
 		{
@@ -1055,17 +1273,19 @@ namespace my
 				0,					0,					zn * zf / (zn - zf),	0);
 		}
 
-		Matrix4 & SetRotationAxis(const Vector3 & v, float angle)
+		static Matrix4 GetRotationAxis(const Vector3 & v, float angle)
 		{
-			D3DXMatrixRotationAxis((D3DXMATRIX *)this, (D3DXVECTOR3 *)&v, angle);
-			return *this;
+			Matrix4 ret;
+			D3DXMatrixRotationAxis((D3DXMATRIX *)&ret, (D3DXVECTOR3 *)&v, angle);
+			return ret;
 		}
 
-		//Matrix4 & SetRotationQuaternion(const Quaternion & q)
-		//{
-		//	D3DXMatrixQuaternion((D3DXMATRIX *)this, (D3DXQUATERNION *)&q);
-		//	return *this;
-		//}
+		static Matrix4 GetRotationQuaternion(const Quaternion & q)
+		{
+			Matrix4 ret;
+			D3DXMatrixRotationQuaternion((D3DXMATRIX *)&ret, (D3DXQUATERNION *)&q);
+			return ret;
+		}
 
 		static Matrix4 GetRotationX(float angle)
 		{
@@ -1093,7 +1313,7 @@ namespace my
 
 		static Matrix4 GetRotationYawPitchRoll(float yaw, float pitch, float roll)
 		{
-			return GetRotationZ(roll).rotationX(pitch).rotationY(yaw);
+			return GetRotationZ(roll).rotateX(pitch).rotateY(yaw);
 		}
 
 		static Matrix4 GetScaling(float sx, float sy, float sz)
@@ -1101,26 +1321,27 @@ namespace my
 			return Matrix4(sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sz, 0, 0, 0, 0, 1);
 		}
 
-		//Matrix4 & SetTransformation(
-		//	const Vector3 & scalingCenter,
-		//	const Quaternion & scalingRotation,
-		//	const Vector3 & scaling,
-		//	const Vector3 & rotationCenter,
-		//	const Vector3 & rotation,
-		//	const Vector3 & translation)
-		//{
-		//	D3DXMatrixTransformation(
-		//		(D3DXMATRIX *)this,
-		//		(D3DXVECTOR3 *)&scalingCenter,
-		//		(D3DXQUATERNION *)&scalingRotation,
-		//		(D3DXVECTOR3 *)&scaling,
-		//		(D3DXVECTOR3 *)&rotationCenter,
-		//		(D3DXVECTOR3 *)&rotation,
-		//		(D3DXVECTOR3 *)&translation);
-		//	return *this;
-		//}
+		static Matrix4 GetTransformation(
+			const Vector3 & scalingCenter,
+			const Quaternion & scalingRotation,
+			const Vector3 & scaling,
+			const Vector3 & rotationCenter,
+			const Quaternion & rotation,
+			const Vector3 & translation)
+		{
+			Matrix4 ret;
+			D3DXMatrixTransformation(
+				(D3DXMATRIX *)&ret,
+				(D3DXVECTOR3 *)&scalingCenter,
+				(D3DXQUATERNION *)&scalingRotation,
+				(D3DXVECTOR3 *)&scaling,
+				(D3DXVECTOR3 *)&rotationCenter,
+				(D3DXQUATERNION *)&rotation,
+				(D3DXVECTOR3 *)&translation);
+			return ret;
+		}
 
-		Matrix4 & SetTransformation2D(
+		static Matrix4 GetTransformation2D(
 			const Vector2 & scalingCenter,
 			float scalingRotation,
 			const Vector2 & scaling,
@@ -1128,15 +1349,16 @@ namespace my
 			float rotation,
 			const Vector2 & translation)
 		{
+			Matrix4 ret;
 			D3DXMatrixTransformation2D(
-				(D3DXMATRIX *)this,
+				(D3DXMATRIX *)&ret,
 				(D3DXVECTOR2 *)&scalingCenter,
 				scalingRotation,
 				(D3DXVECTOR2 *)&scaling,
 				(D3DXVECTOR2 *)&rotationCenter,
 				rotation,
 				(D3DXVECTOR2 *)&translation);
-			return *this;
+			return ret;
 		}
 
 		static Matrix4 GetTranslation(float x, float y, float z)
@@ -1154,7 +1376,7 @@ namespace my
 		}
 
 	public:
-		Matrix4 scaling(const Vector3 & scaling) const
+		Matrix4 scale(const Vector3 & scaling) const
 		{
 			return Matrix4(
 				_11 * scaling.x, _12 * scaling.y, _13 * scaling.z, _14 * 1,
@@ -1163,7 +1385,7 @@ namespace my
 				_41 * scaling.x, _42 * scaling.y, _43 * scaling.z, _44 * 1);
 		}
 
-		Matrix4 & scalingSelf(const Vector3 & scaling)
+		Matrix4 & scaleSelf(const Vector3 & scaling)
 		{
 			_11 = _11 * scaling.x; _12 = _12 * scaling.y; _13 = _13 * scaling.z; _14 = _14 * 1;
 			_21 = _21 * scaling.x; _22 = _22 * scaling.y; _23 = _23 * scaling.z; _24 = _24 * 1;
@@ -1172,7 +1394,7 @@ namespace my
 			return *this;
 		}
 
-		Matrix4 rotationX(float angle) const
+		Matrix4 rotateX(float angle) const
 		{
 			float c = cos(angle);
 			float s = sin(angle);
@@ -1184,12 +1406,12 @@ namespace my
 				_41, _42 * c - _43 * s, _42 * s + _43 * c, _44);
 		}
 
-		Matrix4 & rotationXSelf(float angle)
+		Matrix4 & rotateXSelf(float angle)
 		{
-			return *this = rotationX(angle);
+			return *this = rotateX(angle);
 		}
 
-		Matrix4 rotationY(float angle) const
+		Matrix4 rotateY(float angle) const
 		{
 			float c = cos(angle);
 			float s = sin(angle);
@@ -1201,12 +1423,12 @@ namespace my
 				_41 * c + _43 * s, _42, _43 * s - _41 * c, 14);
 		}
 
-		Matrix4 & rotationYSelf(float angle)
+		Matrix4 & rotateYSelf(float angle)
 		{
-			return *this = rotationY(angle);
+			return *this = rotateY(angle);
 		}
 
-		Matrix4 rotationZ(float angle) const
+		Matrix4 rotateZ(float angle) const
 		{
 			float c = cos(angle);
 			float s = sin(angle);
@@ -1220,10 +1442,10 @@ namespace my
 
 		Matrix4 & rotationZSelf(float angle)
 		{
-			return *this = rotationZ(angle);
+			return *this = rotateZ(angle);
 		}
 
-		Matrix4 translation(const Vector3 & v) const
+		Matrix4 translate(const Vector3 & v) const
 		{
 			return Matrix4(
 				_11 + _14 * v.x, _12 + _14 * v.y, _13 + _14 * v.z, _14,
@@ -1232,7 +1454,7 @@ namespace my
 				_41 + _44 * v.x, _42 + _44 * v.y, _43 + _44 * v.z, _44);
 		}
 
-		Matrix4 & translationSelf(const Vector3 & v)
+		Matrix4 & translateSelf(const Vector3 & v)
 		{
 			_11 = _11 + _14 * v.x; _12 = _12 + 14 * v.y; _13 = _13 + _14 * v.z;
 			_21 = _21 + _24 * v.x; _22 = _22 + 14 * v.y; _23 = _23 + _24 * v.z;
@@ -1262,5 +1484,12 @@ namespace my
 			x * m._12 + y * m._22 + z * m._32 + w * m._42,
 			x * m._13 + y * m._23 + z * m._33 + w * m._43,
 			x * m._14 + y * m._24 + z * m._34 + w * m._44);
+	}
+
+	inline Quaternion Quaternion::GetRotationMatrix(const Matrix4 & m)
+	{
+		Quaternion ret;
+		D3DXQuaternionRotationMatrix((D3DXQUATERNION *)&ret, (D3DXMATRIX *)&m);
+		return ret;
 	}
 };
