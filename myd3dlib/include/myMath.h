@@ -30,6 +30,11 @@ namespace my
 		}
 
 	public:
+		Vector2 operator - (void) const
+		{
+			return Vector2(-x, -y);
+		}
+
 		Vector2 operator + (const Vector2 & rhs) const
 		{
 			return Vector2(x + rhs.x, y + rhs.y);
@@ -67,7 +72,9 @@ namespace my
 
 		Vector2 operator / (float scaler) const
 		{
-			return Vector2(x / scaler, y / scaler);
+			float invScaler = 1 / scaler;
+
+			return Vector2(x * invScaler, y * invScaler);
 		}
 
 		Vector2 & operator += (const Vector2 & rhs)
@@ -121,12 +128,18 @@ namespace my
 
 		Vector2 & operator /= (float scaler)
 		{
-			x /= scaler;
-			y /= scaler;
+			float invScaler = 1 / scaler;
+			x *= invScaler;
+			y *= invScaler;
 			return *this;
 		}
 
 	public:
+		float cross(const Vector2 & rhs) const
+		{
+			return x * rhs.y - y * rhs.x;
+		}
+
 		float dot(const Vector2 & rhs) const
 		{
 			return x * rhs.x + y * rhs.y;
@@ -151,16 +164,16 @@ namespace my
 
 		Vector2 normalize(void) const
 		{
-			float l = length();
+			float invLength = 1 / length();
 
-			return Vector2(x / l, y / l);
+			return Vector2(x * invLength, y * invLength);
 		}
 
 		Vector2 & normalizeSelf(void)
 		{
-			float l = length();
-			x = x / l;
-			y = y / l;
+			float invLength = 1 / length();
+			x *= invLength;
+			y *= invLength;
 			return *this;
 		}
 
@@ -195,6 +208,11 @@ namespace my
 		}
 
 	public:
+		Vector3 operator - (void) const
+		{
+			return Vector3(-x, -y, -z);
+		}
+
 		Vector3 operator + (const Vector3 & rhs) const
 		{
 			return Vector3(x + rhs.x, y + rhs.y, z + rhs.z);
@@ -232,7 +250,9 @@ namespace my
 
 		Vector3 operator / (float scaler) const
 		{
-			return Vector3(x / scaler, y / scaler, z / scaler);
+			float invScaler = 1 / scaler;
+
+			return Vector3(x * invScaler, y * invScaler, z * invScaler);
 		}
 
 		Vector3 & operator += (const Vector3 & rhs)
@@ -293,9 +313,10 @@ namespace my
 
 		Vector3 & operator /= (float scaler)
 		{
-			x /= scaler;
-			y /= scaler;
-			z /= scaler;
+			float invScaler = 1 / scaler;
+			x *= invScaler;
+			y *= invScaler;
+			z *= invScaler;
 			return *this;
 		}
 
@@ -333,17 +354,17 @@ namespace my
 
 		Vector3 normalize(void) const
 		{
-			float l = length();
+			float invLength = 1 / length();
 
-			return Vector3(x / l, y / l, z / l);
+			return Vector3(x * invLength, y * invLength, z * invLength);
 		}
 
 		Vector3 & normalizeSelf(void)
 		{
-			float l = length();
-			x = x / l;
-			y = y / l;
-			z = z / l;
+			float invLength = 1 / length();
+			x *= invLength;
+			y *= invLength;
+			z *= invLength;
 			return *this;
 		}
 
@@ -382,6 +403,11 @@ namespace my
 		}
 
 	public:
+		Vector4 operator - (void) const
+		{
+			return Vector4(-x, -y, -z, -w);
+		}
+
 		Vector4 operator + (const Vector4 & rhs) const
 		{
 			return Vector4(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w);
@@ -419,7 +445,9 @@ namespace my
 
 		Vector4 operator / (float scaler) const
 		{
-			return Vector4(x / scaler, y / scaler, z / scaler, w / scaler);
+			float invScaler = 1 / scaler;
+
+			return Vector4(x * invScaler, y * invScaler, z * invScaler, w * invScaler);
 		}
 
 		Vector4 & operator += (const Vector4 & rhs)
@@ -487,10 +515,11 @@ namespace my
 
 		Vector4 & operator /= (float scaler)
 		{
-			x /= scaler;
-			y /= scaler;
-			z /= scaler;
-			w /= scaler;
+			float invScaler = 1 / scaler;
+			x *= invScaler;
+			y *= invScaler;
+			z *= invScaler;
+			w *= invScaler;
 			return *this;
 		}
 
@@ -528,18 +557,18 @@ namespace my
 
 		Vector4 normalize(void) const
 		{
-			float l = length();
+			float invLength = 1 / length();
 
-			return Vector4(x / l, y / l, z / l, w / l);
+			return Vector4(x * invLength, y * invLength, z * invLength, w * invLength);
 		}
 
 		Vector4 & normalizeSelf(void)
 		{
-			float l = length();
-			x = x / l;
-			y = y / l;
-			z = z / l;
-			w = w / l;
+			float invLength = 1 / length();
+			x *= invLength;
+			y *= invLength;
+			z *= invLength;
+			w *= invLength;
 			return *this;
 		}
 
@@ -580,6 +609,11 @@ namespace my
 		}
 
 	public:
+		Quaternion operator - (void) const
+		{
+			return Quaternion(-x, -y, -z, -w);
+		}
+
 		Quaternion operator + (const Quaternion & rhs) const
 		{
 			return Quaternion(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w);
@@ -621,7 +655,9 @@ namespace my
 
 		Quaternion operator / (float scaler) const
 		{
-			return Quaternion(x / scaler, y / scaler, z / scaler, w / scaler);
+			float invScaler = 1 / scaler;
+
+			return Quaternion(x * invScaler, y * invScaler, z * invScaler, w * invScaler);
 		}
 
 		Quaternion & operator += (const Quaternion & rhs)
@@ -681,10 +717,11 @@ namespace my
 
 		Quaternion & operator /= (float scaler)
 		{
-			x /= scaler;
-			y /= scaler;
-			z /= scaler;
-			w /= scaler;
+			float invScaler = 1 / scaler;
+			x *= invScaler;
+			y *= invScaler;
+			z *= invScaler;
+			w *= invScaler;
 			return *this;
 		}
 
@@ -701,9 +738,9 @@ namespace my
 
 		Quaternion inverse(void) const
 		{
-			float norm = dot(*this);
+			float invNorm = 1 / dot(*this);
 
-			return Quaternion(-x / norm, -y / norm, -z / norm, w / norm);
+			return Quaternion(-x * invNorm, -y * invNorm, -z * invNorm, w * invNorm);
 		}
 
 		float length(void) const
@@ -730,18 +767,18 @@ namespace my
 
 		Quaternion normalize(void) const
 		{
-			float l = length();
+			float invLength = 1 / length();
 
-			return Quaternion(x / l, y / l, z / l, w / l);
+			return Quaternion(x * invLength, y * invLength, z * invLength, w * invLength);
 		}
 
 		Quaternion & normalizeSelf(void)
 		{
-			float l = length();
-			x /= l;
-			y /= l;
-			z /= l;
-			w /= l;
+			float invLength = 1 / length();
+			x *= invLength;
+			y *= invLength;
+			z *= invLength;
+			w *= invLength;
 			return *this;
 		}
 
@@ -819,6 +856,15 @@ namespace my
 		}
 
 	public:
+		Matrix4 operator - (void) const
+		{
+			return Matrix4(
+				-_11, -_12, -_13, -_14,
+				-_21, -_22, -_23, -_24,
+				-_31, -_32, -_33, -_34,
+				-_41, -_42, -_43, -_44);
+		}
+
 		Matrix4 operator + (const Matrix4 & rhs) const
 		{
 			return Matrix4(
@@ -890,17 +936,18 @@ namespace my
 
 		Matrix4 operator / (const Matrix4 & rhs) const
 		{
-			Matrix4 ret;
 			return *this * rhs.inverse();
 		}
 
 		Matrix4 operator / (float scaler) const
 		{
+			float invScaler = 1 / scaler;
+
 			return Matrix4(
-				_11 / scaler, _12 / scaler, _13 / scaler, _14 / scaler,
-				_21 / scaler, _22 / scaler, _23 / scaler, _24 / scaler,
-				_31 / scaler, _32 / scaler, _33 / scaler, _34 / scaler,
-				_41 / scaler, _42 / scaler, _43 / scaler, _44 / scaler);
+				_11 * invScaler, _12 * invScaler, _13 * invScaler, _14 * invScaler,
+				_21 * invScaler, _22 * invScaler, _23 * invScaler, _24 * invScaler,
+				_31 * invScaler, _32 * invScaler, _33 * invScaler, _34 * invScaler,
+				_41 * invScaler, _42 * invScaler, _43 * invScaler, _44 * invScaler);
 		}
 
 		Matrix4 & operator += (const Matrix4 & rhs)
@@ -960,10 +1007,11 @@ namespace my
 
 		Matrix4 & operator /= (float scaler)
 		{
-			_11 /= scaler; _12 /= scaler; _13 /= scaler; _14 /= scaler;
-			_21 /= scaler; _22 /= scaler; _23 /= scaler; _24 /= scaler;
-			_31 /= scaler; _32 /= scaler; _33 /= scaler; _34 /= scaler;
-			_41 /= scaler; _42 /= scaler; _43 /= scaler; _44 /= scaler;
+			float invScaler = 1 / scaler;
+			_11 *= invScaler; _12 *= invScaler; _13 *= invScaler; _14 *= invScaler;
+			_21 *= invScaler; _22 *= invScaler; _23 *= invScaler; _24 *= invScaler;
+			_31 *= invScaler; _32 *= invScaler; _33 *= invScaler; _34 *= invScaler;
+			_41 *= invScaler; _42 *= invScaler; _43 *= invScaler; _44 *= invScaler;
 			return *this;
 		}
 
