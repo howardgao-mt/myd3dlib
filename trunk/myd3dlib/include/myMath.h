@@ -602,12 +602,11 @@ namespace my
 
 		Quaternion operator * (const Quaternion & rhs) const
 		{
-			//return Quaternion(
-			//	w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y,			//	w * rhs.y + y * rhs.w + z * rhs.x - x * rhs.z,			//	w * rhs.z + z * rhs.w + x * rhs.y - y * rhs.x,			//	w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z);
-
-			Quaternion ret;
-			D3DXQuaternionMultiply((D3DXQUATERNION *)&ret, (D3DXQUATERNION *)this, (D3DXQUATERNION *)&rhs);
-			return ret;
+			return Quaternion(
+				rhs.w * x + rhs.x * w + rhs.y * z - rhs.z * y,
+				rhs.w * y + rhs.y * w + rhs.z * x - rhs.x * z,
+				rhs.w * z + rhs.z * w + rhs.x * y - rhs.y * x,
+				rhs.w * w - rhs.x * x - rhs.y * y - rhs.z * z);
 		}
 
 		Quaternion operator * (float scaler) const
@@ -677,7 +676,7 @@ namespace my
 
 		Quaternion & operator /= (const Quaternion & rhs)
 		{
-			return *this = *this * rhs.inverse();
+			return *this = *this / rhs;
 		}
 
 		Quaternion & operator /= (float scaler)
@@ -695,16 +694,16 @@ namespace my
 			return x * rhs.x + y * rhs.y + z * rhs.z + w * rhs.w;
 		}
 
-		static Quaternion GetIdentity(void)
+		static Quaternion Identity(void)
 		{
 			return Quaternion(0, 0, 0, 1);
 		}
 
 		Quaternion inverse(void) const
 		{
-			Quaternion ret;
-			D3DXQuaternionInverse((D3DXQUATERNION *)&ret, (D3DXQUATERNION *)this);
-			return ret;
+			float norm = dot(*this);
+
+			return Quaternion(-x / norm, -y / norm, -z / norm, w / norm);
 		}
 
 		float length(void) const
@@ -746,7 +745,7 @@ namespace my
 			return *this;
 		}
 
-		static Quaternion GetRotationAxis(const Vector3 & v, float angle)
+		static Quaternion RotationAxis(const Vector3 & v, float angle)
 		{
 			float c = cos(angle / 2);
 			float s = sin(angle / 2);
@@ -754,9 +753,9 @@ namespace my
 			return Quaternion(v.x * s, v.y * s, v.z * s, c);
 		}
 
-		static Quaternion GetRotationMatrix(const Matrix4 & m);
+		static Quaternion RotationMatrix(const Matrix4 & m);
 
-		static Quaternion GetRotationYawPitchRoll(float yaw, float pitch, float roll)
+		static Quaternion RotationYawPitchRoll(float yaw, float pitch, float roll)
 		{
 			Quaternion ret;
 			D3DXQuaternionRotationYawPitchRoll((D3DXQUATERNION *)&ret, yaw, pitch, roll);
@@ -858,10 +857,28 @@ namespace my
 
 		Matrix4 operator * (const Matrix4 & rhs) const
 		{
-			return Matrix4(				_11 * rhs._11 + _12 * rhs._21 + _13 * rhs._31 + _14 * rhs._41,				_11 * rhs._12 + _12 * rhs._22 + _13 * rhs._32 + _14 * rhs._42,				_11 * rhs._13 + _12 * rhs._23 + _13 * rhs._33 + _14 * rhs._43,				_11 * rhs._14 + _12 * rhs._24 + _13 * rhs._34 + _14 * rhs._44,
-				_21 * rhs._11 + _22 * rhs._21 + _23 * rhs._31 + _24 * rhs._41,				_21 * rhs._12 + _22 * rhs._22 + _23 * rhs._32 + _24 * rhs._42,				_21 * rhs._13 + _22 * rhs._23 + _23 * rhs._33 + _24 * rhs._43,				_21 * rhs._14 + _22 * rhs._24 + _23 * rhs._34 + _24 * rhs._44,
-				_31 * rhs._11 + _32 * rhs._21 + _33 * rhs._31 + _34 * rhs._41,				_31 * rhs._12 + _32 * rhs._22 + _33 * rhs._32 + _34 * rhs._42,				_31 * rhs._13 + _32 * rhs._23 + _33 * rhs._33 + _34 * rhs._43,				_31 * rhs._14 + _32 * rhs._24 + _33 * rhs._34 + _34 * rhs._44,
-				_41 * rhs._11 + _42 * rhs._21 + _43 * rhs._31 + _44 * rhs._41,				_41 * rhs._12 + _42 * rhs._22 + _43 * rhs._32 + _44 * rhs._42,				_41 * rhs._13 + _42 * rhs._23 + _43 * rhs._33 + _44 * rhs._43,				_41 * rhs._14 + _42 * rhs._24 + _43 * rhs._34 + _44 * rhs._44);		}
+			return Matrix4(
+				_11 * rhs._11 + _12 * rhs._21 + _13 * rhs._31 + _14 * rhs._41,
+				_11 * rhs._12 + _12 * rhs._22 + _13 * rhs._32 + _14 * rhs._42,
+				_11 * rhs._13 + _12 * rhs._23 + _13 * rhs._33 + _14 * rhs._43,
+				_11 * rhs._14 + _12 * rhs._24 + _13 * rhs._34 + _14 * rhs._44,
+
+				_21 * rhs._11 + _22 * rhs._21 + _23 * rhs._31 + _24 * rhs._41,
+				_21 * rhs._12 + _22 * rhs._22 + _23 * rhs._32 + _24 * rhs._42,
+				_21 * rhs._13 + _22 * rhs._23 + _23 * rhs._33 + _24 * rhs._43,
+				_21 * rhs._14 + _22 * rhs._24 + _23 * rhs._34 + _24 * rhs._44,
+
+				_31 * rhs._11 + _32 * rhs._21 + _33 * rhs._31 + _34 * rhs._41,
+				_31 * rhs._12 + _32 * rhs._22 + _33 * rhs._32 + _34 * rhs._42,
+				_31 * rhs._13 + _32 * rhs._23 + _33 * rhs._33 + _34 * rhs._43,
+				_31 * rhs._14 + _32 * rhs._24 + _33 * rhs._34 + _34 * rhs._44,
+
+				_41 * rhs._11 + _42 * rhs._21 + _43 * rhs._31 + _44 * rhs._41,
+				_41 * rhs._12 + _42 * rhs._22 + _43 * rhs._32 + _44 * rhs._42,
+				_41 * rhs._13 + _42 * rhs._23 + _43 * rhs._33 + _44 * rhs._43,
+				_41 * rhs._14 + _42 * rhs._24 + _43 * rhs._34 + _44 * rhs._44);
+		}
+
 		Matrix4 operator * (float scaler) const
 		{
 			return Matrix4(
@@ -1130,7 +1147,7 @@ namespace my
 			return _11 * a11() - _12 * a12() + _13 * a13() - _14 * a14();
 		}
 
-		static Matrix4 GetIdentity(void)
+		static Matrix4 Identity(void)
 		{
 			return Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 		}
@@ -1140,7 +1157,7 @@ namespace my
 			return adjoint() / determinant();
 		}
 
-		static Matrix4 GetLookAtLH(const Vector3 & eye, const Vector3 & at, const Vector3 & up)
+		static Matrix4 LookAtLH(const Vector3 & eye, const Vector3 & at, const Vector3 & up)
 		{
 			Vector3 zaxis = (at - eye).normalize();
 			Vector3 xaxis = up.cross(zaxis).normalize();
@@ -1153,7 +1170,7 @@ namespace my
 				-xaxis.dot(eye),	-yaxis.dot(eye),	-zaxis.dot(eye),	1);
 		}
 
-		static Matrix4 GetLookAtRH(const Vector3 & eye, const Vector3 & at, const Vector3 & up)
+		static Matrix4 LookAtRH(const Vector3 & eye, const Vector3 & at, const Vector3 & up)
 		{
 			Vector3 zaxis = (eye - at).normalize();
 			Vector3 xaxis = up.cross(zaxis).normalize();
@@ -1176,7 +1193,7 @@ namespace my
 			return multiply(rhs).transpose();
 		}
 
-		static Matrix4 GetOrthoLH(float w, float h, float zn, float zf)
+		static Matrix4 OrthoLH(float w, float h, float zn, float zf)
 		{
 			return Matrix4(
 				2 / w,	0,		0,					0,
@@ -1185,7 +1202,7 @@ namespace my
 				0,		0,		-zn / (zf - zn),	1);
 		}
 
-		static Matrix4 GetOrthoRH(float w, float h, float zn, float zf)
+		static Matrix4 OrthoRH(float w, float h, float zn, float zf)
 		{
 			return Matrix4(
 				2 / w,	0,		0,					0,
@@ -1194,7 +1211,7 @@ namespace my
 				0,		0,		zn / (zn - zf),		1);
 		}
 
-		static Matrix4 GetOrthoOffCenterLH(float l, float r, float b, float t, float zn, float zf)
+		static Matrix4 OrthoOffCenterLH(float l, float r, float b, float t, float zn, float zf)
 		{
 			return Matrix4(
 				2 / (r - l),		0,					0,					0,
@@ -1203,7 +1220,7 @@ namespace my
 				(l + r) / (l - r),	(t + b) / (b - t),	zn / (zn - zf),		1);
 		}
 
-		static Matrix4 GetOrthoOffCenterRH(float l, float r, float b, float t, float zn, float zf)
+		static Matrix4 OrthoOffCenterRH(float l, float r, float b, float t, float zn, float zf)
 		{
 			return Matrix4(
 				2 / (r - l),		0,					0,					0,
@@ -1212,7 +1229,7 @@ namespace my
 				(l + r) / (l - r),	(t + b) / (b - t),	zn / (zn - zf),		1);
 		}
 
-		static Matrix4 GetPerspectiveFovLH(float fovy, float aspect, float zn, float zf)
+		static Matrix4 PerspectiveFovLH(float fovy, float aspect, float zn, float zf)
 		{
 			float yScale = cot(fovy / 2);
 			float xScale = yScale / aspect;
@@ -1225,7 +1242,7 @@ namespace my
 
 		}
 
-		static Matrix4 GetPerspectiveFovRH(float fovy, float aspect, float zn, float zf)
+		static Matrix4 PerspectiveFovRH(float fovy, float aspect, float zn, float zf)
 		{
 			float yScale = cot(fovy / 2);
 			float xScale = yScale / aspect;
@@ -1237,7 +1254,7 @@ namespace my
 				0,		0,		zn * zf / (zn - zf),	0);
 		}
 
-		static Matrix4 GetPerspectiveLH(float w, float h, float zn, float zf)
+		static Matrix4 PerspectiveLH(float w, float h, float zn, float zf)
 		{
 			return Matrix4(
 				2 * zn / w,	0,			0,						0,
@@ -1246,7 +1263,7 @@ namespace my
 				0,			0,			zn * zf / (zn - zf),	0);
 		}
 
-		static Matrix4 GetPerspectiveRH(float w, float h, float zn, float zf)
+		static Matrix4 PerspectiveRH(float w, float h, float zn, float zf)
 		{
 			return Matrix4(
 				2 * zn / w,	0,			0,						0,
@@ -1255,7 +1272,7 @@ namespace my
 				0,			0,			zn * zf / (zn - zf),	0);
 		}
 
-		static Matrix4 GetPerspectiveOffCenterLH(float l, float r, float b, float t, float zn, float zf)
+		static Matrix4 PerspectiveOffCenterLH(float l, float r, float b, float t, float zn, float zf)
 		{
 			return Matrix4(
 				2 * zn / (r - l),	0,					0,						0,
@@ -1264,7 +1281,7 @@ namespace my
 				0,					0,					zn * zf / (zn - zf),	0);
 		}
 
-		static Matrix4 GetPerspectiveOffCenterRH(float l, float r, float b, float t, float zn, float zf)
+		static Matrix4 PerspectiveOffCenterRH(float l, float r, float b, float t, float zn, float zf)
 		{
 			return Matrix4(
 				2 * zn / (r - l),	0,					0,						0,
@@ -1273,21 +1290,21 @@ namespace my
 				0,					0,					zn * zf / (zn - zf),	0);
 		}
 
-		static Matrix4 GetRotationAxis(const Vector3 & v, float angle)
+		static Matrix4 RotationAxis(const Vector3 & v, float angle)
 		{
 			Matrix4 ret;
 			D3DXMatrixRotationAxis((D3DXMATRIX *)&ret, (D3DXVECTOR3 *)&v, angle);
 			return ret;
 		}
 
-		static Matrix4 GetRotationQuaternion(const Quaternion & q)
+		static Matrix4 RotationQuaternion(const Quaternion & q)
 		{
 			Matrix4 ret;
 			D3DXMatrixRotationQuaternion((D3DXMATRIX *)&ret, (D3DXQUATERNION *)&q);
 			return ret;
 		}
 
-		static Matrix4 GetRotationX(float angle)
+		static Matrix4 RotationX(float angle)
 		{
 			float c = cos(angle);
 			float s = sin(angle);
@@ -1295,7 +1312,7 @@ namespace my
 			return Matrix4(1, 0, 0, 0, 0, c, s, 0, 0, -s, c, 0, 0, 0, 0, 1);
 		}
 
-		static Matrix4 GetRotationY(float angle)
+		static Matrix4 RotationY(float angle)
 		{
 			float c = cos(angle);
 			float s = sin(angle);
@@ -1303,7 +1320,7 @@ namespace my
 			return Matrix4(c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1);
 		}
 
-		static Matrix4 GetRotationZ(float angle)
+		static Matrix4 RotationZ(float angle)
 		{
 			float c = cos(angle);
 			float s = sin(angle);
@@ -1311,17 +1328,17 @@ namespace my
 			return Matrix4(c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 		}
 
-		static Matrix4 GetRotationYawPitchRoll(float yaw, float pitch, float roll)
+		static Matrix4 RotationYawPitchRoll(float yaw, float pitch, float roll)
 		{
-			return GetRotationZ(roll).rotateX(pitch).rotateY(yaw);
+			return RotationZ(roll).rotateX(pitch).rotateY(yaw);
 		}
 
-		static Matrix4 GetScaling(float sx, float sy, float sz)
+		static Matrix4 Scaling(const Vector3 & v)
 		{
-			return Matrix4(sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sz, 0, 0, 0, 0, 1);
+			return Matrix4(v.x, 0, 0, 0, 0, v.y, 0, 0, 0, 0, v.z, 0, 0, 0, 0, 1);
 		}
 
-		static Matrix4 GetTransformation(
+		static Matrix4 Transformation(
 			const Vector3 & scalingCenter,
 			const Quaternion & scalingRotation,
 			const Vector3 & scaling,
@@ -1329,19 +1346,33 @@ namespace my
 			const Quaternion & rotation,
 			const Vector3 & translation)
 		{
-			Matrix4 ret;
-			D3DXMatrixTransformation(
-				(D3DXMATRIX *)&ret,
-				(D3DXVECTOR3 *)&scalingCenter,
-				(D3DXQUATERNION *)&scalingRotation,
-				(D3DXVECTOR3 *)&scaling,
-				(D3DXVECTOR3 *)&rotationCenter,
-				(D3DXQUATERNION *)&rotation,
-				(D3DXVECTOR3 *)&translation);
-			return ret;
+			Matrix4 msc(Matrix4::Translation(scalingCenter));
+			Matrix4 msr(Matrix4::RotationQuaternion(scalingRotation));
+			Matrix4 mrc(Matrix4::Translation(rotationCenter));
+
+			return msc.inverse()
+				* msr.inverse()
+				* Scaling(scaling)
+				* msr
+				* msc
+				* mrc.inverse()
+				* RotationQuaternion(rotation)
+				* mrc
+				* Translation(translation);
+
+			//Matrix4 ret;
+			//D3DXMatrixTransformation(
+			//	(D3DXMATRIX *)&ret,
+			//	(D3DXVECTOR3 *)&scalingCenter,
+			//	(D3DXQUATERNION *)&scalingRotation,
+			//	(D3DXVECTOR3 *)&scaling,
+			//	(D3DXVECTOR3 *)&rotationCenter,
+			//	(D3DXQUATERNION *)&rotation,
+			//	(D3DXVECTOR3 *)&translation);
+			//return ret;
 		}
 
-		static Matrix4 GetTransformation2D(
+		static Matrix4 Transformation2D(
 			const Vector2 & scalingCenter,
 			float scalingRotation,
 			const Vector2 & scaling,
@@ -1361,9 +1392,9 @@ namespace my
 			return ret;
 		}
 
-		static Matrix4 GetTranslation(float x, float y, float z)
+		static Matrix4 Translation(const Vector3 & v)
 		{
-			return Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1);
+			return Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, v.x, v.y, v.z, 1);
 		}
 
 		Matrix4 transpose(void)
@@ -1445,6 +1476,16 @@ namespace my
 			return *this = rotateZ(angle);
 		}
 
+		Matrix4 rotate(const Quaternion & q) const
+		{
+			return *this * RotationQuaternion(q);
+		}
+
+		Matrix4 & rotateSelf(const Quaternion & q)
+		{
+			return *this = rotate(q);
+		}
+
 		Matrix4 translate(const Vector3 & v) const
 		{
 			return Matrix4(
@@ -1486,7 +1527,7 @@ namespace my
 			x * m._14 + y * m._24 + z * m._34 + w * m._44);
 	}
 
-	inline Quaternion Quaternion::GetRotationMatrix(const Matrix4 & m)
+	inline Quaternion Quaternion::RotationMatrix(const Matrix4 & m)
 	{
 		Quaternion ret;
 		D3DXQuaternionRotationMatrix((D3DXQUATERNION *)&ret, (D3DXMATRIX *)&m);
