@@ -179,6 +179,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\myTexture.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\src\stdafx.cpp"
 				>
 			</File>
@@ -214,6 +218,10 @@
 			</File>
 			<File
 				RelativePath="..\include\mySingleton.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\myTexture.h"
 				>
 			</File>
 			<File

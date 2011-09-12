@@ -6,6 +6,54 @@
 
 namespace my
 {
+	DeviceRelatedObjectBase::DeviceRelatedObjectBase(void)
+	{
+		DeviceRelatedObjectSet & set = DeviceRelatedObjectSet::getSingleton();
+		_ASSERT(set.end() == set.find(this));
+		set.insert(this);
+	}
+
+	DeviceRelatedObjectBase::~DeviceRelatedObjectBase(void)
+	{
+		DeviceRelatedObjectSet & set = DeviceRelatedObjectSet::getSingleton();
+		DeviceRelatedObjectSet::iterator this_iter = set.find(this);
+		_ASSERT(set.end() != this_iter);
+		set.erase(this_iter);
+	}
+
+	HRESULT DeviceRelatedObjectSet::OnD3D9ResetDevice(
+		IDirect3DDevice9 * pd3dDevice,
+		const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
+	{
+		iterator obj_iter = begin();
+		for(; obj_iter != end(); obj_iter++)
+		{
+			if(FAILED((*obj_iter)->OnD3D9ResetDevice(pd3dDevice, pBackBufferSurfaceDesc)))
+				return E_FAIL;
+		}
+		return S_OK;
+	}
+
+	Singleton<DeviceRelatedObjectSet>::DrivedClassPtr DeviceRelatedObjectSet::s_ptr;
+
+	void DeviceRelatedObjectSet::OnD3D9LostDevice(void)
+	{
+		iterator obj_iter = begin();
+		for(; obj_iter != end(); obj_iter++)
+		{
+			(*obj_iter)->OnD3D9LostDevice();
+		}
+	}
+
+	void DeviceRelatedObjectSet::OnD3D9DestroyDevice(void)
+	{
+		iterator obj_iter = begin();
+		for(; obj_iter != end(); obj_iter++)
+		{
+			(*obj_iter)->OnD3D9DestroyDevice();
+		}
+	}
+
 	bool CALLBACK DxutAppBase::IsD3D9DeviceAcceptable_s(
 		D3DCAPS9 * pCaps,
 		D3DFORMAT AdapterFormat,
@@ -51,12 +99,6 @@ namespace my
 			MessageBox(DXUTGetHWND(), e.GetFullDescription().c_str(), _T("Exception"), MB_OK);
 		}
 		return false;
-	}
-
-	bool DxutAppBase::ModifyDeviceSettings(
-		DXUTDeviceSettings * pDeviceSettings)
-	{
-		return true;
 	}
 
 	HRESULT CALLBACK DxutAppBase::OnD3D9CreateDevice_s(
@@ -209,16 +251,6 @@ namespace my
 
 	int DxutAppBase::Run(bool bWindowed, int nSuggestedWidth, int nSuggestedHeight)
 	{
-		try
-		{
-			OnInit();
-		}
-		catch(const my::Exception & e)
-		{
-			MessageBox(GetDesktopWindow(), e.GetFullDescription().c_str(), _T("Exception"), MB_OK);
-			return 0;
-		}
-
 		DXUTInit(true, true, NULL);
 		DXUTSetCursorSettings(true, true);
 		WCHAR szPath[MAX_PATH];
@@ -226,13 +258,12 @@ namespace my
 		DXUTCreateWindow(szPath);
 		DXUTCreateDevice(bWindowed, nSuggestedWidth, nSuggestedHeight);
 		DXUTMainLoop();
-
-		return DXUTGetExitCode();
+		int nExitCode = DXUTGetExitCode();
+		DXUTDestroyState();
+		return nExitCode;
 	}
 
-	void DxutAppBase::OnInit(void)
-	{
-	}
+	SingleInstance<DxutApp> * DxutApp::s_ptr = NULL;
 
 	bool DxutApp::IsD3D9DeviceAcceptable(
 		D3DCAPS9 * pCaps,
@@ -283,6 +314,8 @@ namespace my
 		m_hudDlg.SetLocation(pBackBufferSurfaceDesc->Width - 170, 0);
 		m_hudDlg.SetSize(170, 170);
 
+		DeviceRelatedObjectSet::getSingleton().OnD3D9ResetDevice(pd3dDevice, pBackBufferSurfaceDesc);
+
 		return S_OK;
 	}
 
@@ -292,6 +325,8 @@ namespace my
 		m_settingsDlg.OnD3D9LostDevice();
 		m_txtFont->OnLostDevice();
 		m_txtSprite->OnLostDevice();
+
+		DeviceRelatedObjectSet::getSingleton().OnD3D9LostDevice();
 	}
 
 	void DxutApp::OnD3D9DestroyDevice(void)
@@ -300,6 +335,8 @@ namespace my
 		m_settingsDlg.OnD3D9DestroyDevice();
 		m_txtFont.Release();
 		m_txtSprite.Release();
+
+		DeviceRelatedObjectSet::getSingleton().OnD3D9DestroyDevice();
 	}
 
 	void DxutApp::OnFrameMove(
@@ -426,5 +463,20 @@ namespace my
 		m_hudDlg.AddButton(IDC_TOGGLEFULLSCREEN, L"Toggle full screen", 35, nY, 125, 22);
 		m_hudDlg.AddButton(IDC_TOGGLEREF, L"Toggle REF (F3)", 35, nY += 24, 125, 22, VK_F3);
 		m_hudDlg.AddButton(IDC_CHANGEDEVICE, L"Change device (F2)", 35, nY += 24, 125, 22, VK_F2);
+	}
+
+	int DxutApp::Run(bool bWindowed, int nSuggestedWidth, int nSuggestedHeight)
+	{
+		try
+		{
+			OnInit();
+		}
+		catch(const my::Exception & e)
+		{
+			MessageBox(GetDesktopWindow(), e.GetFullDescription().c_str(), _T("Exception"), MB_OK);
+			return 0;
+		}
+
+		return DxutAppBase::Run(bWindowed, nSuggestedWidth, nSuggestedHeight);
 	}
 };
