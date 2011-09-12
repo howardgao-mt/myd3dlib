@@ -6,6 +6,7 @@
 namespace my
 {
 	Texture::Texture(
+		IDirect3DDevice9 * pd3dDevice,
 		UINT Width,
 		UINT Height,
 		UINT Levels /*= 0*/,
@@ -13,12 +14,11 @@ namespace my
 		D3DFORMAT Format /*= D3DFMT_UNKNOWN*/,
 		D3DPOOL Pool /*= D3DPOOL_MANAGED*/)
 	{
-		IDirect3DDevice9 * d3d9Device = DXUTGetD3D9Device();
-		_ASSERT(d3d9Device);
-		FAILED_THROW_D3DEXCEPTION(d3d9Device->CreateTexture(Width, Height, Levels, Usage, Format, Pool, &m_ptr, NULL));
+		FAILED_THROW_D3DEXCEPTION(pd3dDevice->CreateTexture(Width, Height, Levels, Usage, Format, Pool, &m_ptr, NULL));
 	}
 
 	Texture::Texture(
+		IDirect3DDevice9 * pd3dDevice,
 		const my::ArchiveCachePtr & cache,
 		UINT Width /*= D3DX_DEFAULT*/,
 		UINT Height /*= D3DX_DEFAULT*/,
@@ -32,10 +32,8 @@ namespace my
 		D3DXIMAGE_INFO * pSrcInfo /*= NULL*/,
 		PALETTEENTRY * pPalette /*= NULL*/)
 	{
-		IDirect3DDevice9 * d3d9Device = DXUTGetD3D9Device();
-		_ASSERT(d3d9Device);
 		FAILED_THROW_D3DEXCEPTION(D3DXCreateTextureFromFileInMemoryEx(
-			d3d9Device, &(*cache)[0], cache->size(), Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &m_ptr));
+			pd3dDevice, &(*cache)[0], cache->size(), Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &m_ptr));
 	}
 
 	HRESULT Texture::OnD3D9ResetDevice(

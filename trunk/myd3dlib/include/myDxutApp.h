@@ -26,20 +26,20 @@ namespace my
 		virtual void OnD3D9DestroyDevice(void) = 0;
 	};
 
-	template <class ComClass> 
-	class DeviceRelatedComObjectBase
+	template <class DrivedClass> 
+	class DeviceRelatedObject
 		: public DeviceRelatedObjectBase
 	{
 	public:
-		ComClass * m_ptr;
+		DrivedClass * m_ptr;
 
 	public:
-		DeviceRelatedComObjectBase(void)
-			: m_ptr(NULL)
+		DeviceRelatedObject(DrivedClass * ptr = NULL)
+			: m_ptr(ptr)
 		{
 		}
 
-		virtual ~DeviceRelatedComObjectBase(void)
+		virtual ~DeviceRelatedObject(void)
 		{
 			_ASSERT(NULL == m_ptr);
 		}
@@ -161,7 +161,10 @@ namespace my
 
 		virtual ~DxutAppBase(void);
 
-		virtual int Run(bool bWindowed, int nSuggestedWidth, int nSuggestedHeight);
+		virtual int Run(
+			bool bWindowed = true,
+			int nSuggestedWidth = 800,
+			int nSuggestedHeight = 600);
 	};
 
 	class DxutApp : public DxutAppBase, public SingleInstance<DxutApp>
@@ -245,6 +248,9 @@ namespace my
 
 		virtual void OnInit(void);
 
-		virtual int Run(bool bWindowed, int nSuggestedWidth, int nSuggestedHeight);
+		virtual int Run(
+			bool bWindowed = true,
+			int nSuggestedWidth = 800,
+			int nSuggestedHeight = 600);
 	};
 };

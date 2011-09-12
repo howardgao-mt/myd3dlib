@@ -249,7 +249,10 @@ namespace my
 	{
 	}
 
-	int DxutAppBase::Run(bool bWindowed, int nSuggestedWidth, int nSuggestedHeight)
+	int DxutAppBase::Run(
+		bool bWindowed /*= true*/,
+		int nSuggestedWidth /*= 800*/,
+		int nSuggestedHeight /*= 600*/)
 	{
 		DXUTInit(true, true, NULL);
 		DXUTSetCursorSettings(true, true);
@@ -465,7 +468,10 @@ namespace my
 		m_hudDlg.AddButton(IDC_CHANGEDEVICE, L"Change device (F2)", 35, nY += 24, 125, 22, VK_F2);
 	}
 
-	int DxutApp::Run(bool bWindowed, int nSuggestedWidth, int nSuggestedHeight)
+	int DxutApp::Run(
+		bool bWindowed /*= true*/,
+		int nSuggestedWidth /*= 800*/,
+		int nSuggestedHeight /*= 600*/)
 	{
 		try
 		{

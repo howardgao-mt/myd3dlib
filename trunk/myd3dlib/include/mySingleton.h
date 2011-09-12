@@ -48,13 +48,13 @@ namespace my
 		static SingleInstance * s_ptr;
 
 	public:
-		static SingleInstance * getSingletonPtr(void)
+		static DrivedClass * getSingletonPtr(void)
 		{
 			_ASSERT(NULL != s_ptr);
 			return s_ptr;
 		}
 
-		static SingleInstance & getSingleton(void)
+		static DrivedClass & getSingleton(void)
 		{
 			return *getSingletonPtr();
 		}
