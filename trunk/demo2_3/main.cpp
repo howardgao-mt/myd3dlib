@@ -5,13 +5,14 @@
 #include <myException.h>
 #include <myResource.h>
 #include <myMesh.h>
+#include <myTexture.h>
 #include <libc.h>
 
 // ------------------------------------------------------------------------------------------
 // MyDemo
 // ------------------------------------------------------------------------------------------
 
-class MyDemo : public my::DxutApp, public my::Singleton<MyDemo>
+class MyDemo : public my::DxutApp
 {
 protected:
 	CModelViewerCamera m_camera;
@@ -22,7 +23,7 @@ protected:
 
 	D3DMATERIAL9 m_material;
 
-	CComPtr<IDirect3DTexture9> m_texture;
+	my::TexturePtr m_texture;
 
 	static const unsigned int SHADOWMAP_SIZE = 1024;
 
@@ -104,7 +105,7 @@ protected:
 		// 创建贴图
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("jack_texture.jpg")));
-		FAILED_THROW_D3DEXCEPTION(D3DXCreateTextureFromFileInMemory(pd3dDevice, &(*cache)[0], cache->size(), &m_texture));
+		m_texture = my::TexturePtr(new my::Texture(cache));
 
 		return S_OK;
 	}
@@ -171,7 +172,6 @@ protected:
 		// 在这里销毁在create中创建的资源
 		m_effect.Release();
 		m_mesh.Release();
-		m_texture.Release();
 	}
 
 	void OnFrameMove(
@@ -259,7 +259,7 @@ protected:
 
 			V(m_effect->SetVector("g_MaterialAmbientColor", (D3DXVECTOR4 *)&m_material.Ambient));
 			V(m_effect->SetVector("g_MaterialDiffuseColor", (D3DXVECTOR4 *)&m_material.Diffuse));
-			V(m_effect->SetTexture("g_MeshTexture", m_texture));
+			V(m_effect->SetTexture("g_MeshTexture", m_texture->m_ptr));
 			V(m_effect->SetFloatArray("g_LightDir", (float *)&D3DXVECTOR3(0.0f, 0.0f, -1.0f), 3));
 			V(m_effect->SetVector("g_LightDiffuse", &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)));
 
@@ -304,8 +304,6 @@ protected:
 	}
 };
 
-my::Singleton<MyDemo>::DrivedClassPtr my::Singleton<MyDemo>::s_ptr;
-
 // ------------------------------------------------------------------------------------------
 // wWinMain
 // ------------------------------------------------------------------------------------------
@@ -320,5 +318,5 @@ int WINAPI wWinMain(HINSTANCE hInstance,
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-	return MyDemo::getSingleton().Run(true, 800, 600);
+	return MyDemo().Run(true, 800, 600);
 }
