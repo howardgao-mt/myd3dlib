@@ -105,7 +105,7 @@ protected:
 		// 创建贴图
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("jack_texture.jpg")));
-		m_texture = my::TexturePtr(new my::Texture(pd3dDevice, cache));
+		m_texture = my::Texture::CreateTextureFromFileInMemory(pd3dDevice, cache);
 
 		return S_OK;
 	}

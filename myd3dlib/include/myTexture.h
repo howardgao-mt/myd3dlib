@@ -47,6 +47,10 @@ namespace my
 		}
 	};
 
+	class Texture;
+
+	typedef boost::shared_ptr<Texture> TexturePtr;
+
 	class Texture : public TextureBase<IDirect3DTexture9>
 	{
 	protected:
@@ -57,25 +61,49 @@ namespace my
 
 	public:
 		Texture(
-			IDirect3DDevice9 * pd3dDevice,
+			LPDIRECT3DDEVICE9 pDevice,
 			UINT Width,
 			UINT Height,
-			UINT Levels = 0,
+			UINT MipLevels = 0,
 			DWORD Usage = 0,
 			D3DFORMAT Format = D3DFMT_UNKNOWN,
 			D3DPOOL Pool = D3DPOOL_MANAGED);
 
-		Texture(
-			IDirect3DDevice9 * pd3dDevice,
-			const my::ArchiveCachePtr & cache,
+		static TexturePtr CreateAdjustedTexture(
+			LPDIRECT3DDEVICE9 pDevice,
+			UINT Width,
+			UINT Height,
+			UINT MipLevels = D3DX_DEFAULT,
+			DWORD Usage = 0,
+			D3DFORMAT Format = D3DFMT_UNKNOWN,
+			D3DPOOL Pool = D3DPOOL_MANAGED);
+
+		static TexturePtr CreateTextureFromFile(
+			LPDIRECT3DDEVICE9 pDevice,
+			LPCTSTR pSrcFile,
 			UINT Width = D3DX_DEFAULT,
 			UINT Height = D3DX_DEFAULT,
 			UINT MipLevels = D3DX_DEFAULT,
 			DWORD Usage = 0,
 			D3DFORMAT Format = D3DFMT_UNKNOWN,
 			D3DPOOL Pool = D3DPOOL_MANAGED,
-			DWORD Filter = D3DPOOL_MANAGED,
-			DWORD MipFilter = D3DPOOL_MANAGED,
+			DWORD Filter = D3DX_DEFAULT,
+			DWORD MipFilter = D3DX_DEFAULT,
+			D3DCOLOR ColorKey = 0,
+			D3DXIMAGE_INFO * pSrcInfo = NULL,
+			PALETTEENTRY * pPalette = NULL);
+
+		static TexturePtr CreateTextureFromFileInMemory(
+			LPDIRECT3DDEVICE9 pDevice,
+			my::ArchiveCachePtr cache,
+			UINT Width = D3DX_DEFAULT,
+			UINT Height = D3DX_DEFAULT,
+			UINT MipLevels = D3DX_DEFAULT,
+			DWORD Usage = 0,
+			D3DFORMAT Format = D3DFMT_UNKNOWN,
+			D3DPOOL Pool = D3DPOOL_MANAGED,
+			DWORD Filter = D3DX_DEFAULT,
+			DWORD MipFilter = D3DX_DEFAULT,
 			D3DCOLOR ColorKey = 0,
 			D3DXIMAGE_INFO * pSrcInfo = NULL,
 			PALETTEENTRY * pPalette = NULL);
@@ -125,6 +153,4 @@ namespace my
 			V(m_ptr->UnlockRect(Level));
 		}
 	};
-
-	typedef boost::shared_ptr<Texture> TexturePtr;
 }
