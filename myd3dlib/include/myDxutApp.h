@@ -26,28 +26,9 @@ namespace my
 		virtual void OnD3D9DestroyDevice(void) = 0;
 	};
 
-	template <class DrivedClass> 
-	class DeviceRelatedObject
-		: public DeviceRelatedObjectBase
-	{
-	public:
-		DrivedClass * m_ptr;
-
-	public:
-		DeviceRelatedObject(DrivedClass * ptr = NULL)
-			: m_ptr(ptr)
-		{
-		}
-
-		virtual ~DeviceRelatedObject(void)
-		{
-			_ASSERT(NULL == m_ptr);
-		}
-	};
-
-	class DeviceRelatedObjectSet
+	class DeviceRelatedObjectBaseSet
 		: public std::set<DeviceRelatedObjectBase *>
-		, public Singleton<DeviceRelatedObjectSet>
+		, public Singleton<DeviceRelatedObjectBaseSet>
 	{
 	public:
 		HRESULT OnD3D9ResetDevice(
@@ -57,6 +38,31 @@ namespace my
 		void OnD3D9LostDevice(void);
 
 		void OnD3D9DestroyDevice(void);
+	};
+
+	template <class DrivedClass> 
+	class DeviceRelatedObject
+		: public DeviceRelatedObjectBase
+	{
+	public:
+		DrivedClass * m_ptr;
+
+	public:
+		DeviceRelatedObject(DrivedClass * ptr)
+			: m_ptr(ptr)
+		{
+			_ASSERT(NULL != m_ptr);
+		}
+
+		virtual ~DeviceRelatedObject(void)
+		{
+			SAFE_RELEASE(m_ptr);
+		}
+
+		virtual void OnD3D9DestroyDevice(void)
+		{
+			SAFE_RELEASE(m_ptr);
+		}
 	};
 
 	class DxutAppBase

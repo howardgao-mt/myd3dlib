@@ -114,8 +114,6 @@ namespace my
 
 		virtual void OnD3D9LostDevice(void);
 
-		virtual void OnD3D9DestroyDevice(void);
-
 	public:
 		void AddDirtyRect(CONST RECT * pDirtyRect = NULL)
 		{

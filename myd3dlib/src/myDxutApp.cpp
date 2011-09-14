@@ -8,20 +8,20 @@ namespace my
 {
 	DeviceRelatedObjectBase::DeviceRelatedObjectBase(void)
 	{
-		DeviceRelatedObjectSet & set = DeviceRelatedObjectSet::getSingleton();
+		DeviceRelatedObjectBaseSet & set = DeviceRelatedObjectBaseSet::getSingleton();
 		_ASSERT(set.end() == set.find(this));
 		set.insert(this);
 	}
 
 	DeviceRelatedObjectBase::~DeviceRelatedObjectBase(void)
 	{
-		DeviceRelatedObjectSet & set = DeviceRelatedObjectSet::getSingleton();
-		DeviceRelatedObjectSet::iterator this_iter = set.find(this);
+		DeviceRelatedObjectBaseSet & set = DeviceRelatedObjectBaseSet::getSingleton();
+		DeviceRelatedObjectBaseSet::iterator this_iter = set.find(this);
 		_ASSERT(set.end() != this_iter);
 		set.erase(this_iter);
 	}
 
-	HRESULT DeviceRelatedObjectSet::OnD3D9ResetDevice(
+	HRESULT DeviceRelatedObjectBaseSet::OnD3D9ResetDevice(
 		IDirect3DDevice9 * pd3dDevice,
 		const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
 	{
@@ -34,9 +34,9 @@ namespace my
 		return S_OK;
 	}
 
-	Singleton<DeviceRelatedObjectSet>::DrivedClassPtr DeviceRelatedObjectSet::s_ptr;
+	Singleton<DeviceRelatedObjectBaseSet>::DrivedClassPtr DeviceRelatedObjectBaseSet::s_ptr;
 
-	void DeviceRelatedObjectSet::OnD3D9LostDevice(void)
+	void DeviceRelatedObjectBaseSet::OnD3D9LostDevice(void)
 	{
 		iterator obj_iter = begin();
 		for(; obj_iter != end(); obj_iter++)
@@ -45,7 +45,7 @@ namespace my
 		}
 	}
 
-	void DeviceRelatedObjectSet::OnD3D9DestroyDevice(void)
+	void DeviceRelatedObjectBaseSet::OnD3D9DestroyDevice(void)
 	{
 		iterator obj_iter = begin();
 		for(; obj_iter != end(); obj_iter++)
@@ -317,7 +317,7 @@ namespace my
 		m_hudDlg.SetLocation(pBackBufferSurfaceDesc->Width - 170, 0);
 		m_hudDlg.SetSize(170, 170);
 
-		DeviceRelatedObjectSet::getSingleton().OnD3D9ResetDevice(pd3dDevice, pBackBufferSurfaceDesc);
+		DeviceRelatedObjectBaseSet::getSingleton().OnD3D9ResetDevice(pd3dDevice, pBackBufferSurfaceDesc);
 
 		return S_OK;
 	}
@@ -329,7 +329,7 @@ namespace my
 		m_txtFont->OnLostDevice();
 		m_txtSprite->OnLostDevice();
 
-		DeviceRelatedObjectSet::getSingleton().OnD3D9LostDevice();
+		DeviceRelatedObjectBaseSet::getSingleton().OnD3D9LostDevice();
 	}
 
 	void DxutApp::OnD3D9DestroyDevice(void)
@@ -339,7 +339,7 @@ namespace my
 		m_txtFont.Release();
 		m_txtSprite.Release();
 
-		DeviceRelatedObjectSet::getSingleton().OnD3D9DestroyDevice();
+		DeviceRelatedObjectBaseSet::getSingleton().OnD3D9DestroyDevice();
 	}
 
 	void DxutApp::OnFrameMove(
