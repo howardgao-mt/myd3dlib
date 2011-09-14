@@ -99,9 +99,4 @@ namespace my
 	void Texture::OnD3D9LostDevice(void)
 	{
 	}
-
-	void Texture::OnD3D9DestroyDevice(void)
-	{
-		SAFE_RELEASE(m_ptr);
-	}
 }
