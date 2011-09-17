@@ -5,7 +5,7 @@
 
 namespace my
 {
-	Texture::Texture(
+	TexturePtr Texture::CreateTexture(
 		LPDIRECT3DDEVICE9 pDevice,
 		UINT Width,
 		UINT Height,
@@ -14,7 +14,15 @@ namespace my
 		D3DFORMAT Format /*= D3DFMT_UNKNOWN*/,
 		D3DPOOL Pool /*= D3DPOOL_MANAGED*/)
 	{
-		FAILED_THROW_D3DEXCEPTION(pDevice->CreateTexture(Width, Height, MipLevels, Usage, Format, Pool, &m_ptr, NULL));
+		LPDIRECT3DTEXTURE9 pTexture = NULL;
+		HRESULT hres = pDevice->CreateTexture(
+			Width, Height, MipLevels, Usage, Format, Pool, &pTexture, NULL);
+		if(FAILED(hres))
+		{
+			THROW_D3DEXCEPTION(hres);
+		}
+
+		return TexturePtr(new Texture(pTexture));
 	}
 
 	TexturePtr Texture::CreateAdjustedTexture(
@@ -87,16 +95,5 @@ namespace my
 		}
 
 		return TexturePtr(new Texture(pTexture));
-	}
-
-	HRESULT Texture::OnD3D9ResetDevice(
-		IDirect3DDevice9 * pd3dDevice,
-		const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
-	{
-		return S_OK;
-	}
-
-	void Texture::OnD3D9LostDevice(void)
-	{
 	}
 }

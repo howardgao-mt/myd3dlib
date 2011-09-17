@@ -3,19 +3,26 @@
 
 #include "myDxutApp.h"
 #include "myResource.h"
-#include <atltypes.h>
+#include <atlbase.h>
 
 namespace my
 {
-	template <class DrivedClass>
-	class TextureBase : public DeviceRelatedObject<DrivedClass>
+	class BaseTexture;
+
+	typedef boost::shared_ptr<BaseTexture> BaseTexturePtr;
+
+	class BaseTexture : public DeviceRelatedObject<IDirect3DBaseTexture9>
 	{
+	protected:
+		HRESULT hr;
+
 	public:
-		TextureBase(DrivedClass * ptr = NULL)
+		BaseTexture(IDirect3DBaseTexture9 * ptr)
 			: DeviceRelatedObject(ptr)
 		{
 		}
 
+	public:
 		void GenerateMipSubLevels(void)
 		{
 			m_ptr->GenerateMipSubLevels();
@@ -51,16 +58,16 @@ namespace my
 
 	typedef boost::shared_ptr<Texture> TexturePtr;
 
-	class Texture : public TextureBase<IDirect3DTexture9>
+	class Texture : public BaseTexture
 	{
 	protected:
 		Texture(IDirect3DTexture9 * pd3dTexture)
-			: TextureBase(pd3dTexture)
+			: BaseTexture(pd3dTexture)
 		{
 		}
 
 	public:
-		Texture(
+		static TexturePtr CreateTexture(
 			LPDIRECT3DDEVICE9 pDevice,
 			UINT Width,
 			UINT Height,
@@ -108,47 +115,36 @@ namespace my
 			D3DXIMAGE_INFO * pSrcInfo = NULL,
 			PALETTEENTRY * pPalette = NULL);
 
-		virtual HRESULT OnD3D9ResetDevice(
-			IDirect3DDevice9 * pd3dDevice,
-			const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
-
-		virtual void OnD3D9LostDevice(void);
-
 	public:
 		void AddDirtyRect(CONST RECT * pDirtyRect = NULL)
 		{
-			HRESULT hr;
-			V(m_ptr->AddDirtyRect(pDirtyRect));
+			V(static_cast<IDirect3DTexture9 *>(m_ptr)->AddDirtyRect(pDirtyRect));
 		}
 
 		D3DSURFACE_DESC GetLevelDesc(UINT Level)
 		{
 			D3DSURFACE_DESC desc;
-			HRESULT hr;
-			V(m_ptr->GetLevelDesc(Level, &desc));
+			V(static_cast<IDirect3DTexture9 *>(m_ptr)->GetLevelDesc(Level, &desc));
 			return desc;
 		}
 
-		//SurfacePtr GetSurfaceLevel(UINT Level)
-		//{
-		//	IDirect3DSurface9 * pSurface;
-		//	HRESULT hr;
-		//	V(m_ptr->GetSurfaceLevel(Level, &pSurface));
-		//	return SurfacePtr(new Surface(pSurface));
-		//}
+		CComPtr<IDirect3DSurface9> GetSurfaceLevel(UINT Level)
+		{
+			CComPtr<IDirect3DSurface9> Surface;
+			V(static_cast<IDirect3DTexture9 *>(m_ptr)->GetSurfaceLevel(Level, &Surface));
+			return Surface;
+		}
 
 		D3DLOCKED_RECT LockRect(UINT Level, CONST RECT * pRect = NULL, DWORD Flags = 0)
 		{
 			D3DLOCKED_RECT LockedRect;
-			HRESULT hr;
-			V(m_ptr->LockRect(Level, &LockedRect, pRect, Flags));
+			V(static_cast<IDirect3DTexture9 *>(m_ptr)->LockRect(Level, &LockedRect, pRect, Flags));
 			return LockedRect;
 		}
 
 		void UnlockRect(UINT Level)
 		{
-			HRESULT hr;
-			V(m_ptr->UnlockRect(Level));
+			V(static_cast<IDirect3DTexture9 *>(m_ptr)->UnlockRect(Level));
 		}
 	};
 }
