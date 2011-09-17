@@ -6,6 +6,7 @@
 #include <myResource.h>
 #include <myMesh.h>
 #include <myTexture.h>
+#include <myEffect.h>
 #include <libc.h>
 
 // ------------------------------------------------------------------------------------------
@@ -17,7 +18,7 @@ class MyDemo : public my::DxutApp
 protected:
 	CModelViewerCamera m_camera;
 
-	CComPtr<ID3DXEffect> m_effect;
+	my::EffectPtr m_effect;
 
 	CComPtr<ID3DXMesh> m_mesh;
 
@@ -84,13 +85,7 @@ protected:
 		// 读取D3DX Effect文件
 		my::ArchiveCachePtr cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("SimpleSample.fx")));
-		CComPtr<ID3DXBuffer> d3dxbuffer;
-		if(FAILED(hres = D3DXCreateEffect(
-			pd3dDevice, &(*cache)[0], cache->size(), NULL, NULL, D3DXFX_NOT_CLONEABLE, NULL, &m_effect, &d3dxbuffer)))
-		{
-			THROW_CUSEXCEPTION(
-				str_printf(_T("compilation errors: \n%s"), mstringToWString((LPCSTR)d3dxbuffer->GetBufferPointer()).c_str()));
-		}
+		m_effect = my::Effect::CreateEffect(pd3dDevice, cache);
 
 		// 从资源管理器中读出模型文件
 		DWORD dwNumSubMeshes;
@@ -126,9 +121,6 @@ protected:
 		m_camera.SetProjParams(D3DX_PI / 4, fAspectRatio, 0.1f, 1000.0f);
 		m_camera.SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
 
-		// 重置d3dx effect
-		FAILED_THROW_D3DEXCEPTION(m_effect->OnResetDevice());
-
 		// 创建用于shadow map的render target，使用D3DXCreateTexture可以为不支持设备创建兼容贴图
 		FAILED_THROW_D3DEXCEPTION(D3DXCreateTexture(
 			pd3dDevice,
@@ -160,7 +152,6 @@ protected:
 		DxutApp::OnD3D9LostDevice();
 
 		// 在这里处理在reset中创建的资源
-		m_effect->OnLostDevice();
 		m_shadowMapRT.Release();
 		m_shadowMapDS.Release();
 	}
@@ -170,7 +161,6 @@ protected:
 		DxutApp::OnD3D9DestroyDevice();
 
 		// 在这里销毁在create中创建的资源
-		m_effect.Release();
 		m_mesh.Release();
 	}
 
@@ -222,22 +212,21 @@ protected:
 		if(SUCCEEDED(hr = pd3dDevice->BeginScene()))
 		{
 			// 更新d3dx effect变量
-			V(m_effect->SetMatrix("g_mWorldViewProjectionLight", &mWorldViewProjLight));
-			V(m_effect->SetTechnique("RenderShadow"));
+			V(m_effect->m_ptr->SetMatrix("g_mWorldViewProjectionLight", &mWorldViewProjLight));
+			m_effect->SetTechnique("RenderShadow");
 
 			// 渲染模型的两个部分，注意，头发的部分不要背面剔除
-			UINT cPasses;
-			V(m_effect->Begin(&cPasses, 0));
+			UINT cPasses = m_effect->Begin();
 			for(UINT p = 0; p < cPasses; ++p)
 			{
-				V(m_effect->BeginPass(p));
+				m_effect->BeginPass(p);
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
 				V(m_mesh->DrawSubset(1));
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW));
 				V(m_mesh->DrawSubset(0));
-				V(m_effect->EndPass());
+				m_effect->EndPass();
 			}
-			V(m_effect->End());
+			m_effect->End();
 
 			V(pd3dDevice->EndScene());
 		}
@@ -253,33 +242,32 @@ protected:
 		if(SUCCEEDED(hr = pd3dDevice->BeginScene()))
 		{
 			// 更新D3DX Effect值
-			V(m_effect->SetMatrix("g_mWorldViewProjection", &mWorldViewProjection));
-			V(m_effect->SetMatrix("g_mWorld", &mWorld));
-			V(m_effect->SetFloat("g_fTime", (float)fTime));
+			V(m_effect->m_ptr->SetMatrix("g_mWorldViewProjection", &mWorldViewProjection));
+			V(m_effect->m_ptr->SetMatrix("g_mWorld", &mWorld));
+			V(m_effect->m_ptr->SetFloat("g_fTime", (float)fTime));
 
-			V(m_effect->SetVector("g_MaterialAmbientColor", (D3DXVECTOR4 *)&m_material.Ambient));
-			V(m_effect->SetVector("g_MaterialDiffuseColor", (D3DXVECTOR4 *)&m_material.Diffuse));
-			V(m_effect->SetTexture("g_MeshTexture", m_texture->m_ptr));
-			V(m_effect->SetFloatArray("g_LightDir", (float *)&D3DXVECTOR3(0.0f, 0.0f, -1.0f), 3));
-			V(m_effect->SetVector("g_LightDiffuse", &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)));
+			V(m_effect->m_ptr->SetVector("g_MaterialAmbientColor", (D3DXVECTOR4 *)&m_material.Ambient));
+			V(m_effect->m_ptr->SetVector("g_MaterialDiffuseColor", (D3DXVECTOR4 *)&m_material.Diffuse));
+			V(m_effect->m_ptr->SetTexture("g_MeshTexture", m_texture->m_ptr));
+			V(m_effect->m_ptr->SetFloatArray("g_LightDir", (float *)&D3DXVECTOR3(0.0f, 0.0f, -1.0f), 3));
+			V(m_effect->m_ptr->SetVector("g_LightDiffuse", &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)));
 
-			V(m_effect->SetTexture("g_ShadowTexture", m_shadowMapRT));
-			V(m_effect->SetMatrix("g_mWorldViewProjectionLight", &mWorldViewProjLight));
-			V(m_effect->SetTechnique("RenderScene"));
+			V(m_effect->m_ptr->SetTexture("g_ShadowTexture", m_shadowMapRT));
+			V(m_effect->m_ptr->SetMatrix("g_mWorldViewProjectionLight", &mWorldViewProjLight));
+			m_effect->SetTechnique("RenderScene");
 
 			// 渲染模型的两个部分，注意，头发的部分不要背面剔除
-			UINT cPasses;
-			V(m_effect->Begin(&cPasses, 0));
+			UINT cPasses = m_effect->Begin();
 			for(UINT p = 0; p < cPasses; ++p)
 			{
-				V(m_effect->BeginPass(p));
+				m_effect->BeginPass(p);
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
 				V(m_mesh->DrawSubset(1));
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW));
 				V(m_mesh->DrawSubset(0));
-				V(m_effect->EndPass());
+				m_effect->EndPass();
 			}
-			V(m_effect->End());
+			m_effect->End();
 
 			V(pd3dDevice->EndScene());
 		}

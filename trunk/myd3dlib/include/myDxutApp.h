@@ -17,7 +17,7 @@ namespace my
 
 		virtual ~DeviceRelatedObjectBase(void);
 
-		virtual HRESULT OnD3D9ResetDevice(
+		virtual void OnD3D9ResetDevice(
 			IDirect3DDevice9 * pd3dDevice,
 			const D3DSURFACE_DESC * pBackBufferSurfaceDesc) = 0;
 
@@ -31,7 +31,7 @@ namespace my
 		, public Singleton<DeviceRelatedObjectBaseSet>
 	{
 	public:
-		HRESULT OnD3D9ResetDevice(
+		void OnD3D9ResetDevice(
 			IDirect3DDevice9 * pd3dDevice,
 			const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
 
@@ -59,7 +59,17 @@ namespace my
 			SAFE_RELEASE(m_ptr);
 		}
 
-		virtual void OnD3D9DestroyDevice(void)
+		void OnD3D9ResetDevice(
+			IDirect3DDevice9 * pd3dDevice,
+			const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
+		{
+		}
+
+		void OnD3D9LostDevice(void)
+		{
+		}
+
+		void OnD3D9DestroyDevice(void)
 		{
 			SAFE_RELEASE(m_ptr);
 		}

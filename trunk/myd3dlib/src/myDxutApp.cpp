@@ -21,17 +21,15 @@ namespace my
 		set.erase(this_iter);
 	}
 
-	HRESULT DeviceRelatedObjectBaseSet::OnD3D9ResetDevice(
+	void DeviceRelatedObjectBaseSet::OnD3D9ResetDevice(
 		IDirect3DDevice9 * pd3dDevice,
 		const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
 	{
 		iterator obj_iter = begin();
 		for(; obj_iter != end(); obj_iter++)
 		{
-			if(FAILED((*obj_iter)->OnD3D9ResetDevice(pd3dDevice, pBackBufferSurfaceDesc)))
-				return E_FAIL;
+			(*obj_iter)->OnD3D9ResetDevice(pd3dDevice, pBackBufferSurfaceDesc);
 		}
-		return S_OK;
 	}
 
 	Singleton<DeviceRelatedObjectBaseSet>::DrivedClassPtr DeviceRelatedObjectBaseSet::s_ptr;
