@@ -13,9 +13,6 @@ namespace my
 
 	class BaseTexture : public DeviceRelatedObject<IDirect3DBaseTexture9>
 	{
-	protected:
-		HRESULT hr;
-
 	public:
 		BaseTexture(IDirect3DBaseTexture9 * ptr)
 			: DeviceRelatedObject(ptr)
