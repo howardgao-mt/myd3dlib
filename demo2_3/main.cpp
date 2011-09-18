@@ -22,13 +22,11 @@ protected:
 
 	CComPtr<ID3DXMesh> m_mesh;
 
-	D3DMATERIAL9 m_material;
-
 	my::TexturePtr m_texture;
 
 	static const unsigned int SHADOWMAP_SIZE = 1024;
 
-	CComPtr<IDirect3DTexture9> m_shadowMapRT;
+	my::TexturePtr m_shadowMapRT;
 
 	CComPtr<IDirect3DSurface9> m_shadowMapDS;
 
@@ -93,10 +91,6 @@ protected:
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("jack_hres_all.mesh.xml")));
 		my::LoadMeshFromOgreMesh(std::string((char *)&(*cache)[0], cache->size()), pd3dDevice, &dwNumSubMeshes, &m_mesh);
 
-		// 所有的mesh使用同一种材质，同一张贴图
-		m_material.Ambient = D3DXCOLOR(0.27f, 0.27f, 0.27f, 1.0f);
-		m_material.Diffuse = D3DXCOLOR(1.0f, 1.0f, 1.0f, 1.0f);
-
 		// 创建贴图
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("jack_texture.jpg")));
@@ -122,15 +116,14 @@ protected:
 		m_camera.SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
 
 		// 创建用于shadow map的render target，使用D3DXCreateTexture可以为不支持设备创建兼容贴图
-		FAILED_THROW_D3DEXCEPTION(D3DXCreateTexture(
+		m_shadowMapRT = my::Texture::CreateAdjustedTexture(
 			pd3dDevice,
 			SHADOWMAP_SIZE,
 			SHADOWMAP_SIZE,
 			1,
 			D3DUSAGE_RENDERTARGET,
 			D3DFMT_R32F,
-			D3DPOOL_DEFAULT,
-			&m_shadowMapRT));
+			D3DPOOL_DEFAULT);
 
 		// 创建用于shadow map的depth scentil
 		DXUTDeviceSettings d3dSettings = DXUTGetDeviceSettings();
@@ -152,7 +145,7 @@ protected:
 		DxutApp::OnD3D9LostDevice();
 
 		// 在这里处理在reset中创建的资源
-		m_shadowMapRT.Release();
+		m_shadowMapRT = my::TexturePtr();
 		m_shadowMapDS.Release();
 	}
 
@@ -180,28 +173,25 @@ protected:
 		float fElapsedTime)
 	{
 		// 获得相机投影矩阵
-		D3DXMATRIXA16 mWorld = *m_camera.GetWorldMatrix();
-		D3DXMATRIXA16 mProj = *m_camera.GetProjMatrix();
-		D3DXMATRIXA16 mView = *m_camera.GetViewMatrix();
-		D3DXMATRIXA16 mWorldViewProjection = mWorld * mView * mProj;
+		my::Matrix4 mWorld = *(my::Matrix4 *)m_camera.GetWorldMatrix();
+		my::Matrix4 mProj = *(my::Matrix4 *)m_camera.GetProjMatrix();
+		my::Matrix4 mView = *(my::Matrix4 *)m_camera.GetViewMatrix();
+		my::Matrix4 mWorldViewProjection = mWorld * mView * mProj;
 
 		// 计算光照的透视变换
-		D3DXMATRIXA16 mViewLight;
-		D3DXMatrixLookAtLH(
-			&mViewLight,
-			&D3DXVECTOR3(0.0f, 0.0f, 50.0f),
-			&D3DXVECTOR3(0.0f, 0.0f, 0.0f),
-			&D3DXVECTOR3(0.0f, 1.0f, 0.0f));
-		D3DXMATRIXA16 mProjLight;
-		D3DXMatrixOrthoLH(&mProjLight, 50, 50, 25, 75);
-		D3DXMATRIXA16 mWorldViewProjLight = mWorld * mViewLight * mProjLight;
+		my::Matrix4 mViewLight(my::Matrix4::LookAtLH(
+			my::Vector3(0.0f, 0.0f, 50.0f),
+			my::Vector3(0.0f, 0.0f, 0.0f),
+			my::Vector3(0.0f, 1.0f, 0.0f)));
+		my::Matrix4 mProjLight(my::Matrix4::OrthoLH(50, 50, 25, 75));
+		my::Matrix4 mWorldViewProjLight = mWorld * mViewLight * mProjLight;
 
 		// 将shadow map作为render target，注意保存恢复原来的render target
 		HRESULT hr;
 		LPDIRECT3DSURFACE9 pOldRT = NULL;
 		V(pd3dDevice->GetRenderTarget(0, &pOldRT));
 		LPDIRECT3DSURFACE9 pShadowSurf;
-		V(m_shadowMapRT->GetSurfaceLevel(0, &pShadowSurf));
+		V(static_cast<IDirect3DTexture9 *>(m_shadowMapRT->m_ptr)->GetSurfaceLevel(0, &pShadowSurf));
 		V(pd3dDevice->SetRenderTarget(0, pShadowSurf));
 		SAFE_RELEASE(pShadowSurf);
 		LPDIRECT3DSURFACE9 pOldDS = NULL;
@@ -212,7 +202,7 @@ protected:
 		if(SUCCEEDED(hr = pd3dDevice->BeginScene()))
 		{
 			// 更新d3dx effect变量
-			V(m_effect->m_ptr->SetMatrix("g_mWorldViewProjectionLight", &mWorldViewProjLight));
+			m_effect->SetMatrix("g_mWorldViewProjectionLight", mWorldViewProjLight);
 			m_effect->SetTechnique("RenderShadow");
 
 			// 渲染模型的两个部分，注意，头发的部分不要背面剔除
@@ -242,18 +232,20 @@ protected:
 		if(SUCCEEDED(hr = pd3dDevice->BeginScene()))
 		{
 			// 更新D3DX Effect值
-			V(m_effect->m_ptr->SetMatrix("g_mWorldViewProjection", &mWorldViewProjection));
-			V(m_effect->m_ptr->SetMatrix("g_mWorld", &mWorld));
-			V(m_effect->m_ptr->SetFloat("g_fTime", (float)fTime));
+			m_effect->SetMatrix("g_mWorldViewProjection", mWorldViewProjection);
+			m_effect->SetMatrix("g_mWorld", mWorld);
+			m_effect->SetFloat("g_fTime", (float)fTime);
 
-			V(m_effect->m_ptr->SetVector("g_MaterialAmbientColor", (D3DXVECTOR4 *)&m_material.Ambient));
-			V(m_effect->m_ptr->SetVector("g_MaterialDiffuseColor", (D3DXVECTOR4 *)&m_material.Diffuse));
-			V(m_effect->m_ptr->SetTexture("g_MeshTexture", m_texture->m_ptr));
-			V(m_effect->m_ptr->SetFloatArray("g_LightDir", (float *)&D3DXVECTOR3(0.0f, 0.0f, -1.0f), 3));
-			V(m_effect->m_ptr->SetVector("g_LightDiffuse", &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)));
+			// 所有的mesh使用同一种材质，同一张贴图
+			m_effect->SetVector("g_MaterialAmbientColor", my::Vector4(0.27f, 0.27f, 0.27f, 1.0f));
+			m_effect->SetVector("g_MaterialDiffuseColor", my::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+			m_effect->SetTexture("g_MeshTexture", m_texture);
+			m_effect->SetFloatArray("g_LightDir", (float *)&my::Vector3(0.0f, 0.0f, -1.0f), 3);
+			m_effect->SetVector("g_LightDiffuse", my::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
-			V(m_effect->m_ptr->SetTexture("g_ShadowTexture", m_shadowMapRT));
-			V(m_effect->m_ptr->SetMatrix("g_mWorldViewProjectionLight", &mWorldViewProjLight));
+			// 设置阴影贴图，及光源变换
+			m_effect->SetTexture("g_ShadowTexture", m_shadowMapRT);
+			m_effect->SetMatrix("g_mWorldViewProjectionLight", mWorldViewProjLight);
 			m_effect->SetTechnique("RenderScene");
 
 			// 渲染模型的两个部分，注意，头发的部分不要背面剔除

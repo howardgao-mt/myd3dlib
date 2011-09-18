@@ -44,6 +44,9 @@ namespace my
 	class DeviceRelatedObject
 		: public DeviceRelatedObjectBase
 	{
+	protected:
+		HRESULT hr;
+
 	public:
 		DrivedClass * m_ptr;
 

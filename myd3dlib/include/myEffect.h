@@ -15,9 +15,6 @@ namespace my
 
 	class BaseEffect : public DeviceRelatedObject<ID3DXBaseEffect>
 	{
-	protected:
-		HRESULT hr;
-
 	public:
 		BaseEffect(ID3DXBaseEffect * ptr)
 			: DeviceRelatedObject(ptr)
