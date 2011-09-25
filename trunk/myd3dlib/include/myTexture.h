@@ -99,7 +99,8 @@ namespace my
 
 		static TexturePtr CreateTextureFromFileInMemory(
 			LPDIRECT3DDEVICE9 pDevice,
-			my::ArchiveCachePtr cache,
+			LPCVOID pSrcData,
+			UINT SrcDataSize,
 			UINT Width = D3DX_DEFAULT,
 			UINT Height = D3DX_DEFAULT,
 			UINT MipLevels = D3DX_DEFAULT,

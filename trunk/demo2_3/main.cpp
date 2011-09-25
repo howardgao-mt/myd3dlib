@@ -81,9 +81,9 @@ protected:
 		m_camera.SetModelCenter(D3DXVECTOR3(0.0f, 15.0f, 0.0f));
 
 		// 读取D3DX Effect文件
-		my::ArchiveCachePtr cache = my::ReadWholeCacheFromStream(
+		my::CachePtr cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("SimpleSample.fx")));
-		m_effect = my::Effect::CreateEffect(pd3dDevice, cache);
+		m_effect = my::Effect::CreateEffect(pd3dDevice, &(*cache)[0], cache->size());
 
 		// 从资源管理器中读出模型文件
 		DWORD dwNumSubMeshes;
@@ -94,7 +94,7 @@ protected:
 		// 创建贴图
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("jack_texture.jpg")));
-		m_texture = my::Texture::CreateTextureFromFileInMemory(pd3dDevice, cache);
+		m_texture = my::Texture::CreateTextureFromFileInMemory(pd3dDevice, &(*cache)[0], cache->size());
 
 		return S_OK;
 	}

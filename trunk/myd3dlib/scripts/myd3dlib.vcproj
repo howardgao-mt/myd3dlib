@@ -179,10 +179,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\src\mySingleton.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\src\myTexture.cpp"
 				>
 			</File>
