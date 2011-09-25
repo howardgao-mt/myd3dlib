@@ -4,8 +4,138 @@
 #include <atlbase.h>
 #include "libc.h"
 
+#ifdef _DEBUG
+#define new new( _CLIENT_BLOCK, __FILE__, __LINE__ )
+#endif
+
 namespace my
 {
+	VertexShaderPtr VertexShader::CreateVertexShader(
+		LPDIRECT3DDEVICE9 pDevice,
+		LPCSTR pSrcData,
+		UINT srcDataLen,
+		LPCSTR pFunctionName,
+		LPCSTR pProfile,
+		CONST D3DXMACRO * pDefines /*= NULL*/,
+		LPD3DXINCLUDE pInclude /*= NULL*/,
+		DWORD Flags /*= 0*/)
+	{
+		CComPtr<ID3DXBuffer> Shader;
+		CComPtr<ID3DXBuffer> ErrorMsgs;
+		LPD3DXCONSTANTTABLE pConstantTable = NULL;
+		HRESULT hres = D3DXCompileShader(
+			pSrcData, srcDataLen, pDefines, pInclude, pFunctionName, pProfile, Flags, &Shader, &ErrorMsgs, &pConstantTable);
+		if(FAILED(hres))
+		{
+			std::basic_string<char> info((char *)ErrorMsgs->GetBufferPointer(), ErrorMsgs->GetBufferSize());
+			THROW_CUSEXCEPTION(mstringToTString(info));
+		}
+
+		LPDIRECT3DVERTEXSHADER9 pVS = NULL;
+		hres = pDevice->CreateVertexShader((DWORD *)Shader->GetBufferPointer(), &pVS);
+		if(FAILED(hres))
+		{
+			SAFE_RELEASE(pConstantTable);
+			THROW_D3DEXCEPTION(hres);
+		}
+
+		return VertexShaderPtr(new VertexShader(pVS, pConstantTable));
+	}
+
+	VertexShaderPtr VertexShader::CreateVertexShaderFromFile(
+		LPDIRECT3DDEVICE9 pDevice,
+		LPCTSTR pSrcFile,
+		LPCSTR pFunctionName,
+		LPCSTR pProfile,
+		CONST D3DXMACRO * pDefines /*= NULL*/,
+		LPD3DXINCLUDE pInclude /*= NULL*/,
+		DWORD Flags /*= 0*/)
+	{
+		CComPtr<ID3DXBuffer> Shader;
+		CComPtr<ID3DXBuffer> ErrorMsgs;
+		LPD3DXCONSTANTTABLE pConstantTable = NULL;
+		HRESULT hres = D3DXCompileShaderFromFile(
+			pSrcFile, pDefines, pInclude, pFunctionName, pProfile, Flags, &Shader, &ErrorMsgs, &pConstantTable);
+		if(FAILED(hres))
+		{
+			std::basic_string<char> info((char *)ErrorMsgs->GetBufferPointer(), ErrorMsgs->GetBufferSize());
+			THROW_CUSEXCEPTION(mstringToTString(info));
+		}
+
+		LPDIRECT3DVERTEXSHADER9 pVS = NULL;
+		hres = pDevice->CreateVertexShader((DWORD *)Shader->GetBufferPointer(), &pVS);
+		if(FAILED(hres))
+		{
+			SAFE_RELEASE(pConstantTable);
+			THROW_D3DEXCEPTION(hres);
+		}
+
+		return VertexShaderPtr(new VertexShader(pVS, pConstantTable));
+	}
+
+	PixelShaderPtr PixelShader::CreatePixelShader(
+		LPDIRECT3DDEVICE9 pDevice,
+		LPCSTR pSrcData,
+		UINT srcDataLen,
+		LPCSTR pFunctionName,
+		LPCSTR pProfile,
+		CONST D3DXMACRO * pDefines /*= NULL*/,
+		LPD3DXINCLUDE pInclude /*= NULL*/,
+		DWORD Flags /*= 0*/)
+	{
+		CComPtr<ID3DXBuffer> Shader;
+		CComPtr<ID3DXBuffer> ErrorMsgs;
+		LPD3DXCONSTANTTABLE pConstantTable = NULL;
+		HRESULT hres = D3DXCompileShader(
+			pSrcData, srcDataLen, pDefines, pInclude, pFunctionName, pProfile, Flags, &Shader, &ErrorMsgs, &pConstantTable);
+		if(FAILED(hres))
+		{
+			std::basic_string<char> info((char *)ErrorMsgs->GetBufferPointer(), ErrorMsgs->GetBufferSize());
+			THROW_CUSEXCEPTION(mstringToTString(info));
+		}
+
+		LPDIRECT3DPIXELSHADER9 pPS = NULL;
+		hres = pDevice->CreatePixelShader((DWORD *)Shader->GetBufferPointer(), &pPS);
+		if(FAILED(hres))
+		{
+			SAFE_RELEASE(pConstantTable);
+			THROW_D3DEXCEPTION(hres);
+		}
+
+		return PixelShaderPtr(new PixelShader(pPS, pConstantTable));
+	}
+
+	PixelShaderPtr PixelShader::CreatePixelShaderFromFile(
+		LPDIRECT3DDEVICE9 pDevice,
+		LPCTSTR pSrcFile,
+		LPCSTR pFunctionName,
+		LPCSTR pProfile,
+		CONST D3DXMACRO * pDefines /*= NULL*/,
+		LPD3DXINCLUDE pInclude /*= NULL*/,
+		DWORD Flags /*= 0*/)
+	{
+		CComPtr<ID3DXBuffer> Shader;
+		CComPtr<ID3DXBuffer> ErrorMsgs;
+		LPD3DXCONSTANTTABLE pConstantTable = NULL;
+		HRESULT hres = D3DXCompileShaderFromFile(
+			pSrcFile, pDefines, pInclude, pFunctionName, pProfile, Flags, &Shader, &ErrorMsgs, &pConstantTable);
+		if(FAILED(hres))
+		{
+			std::basic_string<char> info((char *)ErrorMsgs->GetBufferPointer(), ErrorMsgs->GetBufferSize());
+			THROW_CUSEXCEPTION(mstringToTString(info));
+		}
+
+		LPDIRECT3DPIXELSHADER9 pPS = NULL;
+		hres = pDevice->CreatePixelShader((DWORD *)Shader->GetBufferPointer(), &pPS);
+		if(FAILED(hres))
+		{
+			SAFE_RELEASE(pConstantTable);
+			THROW_D3DEXCEPTION(hres);
+		}
+
+		return PixelShaderPtr(new PixelShader(pPS, pConstantTable));
+	}
+
 	void Effect::OnD3D9ResetDevice(
 		IDirect3DDevice9 * pd3dDevice,
 		const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
@@ -20,7 +150,8 @@ namespace my
 
 	EffectPtr Effect::CreateEffect(
 		LPDIRECT3DDEVICE9 pDevice,
-		my::ArchiveCachePtr cache,
+		LPCVOID pSrcData,
+		UINT SrcDataLen,
 		CONST D3DXMACRO * pDefines /*= NULL*/,
 		LPD3DXINCLUDE pInclude /*= NULL*/,
 		DWORD Flags /*= 0*/,
@@ -29,7 +160,7 @@ namespace my
 		LPD3DXEFFECT pEffect = NULL;
 		CComPtr<ID3DXBuffer> CompilationErrors;
 		HRESULT hres = D3DXCreateEffect(
-			pDevice, &(*cache)[0], cache->size(), pDefines, pInclude, Flags, pPool, &pEffect, &CompilationErrors);
+			pDevice, pSrcData, SrcDataLen, pDefines, pInclude, Flags, pPool, &pEffect, &CompilationErrors);
 		if(FAILED(hres))
 		{
 			std::basic_string<char> info((char *)CompilationErrors->GetBufferPointer(), CompilationErrors->GetBufferSize());

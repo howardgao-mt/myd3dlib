@@ -3,6 +3,10 @@
 #include "myTexture.h"
 #include "myException.h"
 
+#ifdef _DEBUG
+#define new new( _CLIENT_BLOCK, __FILE__, __LINE__ )
+#endif
+
 namespace my
 {
 	TexturePtr Texture::CreateTexture(
@@ -73,7 +77,8 @@ namespace my
 
 	TexturePtr Texture::CreateTextureFromFileInMemory(
 		LPDIRECT3DDEVICE9 pDevice,
-		my::ArchiveCachePtr cache,
+		LPCVOID pSrcData,
+		UINT SrcDataSize,
 		UINT Width /*= D3DX_DEFAULT*/,
 		UINT Height /*= D3DX_DEFAULT*/,
 		UINT MipLevels /*= D3DX_DEFAULT*/,
@@ -88,7 +93,7 @@ namespace my
 	{
 		LPDIRECT3DTEXTURE9 pTexture = NULL;
 		HRESULT hres = D3DXCreateTextureFromFileInMemoryEx(
-			pDevice, &(*cache)[0], cache->size(), Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &pTexture);
+			pDevice, pSrcData, SrcDataSize, Width, Height, MipLevels, Usage, Format, Pool, Filter, MipFilter, ColorKey, pSrcInfo, pPalette, &pTexture);
 		if(FAILED(hres))
 		{
 			THROW_D3DEXCEPTION(hres);
