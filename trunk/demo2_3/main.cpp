@@ -8,6 +8,7 @@
 #include <myTexture.h>
 #include <myEffect.h>
 #include <libc.h>
+#include <myFont.h>
 
 // ------------------------------------------------------------------------------------------
 // MyDemo
@@ -29,6 +30,8 @@ protected:
 	my::TexturePtr m_shadowMapRT;
 
 	CComPtr<IDirect3DSurface9> m_shadowMapDS;
+
+	my::FontPtr m_font;
 
 	bool IsD3D9DeviceAcceptable(
 		D3DCAPS9 * pCaps,
@@ -95,6 +98,11 @@ protected:
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("jack_texture.jpg")));
 		m_texture = my::Texture::CreateTextureFromFileInMemory(pd3dDevice, &(*cache)[0], cache->size());
+
+		// 读取字体文件
+		cache = my::ReadWholeCacheFromStream(
+			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("wqy-microhei.ttc")));
+		m_font = my::Font::CreateFontFromFileInMemory(&(*cache)[0], cache->size());
 
 		return S_OK;
 	}

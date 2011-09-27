@@ -9,32 +9,169 @@
 
 namespace my
 {
-	class VertexShader;
-
-	typedef boost::shared_ptr<VertexShader> VertexShaderPtr;
-
-	class VertexShader
+	class ConstantTable
 	{
 	protected:
 		HRESULT hr;
 
-		IDirect3DVertexShader9 * m_ptr;
-
 		ID3DXConstantTable * m_pConstantTable;
 
+	protected:
+		ConstantTable(ID3DXConstantTable * pConstantTable)
+			: m_pConstantTable(pConstantTable)
+		{
+			_ASSERT(NULL != m_pConstantTable);
+		}
+
+	public:
+		virtual ~ConstantTable(void)
+		{
+			SAFE_RELEASE(m_pConstantTable);
+		}
+
+		LPVOID GetBufferPointer(void)
+		{
+			return m_pConstantTable->GetBufferPointer();
+		}
+
+		DWORD GetBufferSize(void)
+		{
+			return m_pConstantTable->GetBufferSize();
+		}
+
+		D3DXHANDLE GetConstant(D3DXHANDLE hConstant, UINT Index)
+		{
+			return m_pConstantTable->GetConstant(hConstant, Index);
+		}
+
+		D3DXHANDLE GetConstantByName(D3DXHANDLE hConstant, LPCSTR pName)
+		{
+			return m_pConstantTable->GetConstantByName(hConstant, pName);
+		}
+
+		void GetConstantDesc(D3DXHANDLE hConstant, D3DXCONSTANT_DESC * pDesc, UINT * pCount)
+		{
+			V(m_pConstantTable->GetConstantDesc(hConstant, pDesc, pCount));
+		}
+
+		D3DXHANDLE GetConstantElement(D3DXHANDLE hConstant, UINT Index)
+		{
+			return m_pConstantTable->GetConstantElement(hConstant, Index);
+		}
+
+		D3DXCONSTANTTABLE_DESC GetDesc(void)
+		{
+			D3DXCONSTANTTABLE_DESC desc;
+			V(m_pConstantTable->GetDesc(&desc));
+			return desc;
+		}
+
+		UINT GetSamplerIndex(D3DXHANDLE hConstant)
+		{
+			return m_pConstantTable->GetSamplerIndex(hConstant);
+		}
+
+		void SetBool(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, BOOL b)
+		{
+			V(m_pConstantTable->SetBool(pDevice, hConstant, b));
+		}
+
+		void SetBoolArray(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, CONST BOOL* pB, UINT Count)
+		{
+			V(m_pConstantTable->SetBoolArray(pDevice, hConstant, pB, Count));
+		}
+
+		void SetDefaults(LPDIRECT3DDEVICE9 pDevice)
+		{
+			V(m_pConstantTable->SetDefaults(pDevice));
+		}
+
+		void SetFloat(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, FLOAT f)
+		{
+			V(m_pConstantTable->SetFloat(pDevice, hConstant, f));
+		}
+
+		void SetFloatArray(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, CONST FLOAT * pf, UINT Count)
+		{
+			V(m_pConstantTable->SetFloatArray(pDevice, hConstant, pf, Count));
+		}
+
+		void SetInt(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, INT n)
+		{
+			V(m_pConstantTable->SetInt(pDevice, hConstant, n));
+		}
+
+		void SetIntArray(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, CONST INT * pn, UINT Count)
+		{
+			V(m_pConstantTable->SetIntArray(pDevice, hConstant, pn, Count));
+		}
+
+		void SetMatrix(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, const Matrix4 & Matrix)
+		{
+			V(m_pConstantTable->SetMatrix(pDevice, hConstant, (D3DXMATRIX *)&Matrix));
+		}
+
+		void SetMatrixArray(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, const Matrix4 * pMatrix, UINT Count)
+		{
+			V(m_pConstantTable->SetMatrixArray(pDevice, hConstant, (D3DXMATRIX *)pMatrix, Count));
+		}
+
+		void SetMatrixPointerArray(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, const Matrix4 ** ppMatrix, UINT Count)
+		{
+			V(m_pConstantTable->SetMatrixPointerArray(pDevice, hConstant, (const D3DXMATRIX **)ppMatrix, Count));
+		}
+
+		void SetMatrixTranspose(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, const Matrix4 & Matrix)
+		{
+			V(m_pConstantTable->SetMatrixTranspose(pDevice, hConstant, (D3DXMATRIX *)&Matrix));
+		}
+
+		void SetMatrixTransposeArray(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, const Matrix4 * pMatrix, UINT Count)
+		{
+			V(m_pConstantTable->SetMatrixTransposeArray(pDevice, hConstant, (D3DXMATRIX *)pMatrix, Count));
+		}
+
+		void SetMatrixTransposePointerArray(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, const Matrix4 ** ppMatrix, UINT Count)
+		{
+			V(m_pConstantTable->SetMatrixTransposePointerArray(pDevice, hConstant, (const D3DXMATRIX **)ppMatrix, Count));
+		}
+
+		void SetValue(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, LPCVOID pData, UINT Bytes)
+		{
+			V(m_pConstantTable->SetValue(pDevice, hConstant, pData, Bytes));
+		}
+
+		void SetVector(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, const Vector4 & Vector)
+		{
+			V(m_pConstantTable->SetVector(pDevice, hConstant, (D3DXVECTOR4 *)&Vector));
+		}
+
+		void SetVectorArray(LPDIRECT3DDEVICE9 pDevice, D3DXHANDLE hConstant, const Vector4 * pVector, UINT Count)
+		{
+			V(m_pConstantTable->SetVectorArray(pDevice, hConstant, (D3DXVECTOR4 *)pVector, Count));
+		}
+	};
+
+	class VertexShader;
+
+	typedef boost::shared_ptr<VertexShader> VertexShaderPtr;
+
+	class VertexShader : public ConstantTable
+	{
+	protected:
+		IDirect3DVertexShader9 * m_ptr;
+
 		VertexShader(IDirect3DVertexShader9 * ptr, ID3DXConstantTable * pConstantTable)
-			: m_ptr(ptr)
-			, m_pConstantTable(pConstantTable)
+			: ConstantTable(pConstantTable)
+			, m_ptr(ptr)
 		{
 			_ASSERT(NULL != m_ptr);
-			_ASSERT(NULL != m_pConstantTable);
 		}
 
 	public:
 		virtual ~VertexShader(void)
 		{
 			SAFE_RELEASE(m_ptr);
-			SAFE_RELEASE(m_pConstantTable);
 		}
 
 		static VertexShaderPtr CreateVertexShader(
@@ -74,28 +211,22 @@ namespace my
 
 	typedef boost::shared_ptr<PixelShader> PixelShaderPtr;
 
-	class PixelShader
+	class PixelShader : public ConstantTable
 	{
 	protected:
-		HRESULT hr;
-
 		IDirect3DPixelShader9 * m_ptr;
 
-		ID3DXConstantTable * m_pConstantTable;
-
 		PixelShader(IDirect3DPixelShader9 * ptr, ID3DXConstantTable * pConstantTable)
-			: m_ptr(ptr)
-			, m_pConstantTable(pConstantTable)
+			: ConstantTable(pConstantTable)
+			, m_ptr(ptr)
 		{
 			_ASSERT(NULL != m_ptr);
-			_ASSERT(NULL != m_pConstantTable);
 		}
 
 	public:
 		virtual ~PixelShader(void)
 		{
 			SAFE_RELEASE(m_ptr);
-			SAFE_RELEASE(m_pConstantTable);
 		}
 
 		static PixelShaderPtr CreatePixelShader(
