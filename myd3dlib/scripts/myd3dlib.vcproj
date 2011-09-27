@@ -167,6 +167,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\myFont.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\src\myMath.cpp"
 				>
 			</File>
@@ -206,6 +210,10 @@
 			</File>
 			<File
 				RelativePath="..\include\myException.h"
+				>
+			</File>
+			<File
+				RelativePath="..\include\myFont.h"
 				>
 			</File>
 			<File
