@@ -102,7 +102,7 @@ protected:
 		// 读取字体文件
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("wqy-microhei.ttc")));
-		m_font = my::Font::CreateFontFromFileInMemory(&(*cache)[0], cache->size());
+		m_font = my::Font::CreateFontFromFileInMemory(pd3dDevice, &(*cache)[0], cache->size());
 
 		return S_OK;
 	}
