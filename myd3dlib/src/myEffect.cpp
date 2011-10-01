@@ -10,6 +10,12 @@
 
 namespace my
 {
+	void VertexShader::OnD3D9DestroyDevice(void)
+	{
+		SAFE_RELEASE(m_pConstantTable);
+		SAFE_RELEASE(m_ptr);
+	}
+
 	VertexShaderPtr VertexShader::CreateVertexShader(
 		LPDIRECT3DDEVICE9 pDevice,
 		LPCSTR pSrcData,
@@ -71,6 +77,12 @@ namespace my
 		}
 
 		return VertexShaderPtr(new VertexShader(pVS, pConstantTable));
+	}
+
+	void PixelShader::OnD3D9DestroyDevice(void)
+	{
+		SAFE_RELEASE(m_pConstantTable);
+		SAFE_RELEASE(m_ptr);
 	}
 
 	PixelShaderPtr PixelShader::CreatePixelShader(

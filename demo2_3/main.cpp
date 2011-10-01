@@ -34,6 +34,10 @@ protected:
 
 	my::FontPtr m_font;
 
+	my::SpritePtr m_sprite;
+
+	my::PixelShaderPtr m_ps;
+
 	bool IsD3D9DeviceAcceptable(
 		D3DCAPS9 * pCaps,
 		D3DFORMAT AdapterFormat,
@@ -104,6 +108,19 @@ protected:
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("wqy-microhei.ttc")));
 		m_font = my::Font::CreateFontFromFileInMemory(pd3dDevice, &(*cache)[0], cache->size(), 32);
+
+		// 创建精灵
+		m_sprite = my::Sprite::CreateSprite(pd3dDevice);
+
+		// 创建用以绘制字体的ps
+		std::string psData(
+			"sampler2D input : register(s0);"
+			"float4 Color;"
+			"float4 pixelShader(float2 uv : TEXCOORD) : COLOR"
+			"{"
+			"    return float4(Color.r, Color.g, Color.b, Color.a * tex2D(input, uv).a);"
+			"}");
+		m_ps = my::PixelShader::CreatePixelShader(pd3dDevice, &psData[0], psData.length() + 1, "pixelShader", "ps_2_0");
 
 		return S_OK;
 	}
@@ -271,9 +288,11 @@ protected:
 			m_effect->End();
 
 			// 画一些字体吧
-			m_txtSprite->Begin(D3DXSPRITE_ALPHABLEND);
-			m_font->DrawString(m_txtSprite, L"tangyin &*^是×&2 =+◎●▲★好人efin\n打完俄方inwe囧寄蓁豟\n嗯，怎么说呢，我可是很勇敢的，我告诉你。\n你们要是再hold不住，哥我就不客气了的说！", my::Rectangle::LeftTop(50, 50, 0, 0), my::Vector4::zero);
-			m_txtSprite->End();
+			m_sprite->Begin(D3DXSPRITE_ALPHABLEND);
+			V(pd3dDevice->SetPixelShader(m_ps->m_ptr));
+			m_ps->SetFloatArray(pd3dDevice, "Color", (FLOAT *)&my::Vector4(1, 1, 0, 1), 4);
+			m_font->DrawString(m_sprite, L"tangyin &*^是×&2 =+◎●▲★好人efin\n打完俄方inwe囧寄蓁豟\n嗯，怎么说呢，我可是很勇敢的，我告诉你。\n你们要是再hold不住，哥我就不客气了的说！", my::Rectangle::LeftTop(50, 50, 0, 0));
+			m_sprite->End();
 
 			V(pd3dDevice->EndScene());
 		}
