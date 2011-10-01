@@ -119,7 +119,7 @@ namespace my
 			V(static_cast<IDirect3DTexture9 *>(m_ptr)->AddDirtyRect(pDirtyRect));
 		}
 
-		D3DSURFACE_DESC GetLevelDesc(UINT Level)
+		D3DSURFACE_DESC GetLevelDesc(UINT Level = 0)
 		{
 			D3DSURFACE_DESC desc;
 			V(static_cast<IDirect3DTexture9 *>(m_ptr)->GetLevelDesc(Level, &desc));
