@@ -11,6 +11,82 @@
 
 namespace my
 {
+	class Sprite;
+
+	typedef boost::shared_ptr<Sprite> SpritePtr;
+
+	class Sprite : public DeviceRelatedObject<ID3DXSprite>
+	{
+	protected:
+		Sprite(ID3DXSprite * ptr)
+			: DeviceRelatedObject(ptr)
+		{
+		}
+
+		virtual void OnD3D9ResetDevice(
+			IDirect3DDevice9 * pd3dDevice,
+			const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
+
+		virtual void OnD3D9LostDevice(void);
+
+	public:
+		static SpritePtr CreateSprite(LPDIRECT3DDEVICE9 pDevice);
+
+		void Begin(DWORD Flags)
+		{
+			V(m_ptr->Begin(Flags));
+		}
+
+		void Draw(TexturePtr texture, const RECT & SrcRect, const Vector3 & Center, const Vector3 & Position, D3DCOLOR Color)
+		{
+			V(m_ptr->Draw(static_cast<IDirect3DTexture9 *>(texture->m_ptr), &SrcRect, (D3DXVECTOR3 *)&Center, (D3DXVECTOR3 *)&Position, Color));
+		}
+
+		void End(void)
+		{
+			V(m_ptr->End());
+		}
+
+		CComPtr<IDirect3DDevice9> GetDevice(void)
+		{
+			CComPtr<IDirect3DDevice9> ret;
+			V(m_ptr->GetDevice(&ret));
+			return ret;
+		}
+
+		Matrix4 GetTransform(void)
+		{
+			Matrix4 ret;
+			V(m_ptr->GetTransform((D3DXMATRIX *)&ret));
+			return ret;
+		}
+
+		void OnLostDevice(void)
+		{
+			V(m_ptr->OnLostDevice());
+		}
+
+		void OnResetDevice(void)
+		{
+			V(m_ptr->OnResetDevice());
+		}
+
+		void SetTransform(const Matrix4 & Transform)
+		{
+			V(m_ptr->SetTransform((D3DXMATRIX *)&Transform));
+		}
+
+		void SetWorldViewLH(const Matrix4 & World, const Matrix4 & View)
+		{
+			V(m_ptr->SetWorldViewLH((D3DXMATRIX *)&World, (D3DXMATRIX *)&View));
+		}
+
+		void SetWorldViewRH(const Matrix4 & World, const Matrix4 & View)
+		{
+			V(m_ptr->SetWorldViewRH((D3DXMATRIX *)&World, (D3DXMATRIX *)&View));
+		}
+	};
+
 	struct CharacterMetrics
 	{
 		RECT textureRect;
@@ -125,10 +201,10 @@ namespace my
 		CharacterMap::const_iterator GetCharacterInfoIter(int character);
 
 		void DrawString(
-			LPD3DXSPRITE pSprite,
+			SpritePtr sprite,
 			const std::basic_string<wchar_t> & str,
 			const Rectangle & rect,
-			const Vector4 & color,
-			Align align = alignLeftTop);
+			Align align = alignLeftTop,
+			D3DCOLOR Color = D3DCOLOR_ARGB(255, 255, 255, 255));
 	};
 }

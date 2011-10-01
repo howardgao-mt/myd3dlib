@@ -156,24 +156,22 @@ namespace my
 
 	typedef boost::shared_ptr<VertexShader> VertexShaderPtr;
 
-	class VertexShader : public ConstantTable
+	class VertexShader
+		: public ConstantTable
+		, public DeviceRelatedObject<IDirect3DVertexShader9>
 	{
 	protected:
-		IDirect3DVertexShader9 * m_ptr;
+		HRESULT hr;
 
 		VertexShader(IDirect3DVertexShader9 * ptr, ID3DXConstantTable * pConstantTable)
 			: ConstantTable(pConstantTable)
-			, m_ptr(ptr)
+			, DeviceRelatedObject(ptr)
 		{
-			_ASSERT(NULL != m_ptr);
 		}
+
+		void OnD3D9DestroyDevice(void);
 
 	public:
-		virtual ~VertexShader(void)
-		{
-			SAFE_RELEASE(m_ptr);
-		}
-
 		static VertexShaderPtr CreateVertexShader(
 			LPDIRECT3DDEVICE9 pDevice,
 			LPCSTR pSrcData,
@@ -211,24 +209,22 @@ namespace my
 
 	typedef boost::shared_ptr<PixelShader> PixelShaderPtr;
 
-	class PixelShader : public ConstantTable
+	class PixelShader
+		: public ConstantTable
+		, public DeviceRelatedObject<IDirect3DPixelShader9>
 	{
 	protected:
-		IDirect3DPixelShader9 * m_ptr;
+		HRESULT hr;
 
 		PixelShader(IDirect3DPixelShader9 * ptr, ID3DXConstantTable * pConstantTable)
 			: ConstantTable(pConstantTable)
-			, m_ptr(ptr)
+			, DeviceRelatedObject(ptr)
 		{
-			_ASSERT(NULL != m_ptr);
 		}
+
+		void OnD3D9DestroyDevice(void);
 
 	public:
-		virtual ~PixelShader(void)
-		{
-			SAFE_RELEASE(m_ptr);
-		}
-
 		static PixelShaderPtr CreatePixelShader(
 			LPDIRECT3DDEVICE9 pDevice,
 			LPCSTR pSrcData,

@@ -12,6 +12,30 @@
 
 namespace my
 {
+	void Sprite::OnD3D9ResetDevice(
+		IDirect3DDevice9 * pd3dDevice,
+		const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
+	{
+		OnResetDevice();
+	}
+
+	void Sprite::OnD3D9LostDevice(void)
+	{
+		OnLostDevice();
+	}
+
+	SpritePtr Sprite::CreateSprite(LPDIRECT3DDEVICE9 pDevice)
+	{
+		LPD3DXSPRITE pSprite = NULL;
+		HRESULT hres = D3DXCreateSprite(pDevice, &pSprite);
+		if(FAILED(hres))
+		{
+			THROW_D3DEXCEPTION(hres);
+		}
+
+		return SpritePtr(new Sprite(pSprite));
+	}
+
 	RectAssignmentNode::RectAssignmentNode(const RECT & rect)
 		: m_used(false)
 		, m_rect(rect)
@@ -282,11 +306,11 @@ namespace my
 	}
 
 	void Font::DrawString(
-		LPD3DXSPRITE pSprite,
+		SpritePtr sprite,
 		const std::basic_string<wchar_t> & str,
 		const Rectangle & rect,
-		const Vector4 & color,
-		Align align /*= alignLeftTop*/)
+		Align align /*= alignLeftTop*/,
+		D3DCOLOR Color /*= D3DCOLOR_ARGB(255, 255, 255, 255)*/)
 	{
 		Vector3 pen(rect.l, rect.t + m_lineHeight, 0);
 		for(size_t i = 0; i < str.length(); i++)
@@ -305,13 +329,8 @@ namespace my
 			default:
 				{
 					CharacterMap::const_iterator c_iter = GetCharacterInfoIter(c);
-					HRESULT hr;
-					V(pSprite->Draw(
-						static_cast<IDirect3DTexture9 *>(m_texture->m_ptr),
-						&c_iter->second.textureRect,
-						&D3DXVECTOR3(0, 0, 0),
-						(D3DXVECTOR3 *)&Vector3(pen.x + c_iter->second.horiBearingX, pen.y - c_iter->second.horiBearingY, 0),
-						D3DCOLOR_ARGB(255, 255, 0, 0)));
+					sprite->Draw(
+						m_texture, c_iter->second.textureRect, Vector3(0, 0, 0), Vector3(pen.x + c_iter->second.horiBearingX, pen.y - c_iter->second.horiBearingY, 0), Color);
 					pen.x += c_iter->second.horiAdvance;
 				}
 				break;
