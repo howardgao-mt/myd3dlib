@@ -11,6 +11,46 @@
 
 namespace my
 {
+	struct CharacterMetrics
+	{
+		RECT textureRect;
+
+		int horiAdvance;
+
+		int horiBearingX;
+
+		int horiBearingY;
+	};
+
+	typedef std::pair<int, CharacterMetrics> CharacterInfo;
+
+	typedef std::map<int, CharacterMetrics, std::less<int>, std::allocator<CharacterInfo> > CharacterMap;
+
+	class RectAssignmentNode;
+
+	typedef boost::shared_ptr<RectAssignmentNode> RectAssignmentNodePtr;
+
+	class RectAssignmentNode
+	{
+	protected:
+		bool m_used;
+
+		RECT m_rect;
+
+		RectAssignmentNodePtr m_lchild;
+
+		RectAssignmentNodePtr m_rchild;
+
+		bool AssignTopRect(const SIZE & size, RECT & outRect);
+
+		bool AssignLeftRect(const SIZE & size, RECT & outRect);
+
+	public:
+		RectAssignmentNode(const RECT & rect);
+
+		bool AssignRect(const SIZE & size, RECT & outRect);
+	};
+
 	class FontMgr
 		: public Singleton<FontMgr>
 	{
@@ -27,35 +67,12 @@ namespace my
 
 	typedef boost::shared_ptr<Font> FontPtr;
 
-	struct CharacterMetrics
-	{
-		RECT rect;
-
-		unsigned long horiBearingX;
-
-		unsigned long horiBearingY;
-
-		unsigned long horiAdvance;
-	};
-
-	typedef std::pair<wchar_t, CharacterMetrics> CharacterInfo;
-
-	typedef std::map<wchar_t, CharacterMetrics, std::less<wchar_t>, std::allocator<CharacterInfo> > CharacterMap;
-
 	class Font : public DeviceRelatedObjectBase
 	{
 	public:
 		enum Align
 		{
-			AlignLeftTop,
-			AlignLeftMiddle,
-			AlignLeftBottom,
-			AlignCenterTop,
-			AlignCenterMiddle,
-			AlignCenterBottom,
-			AlignRightTop,
-			AlignRightMiddle,
-			AlignRightBottom,
+			alignLeftTop,
 		};
 
 	protected:
@@ -65,13 +82,17 @@ namespace my
 
 		CachePtr m_cache;
 
-		FT_Size_Metrics m_metrics;
+		int m_lineHeight;
+
+		int m_maxAdvance;
 
 		CharacterMap m_characterMap;
 
 		TexturePtr m_texture;
 
-		Font(LPDIRECT3DDEVICE9 pDevice, FT_Face face);
+		RectAssignmentNodePtr m_textureRectRoot;
+
+		Font(LPDIRECT3DDEVICE9 pDevice, FT_Face face, int height);
 
 		virtual void OnD3D9ResetDevice(
 			IDirect3DDevice9 * pd3dDevice,
@@ -81,26 +102,33 @@ namespace my
 
 		virtual void OnD3D9DestroyDevice(void);
 
-		CharacterMap::const_iterator GetCharacterInfoIter(wchar_t character);
-
 	public:
 		virtual ~Font(void);
 
 		static FontPtr CreateFontFromFile(
 			LPDIRECT3DDEVICE9 pDevice,
 			const char * filepathname,
+			int height,
 			FT_Long face_index = 0);
 
 		static FontPtr CreateFontFromFileInMemory(
 			LPDIRECT3DDEVICE9 pDevice,
 			const void * file_base,
 			long file_size,
+			int height,
 			long face_index = 0);
 
+		void AssignTextureRect(const SIZE & size, RECT & outRect);
+
+		void LoadCharacter(int character);
+
+		CharacterMap::const_iterator GetCharacterInfoIter(int character);
+
 		void DrawString(
+			LPD3DXSPRITE pSprite,
 			const std::basic_string<wchar_t> & str,
 			const Rectangle & rect,
-			Align align,
-			const Vector4 & color);
+			const Vector4 & color,
+			Align align = alignLeftTop);
 	};
 }

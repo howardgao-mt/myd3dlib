@@ -9,6 +9,7 @@
 #include <myEffect.h>
 #include <libc.h>
 #include <myFont.h>
+//#include <atltypes.h>
 
 // ------------------------------------------------------------------------------------------
 // MyDemo
@@ -102,7 +103,7 @@ protected:
 		// 读取字体文件
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("wqy-microhei.ttc")));
-		m_font = my::Font::CreateFontFromFileInMemory(pd3dDevice, &(*cache)[0], cache->size());
+		m_font = my::Font::CreateFontFromFileInMemory(pd3dDevice, &(*cache)[0], cache->size(), 32);
 
 		return S_OK;
 	}
@@ -268,6 +269,11 @@ protected:
 				m_effect->EndPass();
 			}
 			m_effect->End();
+
+			// 画一些字体吧
+			m_txtSprite->Begin(D3DXSPRITE_ALPHABLEND);
+			m_font->DrawString(m_txtSprite, L"tangyin &*^是×&2 =+◎●▲★好人efin\n打完俄方inwe囧寄蓁豟\n嗯，怎么说呢，我可是很勇敢的，我告诉你。\n你们要是再hold不住，哥我就不客气了的说！", my::Rectangle::LeftTop(50, 50, 0, 0), my::Vector4::zero);
+			m_txtSprite->End();
 
 			V(pd3dDevice->EndScene());
 		}
