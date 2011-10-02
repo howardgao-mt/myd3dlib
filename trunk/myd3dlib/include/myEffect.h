@@ -475,11 +475,11 @@ namespace my
 			return desc;
 		}
 
-		BaseTexturePtr GetTexture(D3DXHANDLE hParameter)
+		CComPtr<IDirect3DBaseTexture9> GetTexture(D3DXHANDLE hParameter)
 		{
-			IDirect3DBaseTexture9 * pTexture;
-			V(m_ptr->GetTexture(hParameter, &pTexture));
-			return BaseTexturePtr(new BaseTexture(pTexture));
+			CComPtr<IDirect3DBaseTexture9> Texture;
+			V(m_ptr->GetTexture(hParameter, &Texture));
+			return Texture;
 		}
 
 		void GetValue(D3DXHANDLE hParameter, LPVOID pData, UINT Bytes)
@@ -656,11 +656,11 @@ namespace my
 			V(static_cast<ID3DXEffect *>(m_ptr)->BeginPass(Pass));
 		}
 
-		EffectPtr CloneEffect(LPDIRECT3DDEVICE9 pDevice)
+		CComPtr<ID3DXEffect> CloneEffect(LPDIRECT3DDEVICE9 pDevice)
 		{
-			LPD3DXEFFECT pEffect;
-			V(static_cast<ID3DXEffect *>(m_ptr)->CloneEffect(pDevice, &pEffect));
-			return EffectPtr(new Effect(pEffect));
+			CComPtr<ID3DXEffect> Effect;
+			V(static_cast<ID3DXEffect *>(m_ptr)->CloneEffect(pDevice, &Effect));
+			return Effect;
 		}
 
 		void CommitChanges(void)

@@ -210,14 +210,11 @@ protected:
 
 		// 将shadow map作为render target，注意保存恢复原来的render target
 		HRESULT hr;
-		LPDIRECT3DSURFACE9 pOldRT = NULL;
-		V(pd3dDevice->GetRenderTarget(0, &pOldRT));
-		LPDIRECT3DSURFACE9 pShadowSurf;
-		V(static_cast<IDirect3DTexture9 *>(m_shadowMapRT->m_ptr)->GetSurfaceLevel(0, &pShadowSurf));
-		V(pd3dDevice->SetRenderTarget(0, pShadowSurf));
-		SAFE_RELEASE(pShadowSurf);
-		LPDIRECT3DSURFACE9 pOldDS = NULL;
-		V(pd3dDevice->GetDepthStencilSurface(&pOldDS));
+		CComPtr<IDirect3DSurface9> oldRt;
+		V(pd3dDevice->GetRenderTarget(0, &oldRt));
+		V(pd3dDevice->SetRenderTarget(0, m_shadowMapRT->GetSurfaceLevel(0)));
+		CComPtr<IDirect3DSurface9> oldDs = NULL;
+		V(pd3dDevice->GetDepthStencilSurface(&oldDs));
 		V(pd3dDevice->SetDepthStencilSurface(m_shadowMapDS->m_ptr));
 		V(pd3dDevice->Clear(
 			0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00ffffff, 1.0f, 0));
@@ -242,10 +239,10 @@ protected:
 
 			V(pd3dDevice->EndScene());
 		}
-		V(pd3dDevice->SetRenderTarget(0, pOldRT));
-		V(pd3dDevice->SetDepthStencilSurface(pOldDS));
-		SAFE_RELEASE(pOldRT);
-		SAFE_RELEASE(pOldDS);
+		V(pd3dDevice->SetRenderTarget(0, oldRt));
+		V(pd3dDevice->SetDepthStencilSurface(oldDs));
+		oldRt.Release();
+		oldDs.Release();
 
 		// 清理缓存背景及depth stencil
 		V(pd3dDevice->Clear(

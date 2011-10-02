@@ -196,11 +196,11 @@ namespace my
 			return desc;
 		}
 
-		SurfacePtr GetSurfaceLevel(UINT Level)
+		CComPtr<IDirect3DSurface9> GetSurfaceLevel(UINT Level)
 		{
-			LPDIRECT3DSURFACE9 pSurface;
-			V(static_cast<IDirect3DTexture9 *>(m_ptr)->GetSurfaceLevel(Level, &pSurface));
-			return SurfacePtr(new Surface(pSurface));
+			CComPtr<IDirect3DSurface9> Surface;
+			V(static_cast<IDirect3DTexture9 *>(m_ptr)->GetSurfaceLevel(Level, &Surface));
+			return Surface;
 		}
 
 		D3DLOCKED_RECT LockRect(UINT Level, CONST RECT * pRect = NULL, DWORD Flags = 0)
