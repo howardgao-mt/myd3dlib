@@ -7,6 +7,76 @@
 
 namespace my
 {
+	class Surface;
+
+	typedef boost::shared_ptr<Surface> SurfacePtr;
+
+	class Surface : public DeviceRelatedObject<IDirect3DSurface9>
+	{
+		friend class Texture;
+
+	protected:
+		Surface(IDirect3DSurface9 * ptr)
+			: DeviceRelatedObject(ptr)
+		{
+		}
+
+	public:
+		static SurfacePtr CreateDepthStencilSurface(
+			LPDIRECT3DDEVICE9 pDevice,
+			UINT Width,
+			UINT Height,
+			D3DFORMAT Format,
+			D3DMULTISAMPLE_TYPE MultiSample = D3DMULTISAMPLE_NONE,
+			DWORD MultisampleQuality = 0,
+			BOOL Discard = TRUE);
+
+		static SurfacePtr CreateOffscreenPlainSurface(
+			LPDIRECT3DDEVICE9 pDevice,
+			UINT Width,
+			UINT Height,
+			D3DFORMAT Format,
+			D3DPOOL Pool = D3DPOOL_MANAGED);
+
+		CComPtr<IUnknown> GetContainer(REFIID riid)
+		{
+			CComPtr<IUnknown> Container;
+			V(m_ptr->GetContainer(riid, (void **)&Container));
+			return Container;
+		}
+
+		HDC GetDC(void)
+		{
+			HDC hdc;
+			V(m_ptr->GetDC(&hdc));
+			return hdc;
+		}
+
+		D3DSURFACE_DESC GetDesc(void)
+		{
+			D3DSURFACE_DESC desc;
+			V(m_ptr->GetDesc(&desc));
+			return desc;
+		}
+
+		D3DLOCKED_RECT LockRect(CONST RECT * pRect = NULL, DWORD Flags = 0)
+		{
+			D3DLOCKED_RECT lr;
+			V(m_ptr->LockRect(&lr, pRect, Flags));
+			return lr;
+		}
+
+		void ReleaseDC(HDC hdc)
+		{
+			V(m_ptr->ReleaseDC(hdc));
+		}
+
+		void UnlockRect(void)
+		{
+			V(m_ptr->UnlockRect());
+		}
+	};
+
 	class BaseTexture;
 
 	typedef boost::shared_ptr<BaseTexture> BaseTexturePtr;
@@ -126,11 +196,11 @@ namespace my
 			return desc;
 		}
 
-		CComPtr<IDirect3DSurface9> GetSurfaceLevel(UINT Level)
+		SurfacePtr GetSurfaceLevel(UINT Level)
 		{
-			CComPtr<IDirect3DSurface9> Surface;
-			V(static_cast<IDirect3DTexture9 *>(m_ptr)->GetSurfaceLevel(Level, &Surface));
-			return Surface;
+			LPDIRECT3DSURFACE9 pSurface;
+			V(static_cast<IDirect3DTexture9 *>(m_ptr)->GetSurfaceLevel(Level, &pSurface));
+			return SurfacePtr(new Surface(pSurface));
 		}
 
 		D3DLOCKED_RECT LockRect(UINT Level, CONST RECT * pRect = NULL, DWORD Flags = 0)

@@ -30,7 +30,7 @@ protected:
 
 	my::TexturePtr m_shadowMapRT;
 
-	CComPtr<IDirect3DSurface9> m_shadowMapDS;
+	my::SurfacePtr m_shadowMapDS;
 
 	my::FontPtr m_font;
 
@@ -153,15 +153,11 @@ protected:
 
 		// 创建用于shadow map的depth scentil
 		DXUTDeviceSettings d3dSettings = DXUTGetDeviceSettings();
-		FAILED_THROW_D3DEXCEPTION(pd3dDevice->CreateDepthStencilSurface(
+		m_shadowMapDS = my::Surface::CreateDepthStencilSurface(
+			pd3dDevice,
 			SHADOWMAP_SIZE,
 			SHADOWMAP_SIZE,
-			d3dSettings.d3d9.pp.AutoDepthStencilFormat,
-			D3DMULTISAMPLE_NONE,
-			0,
-			TRUE,
-			&m_shadowMapDS,
-			NULL));
+			d3dSettings.d3d9.pp.AutoDepthStencilFormat);
 
 		return S_OK;
 	}
@@ -172,7 +168,7 @@ protected:
 
 		// 在这里处理在reset中创建的资源
 		m_shadowMapRT = my::TexturePtr();
-		m_shadowMapDS.Release();
+		m_shadowMapDS = my::SurfacePtr();
 	}
 
 	void OnD3D9DestroyDevice(void)
@@ -222,7 +218,7 @@ protected:
 		SAFE_RELEASE(pShadowSurf);
 		LPDIRECT3DSURFACE9 pOldDS = NULL;
 		V(pd3dDevice->GetDepthStencilSurface(&pOldDS));
-		V(pd3dDevice->SetDepthStencilSurface(m_shadowMapDS));
+		V(pd3dDevice->SetDepthStencilSurface(m_shadowMapDS->m_ptr));
 		V(pd3dDevice->Clear(
 			0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00ffffff, 1.0f, 0));
 		if(SUCCEEDED(hr = pd3dDevice->BeginScene()))

@@ -9,6 +9,43 @@
 
 namespace my
 {
+	SurfacePtr Surface::CreateDepthStencilSurface(
+		LPDIRECT3DDEVICE9 pDevice,
+		UINT Width,
+		UINT Height,
+		D3DFORMAT Format,
+		D3DMULTISAMPLE_TYPE MultiSample /*= D3DMULTISAMPLE_NONE*/,
+		DWORD MultisampleQuality /*= 0*/,
+		BOOL Discard /*= TRUE*/)
+	{
+		LPDIRECT3DSURFACE9 pSurface = NULL;
+		HRESULT hres = pDevice->CreateDepthStencilSurface(
+			Width, Height, Format, MultiSample, MultisampleQuality, Discard, &pSurface, NULL);
+		if(FAILED(hres))
+		{
+			THROW_D3DEXCEPTION(hres);
+		}
+
+		return SurfacePtr(new Surface(pSurface));
+	}
+
+	SurfacePtr Surface::CreateOffscreenPlainSurface(
+		LPDIRECT3DDEVICE9 pDevice,
+		UINT Width,
+		UINT Height,
+		D3DFORMAT Format,
+		D3DPOOL Pool /*= D3DPOOL_MANAGED*/)
+	{
+		LPDIRECT3DSURFACE9 pSurface = NULL;
+		HRESULT hres = pDevice->CreateOffscreenPlainSurface(Width, Height, Format, Pool, &pSurface, NULL);
+		if(FAILED(hres))
+		{
+			THROW_D3DEXCEPTION(hres);
+		}
+
+		return SurfacePtr(new Surface(pSurface));
+	}
+
 	TexturePtr Texture::CreateTexture(
 		LPDIRECT3DDEVICE9 pDevice,
 		UINT Width,
