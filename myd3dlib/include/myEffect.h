@@ -2,10 +2,7 @@
 #pragma once
 
 #include "myDxutApp.h"
-#include "myResource.h"
 #include "myMath.h"
-#include "myTexture.h"
-#include "myException.h"
 
 namespace my
 {
@@ -576,9 +573,9 @@ namespace my
 			V(m_ptr->SetString(hParameter, pString));
 		}
 
-		void SetTexture(D3DXHANDLE hParameter, BaseTexturePtr Texture)
+		void SetTexture(D3DXHANDLE hParameter, LPDIRECT3DBASETEXTURE9 pTexture)
 		{
-			V(m_ptr->SetTexture(hParameter, Texture->m_ptr));
+			V(m_ptr->SetTexture(hParameter, pTexture));
 		}
 
 		void SetValue(D3DXHANDLE hParameter, LPCVOID pData, UINT Bytes)
@@ -732,12 +729,12 @@ namespace my
 
 		void OnLostDevice(void)
 		{
-			FAILED_THROW_D3DEXCEPTION(static_cast<ID3DXEffect *>(m_ptr)->OnLostDevice());
+			V(static_cast<ID3DXEffect *>(m_ptr)->OnLostDevice());
 		}
 
 		void OnResetDevice(void)
 		{
-			FAILED_THROW_D3DEXCEPTION(static_cast<ID3DXEffect *>(m_ptr)->OnResetDevice());
+			V(static_cast<ID3DXEffect *>(m_ptr)->OnResetDevice());
 		}
 
 		void SetRawValue(D3DXHANDLE Handle, void * pData, DWORD OffsetInBytes, DWORD Bytes)
