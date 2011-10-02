@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "myEffect.h"
 #include <atlbase.h>
+#include "myException.h"
 #include "libc.h"
 
 #ifdef _DEBUG

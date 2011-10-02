@@ -2,7 +2,6 @@
 #pragma once
 
 #include "myDxutApp.h"
-#include "myResource.h"
 #include <atlbase.h>
 
 namespace my

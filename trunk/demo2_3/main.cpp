@@ -9,7 +9,6 @@
 #include <myEffect.h>
 #include <libc.h>
 #include <myFont.h>
-//#include <atltypes.h>
 
 // ------------------------------------------------------------------------------------------
 // MyDemo
@@ -22,7 +21,7 @@ protected:
 
 	my::EffectPtr m_effect;
 
-	CComPtr<ID3DXMesh> m_mesh;
+	my::MeshPtr m_mesh;
 
 	my::TexturePtr m_texture;
 
@@ -94,10 +93,9 @@ protected:
 		m_effect = my::Effect::CreateEffect(pd3dDevice, &(*cache)[0], cache->size());
 
 		// 从资源管理器中读出模型文件
-		DWORD dwNumSubMeshes;
 		cache = my::ReadWholeCacheFromStream(
 			my::ResourceMgr::getSingleton().OpenArchiveStream(_T("jack_hres_all.mesh.xml")));
-		my::LoadMeshFromOgreMesh(std::string((char *)&(*cache)[0], cache->size()), pd3dDevice, &dwNumSubMeshes, &m_mesh);
+		m_mesh = my::Mesh::CreateMeshFromOgreMesh(pd3dDevice, (char *)&(*cache)[0], cache->size());
 
 		// 创建贴图
 		cache = my::ReadWholeCacheFromStream(
@@ -176,7 +174,6 @@ protected:
 		DxutApp::OnD3D9DestroyDevice();
 
 		// 在这里销毁在create中创建的资源
-		m_mesh.Release();
 	}
 
 	void OnFrameMove(
@@ -230,9 +227,9 @@ protected:
 			{
 				m_effect->BeginPass(p);
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
-				V(m_mesh->DrawSubset(1));
+				m_mesh->DrawSubset(1);
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW));
-				V(m_mesh->DrawSubset(0));
+				m_mesh->DrawSubset(0);
 				m_effect->EndPass();
 			}
 			m_effect->End();
@@ -258,12 +255,12 @@ protected:
 			// 所有的mesh使用同一种材质，同一张贴图
 			m_effect->SetVector("g_MaterialAmbientColor", my::Vector4(0.27f, 0.27f, 0.27f, 1.0f));
 			m_effect->SetVector("g_MaterialDiffuseColor", my::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-			m_effect->SetTexture("g_MeshTexture", m_texture);
+			m_effect->SetTexture("g_MeshTexture", m_texture->m_ptr);
 			m_effect->SetFloatArray("g_LightDir", (float *)&my::Vector3(0.0f, 0.0f, -1.0f), 3);
 			m_effect->SetVector("g_LightDiffuse", my::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
 			// 设置阴影贴图，及光源变换
-			m_effect->SetTexture("g_ShadowTexture", m_shadowMapRT);
+			m_effect->SetTexture("g_ShadowTexture", m_shadowMapRT->m_ptr);
 			m_effect->SetMatrix("g_mWorldViewProjectionLight", mWorldViewProjLight);
 			m_effect->SetTechnique("RenderScene");
 
@@ -273,9 +270,9 @@ protected:
 			{
 				m_effect->BeginPass(p);
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
-				V(m_mesh->DrawSubset(1));
+				m_mesh->DrawSubset(1);
 				V(pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW));
-				V(m_mesh->DrawSubset(0));
+				m_mesh->DrawSubset(0);
 				m_effect->EndPass();
 			}
 			m_effect->End();
