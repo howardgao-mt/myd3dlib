@@ -233,7 +233,14 @@ namespace my
 		LPD3DXBUFFER * ppErrorMsgs /*= NULL*/) throw()
 	{
 		rapidxml::xml_document<char> doc;
-		doc.parse<0>(&strOgreMeshXml[0]);
+		try
+		{
+			doc.parse<0>(&strOgreMeshXml[0]);
+		}
+		catch(rapidxml::parse_error & e)
+		{
+			RETURN_COM_ERROR(E_FAIL, e.what());
+		}
 		rapidxml::xml_node<char> * node_mesh = doc.first_node("mesh");
 
 		DEFINE_XML_NODE_SIMPLE(sharedgeometry, mesh);
@@ -429,7 +436,7 @@ namespace my
 		LPD3DXMESH pMesh = NULL;
 		DWORD NumSubMeshes = 0;
 		CComPtr<ID3DXBuffer> ErrorMsgs;
-		HRESULT hres = LoadMeshFromOgreMesh(str, pd3dDevice, &pMesh, &NumSubMeshes, dwMeshOptions);
+		HRESULT hres = LoadMeshFromOgreMesh(str, pd3dDevice, &pMesh, &NumSubMeshes, dwMeshOptions, &ErrorMsgs);
 		if(FAILED(hres))
 		{
 			std::basic_string<char> info((char *)ErrorMsgs->GetBufferPointer(), ErrorMsgs->GetBufferSize());
