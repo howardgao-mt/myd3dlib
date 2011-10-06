@@ -117,13 +117,13 @@ namespace my
 		float tmp;
 		rapidxml::xml_attribute<char> * position_x;
 		DEFINE_XML_ATTRIBUTE_FLOAT(tmp, position_x, node_position, x);
-		pPosition->x = -tmp;
+		pPosition->x = tmp;
 		rapidxml::xml_attribute<char> * position_y;
 		DEFINE_XML_ATTRIBUTE_FLOAT(tmp, position_y, node_position, y);
 		pPosition->y = tmp;
 		rapidxml::xml_attribute<char> * position_z;
 		DEFINE_XML_ATTRIBUTE_FLOAT(tmp, position_z, node_position, z);
-		pPosition->z = tmp;
+		pPosition->z = -tmp;
 
 		return S_OK;
 	}
@@ -136,13 +136,13 @@ namespace my
 		float tmp;
 		rapidxml::xml_attribute<char> * normal_x;
 		DEFINE_XML_ATTRIBUTE_FLOAT(tmp, normal_x, node_normal, x);
-		pNormal->x = -tmp;
+		pNormal->x = tmp;
 		rapidxml::xml_attribute<char> * normal_y;
 		DEFINE_XML_ATTRIBUTE_FLOAT(tmp, normal_y, node_normal, y);
 		pNormal->y = tmp;
 		rapidxml::xml_attribute<char> * normal_z;
 		DEFINE_XML_ATTRIBUTE_FLOAT(tmp, normal_z, node_normal, z);
-		pNormal->z = tmp;
+		pNormal->z = -tmp;
 
 		return S_OK;
 	}
@@ -221,7 +221,7 @@ namespace my
 			}
 		}
 
-		RETURN_COM_ERROR(E_FAIL, "unknown vertex data type");
+		return S_OK;
 	}
 
 	HRESULT LoadMeshFromOgreMesh(
@@ -229,7 +229,7 @@ namespace my
 		LPDIRECT3DDEVICE9 pd3dDevice,
 		LPD3DXMESH * ppMesh,
 		DWORD * pNumSubMeshes /*= NULL*/,
-		DWORD dwMeshOptions /*= D3DXMESH_SYSTEMMEM*/,
+		DWORD dwMeshOptions /*= D3DXMESH_MANAGED*/,
 		LPD3DXBUFFER * ppErrorMsgs /*= NULL*/)
 	{
 		rapidxml::xml_document<char> doc;
@@ -338,6 +338,11 @@ namespace my
 			DEFINE_XML_NODE_SIMPLE(faces, submesh);
 			DEFINE_XML_ATTRIBUTE_INT_SIMPLE(count, faces);
 			facecount += count;
+		}
+
+		if(facecount >= 65535)
+		{
+			RETURN_COM_ERROR(E_FAIL, "facecount overflow ( >= 65535 )");
 		}
 
 		CComPtr<ID3DXMesh> mesh;
@@ -473,6 +478,11 @@ namespace my
 		HRESULT hres = LoadMeshFromOgreMesh(str, pd3dDevice, &pMesh, &NumSubMeshes, dwMeshOptions, &ErrorMsgs);
 		if(FAILED(hres))
 		{
+			if(hres != E_FAIL)
+			{
+				THROW_D3DEXCEPTION(hres);
+			}
+
 			std::basic_string<char> info((char *)ErrorMsgs->GetBufferPointer(), ErrorMsgs->GetBufferSize());
 			THROW_CUSEXCEPTION(mstringToTString(info));
 		}
