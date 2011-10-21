@@ -1,9 +1,6 @@
 
 #pragma once
 
-#include "myDxutApp.h"
-#include <atlbase.h>
-
 namespace my
 {
 	class Surface;
@@ -58,10 +55,10 @@ namespace my
 			return desc;
 		}
 
-		D3DLOCKED_RECT LockRect(CONST RECT * pRect = NULL, DWORD Flags = 0)
+		D3DLOCKED_RECT LockRect(const RECT & rect, DWORD Flags = 0)
 		{
 			D3DLOCKED_RECT lr;
-			V(m_ptr->LockRect(&lr, pRect, Flags));
+			V(m_ptr->LockRect(&lr, &rect, Flags));
 			return lr;
 		}
 
@@ -202,14 +199,14 @@ namespace my
 			return Surface;
 		}
 
-		D3DLOCKED_RECT LockRect(UINT Level, CONST RECT * pRect = NULL, DWORD Flags = 0)
+		D3DLOCKED_RECT LockRect(const RECT & rect, DWORD Flags = 0, UINT Level = 0)
 		{
 			D3DLOCKED_RECT LockedRect;
-			V(static_cast<IDirect3DTexture9 *>(m_ptr)->LockRect(Level, &LockedRect, pRect, Flags));
+			V(static_cast<IDirect3DTexture9 *>(m_ptr)->LockRect(Level, &LockedRect, &rect, Flags));
 			return LockedRect;
 		}
 
-		void UnlockRect(UINT Level)
+		void UnlockRect(UINT Level = 0)
 		{
 			V(static_cast<IDirect3DTexture9 *>(m_ptr)->UnlockRect(Level));
 		}

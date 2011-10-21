@@ -1,14 +1,6 @@
 
 #pragma once
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include "mySingleton.h"
-#include "myResource.h"
-#include "myTexture.h"
-#include <map>
-#include "myMath.h"
-
 namespace my
 {
 	class Sprite;
@@ -87,21 +79,6 @@ namespace my
 		}
 	};
 
-	struct CharacterMetrics
-	{
-		RECT textureRect;
-
-		int horiAdvance;
-
-		int horiBearingX;
-
-		int horiBearingY;
-	};
-
-	typedef std::pair<int, CharacterMetrics> CharacterInfo;
-
-	typedef std::map<int, CharacterMetrics, std::less<int>, std::allocator<CharacterInfo> > CharacterMap;
-
 	class RectAssignmentNode;
 
 	typedef boost::shared_ptr<RectAssignmentNode> RectAssignmentNodePtr;
@@ -151,6 +128,19 @@ namespace my
 			alignLeftTop,
 		};
 
+		struct CharacterInfo
+		{
+			RECT textureRect;
+
+			int horiAdvance;
+
+			int horiBearingX;
+
+			int horiBearingY;
+		};
+
+		typedef std::map<int, CharacterInfo> CharacterMap;
+
 	protected:
 		FT_Face m_face;
 
@@ -194,11 +184,23 @@ namespace my
 			int height,
 			long face_index = 0);
 
+		static TexturePtr CreateFontTexture(LPDIRECT3DDEVICE9 pDevice, UINT Width, UINT Height);
+
 		void AssignTextureRect(const SIZE & size, RECT & outRect);
+
+		void InsertCharacter(
+			int character,
+			int horiAdvance,
+			int horiBearingX,
+			int horiBearingY,
+			const unsigned char * bmpBuffer,
+			int bmpWidth,
+			int bmpHeight,
+			int bmpPitch);
 
 		void LoadCharacter(int character);
 
-		CharacterMap::const_iterator GetCharacterInfoIter(int character);
+		const CharacterInfo & GetCharacterInfo(int character);
 
 		void DrawString(
 			SpritePtr sprite,
