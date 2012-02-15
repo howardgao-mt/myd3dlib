@@ -22,6 +22,8 @@ namespace my
 	class D3DVERTEXELEMENT9Set : public std::set<D3DVERTEXELEMENT9, D3DVERTEXELEMENT9Less>
 	{
 	public:
+		static const int MAX_BONE_INDICES = 4;
+
 		std::pair<iterator, bool> insert(const value_type & val)
 		{
 			_ASSERT(end() == find(val));
@@ -139,6 +141,8 @@ namespace my
 
 		static D3DVERTEXELEMENT9 CreateBlendIndicesElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
+			_ASSERT(sizeof(BlendIndicesType) / sizeof(unsigned char) == MAX_BONE_INDICES);
+
 			return CreateCustomElement(Stream, D3DDECLUSAGE_BLENDINDICES, UsageIndex, Offset, D3DDECLTYPE_UBYTE4, Method);
 		}
 
@@ -344,6 +348,19 @@ namespace my
 			LPD3DXBUFFER * ppEffectInstances = NULL,
 			DWORD * pNumMaterials = NULL);
 
+		static MeshPtr CreateMeshFromOgreXml(
+			LPDIRECT3DDEVICE9 pd3dDevice,
+			LPCSTR pFilename,
+			bool bComputeTangentFrame = true,
+			DWORD dwMeshOptions = D3DXMESH_MANAGED);
+
+		static MeshPtr CreateMeshFromOgreXmlInMemory(
+			LPDIRECT3DDEVICE9 pd3dDevice,
+			LPCSTR pSrcData,
+			UINT srcDataLen,
+			bool bComputeTangentFrame = true,
+			DWORD dwMeshOptions = D3DXMESH_MANAGED);
+
 		CComPtr<ID3DXMesh> CloneMesh(DWORD Options, CONST D3DVERTEXELEMENT9 * pDeclaration, LPDIRECT3DDEVICE9 pDevice)
 		{
 			CComPtr<ID3DXMesh> CloneMesh;
@@ -500,74 +517,5 @@ namespace my
 		{
 			V(m_ptr->UnlockAttributeBuffer());
 		}
-
-		void ComputeTangentFrameEx(
-			DWORD dwTextureInSemantic,
-			DWORD dwTextureInIndex,
-			DWORD dwUPartialOutSemantic,
-			DWORD dwUPartialOutIndex,
-			DWORD dwVPartialOutSemantic,
-			DWORD dwVPartialOutIndex,
-			DWORD dwNormalOutSemantic,
-			DWORD dwNormalOutIndex,
-			DWORD dwOptions,
-			CONST DWORD * pdwAdjacency,
-			FLOAT fPartialEdgeThreshold,
-			FLOAT fSingularPointThreshold,
-			FLOAT fNormalEdgeThreshold,
-			ID3DXMesh ** ppMeshOut,
-			ID3DXBuffer ** ppVertexMapping)
-		{
-			V(D3DXComputeTangentFrameEx(
-				m_ptr,
-				dwTextureInSemantic,
-				dwTextureInIndex,
-				dwUPartialOutSemantic,
-				dwUPartialOutIndex,
-				dwVPartialOutSemantic,
-				dwVPartialOutIndex,
-				dwNormalOutSemantic,
-				dwNormalOutIndex,
-				dwOptions,
-				pdwAdjacency,
-				fPartialEdgeThreshold,
-				fSingularPointThreshold,
-				fNormalEdgeThreshold,
-				ppMeshOut,
-				ppVertexMapping));
-		}
-	};
-
-	class OgreMesh;
-
-	typedef boost::shared_ptr<OgreMesh> OgreMeshPtr;
-
-	enum _OGREMESH
-	{
-		OGREMESH_COMPUTE_TANGENT_FRAME = D3DXMESH_USEHWONLY,
-	};
-
-	class OgreMesh : public Mesh
-	{
-	public:
-		static const int MAX_BONE_INDICES = 4;
-
-	protected:
-		OgreMesh(ID3DXMesh * pMesh)
-			: Mesh(pMesh)
-		{
-		}
-
-	public:
-		static OgreMeshPtr CreateOgreMesh(
-			LPDIRECT3DDEVICE9 pd3dDevice,
-			LPCSTR pSrcData,
-			UINT srcDataLen,
-			DWORD dwMeshOptions = D3DXMESH_MANAGED);
-
-		static OgreMeshPtr CreateOgreMeshFromFile(
-			LPDIRECT3DDEVICE9 pDevice,
-			LPCSTR pFilename,
-			DWORD dwMeshOptions = D3DXMESH_MANAGED);
 	};
 };
