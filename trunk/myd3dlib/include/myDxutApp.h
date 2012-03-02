@@ -1,40 +1,26 @@
 
 #pragma once
 
-#include <SDKmisc.h>
-#include <DXUTgui.h>
-#include <DXUTsettingsdlg.h>
-
 namespace my
 {
 	class DeviceRelatedObjectBase
 	{
 	public:
-		DeviceRelatedObjectBase(void);
+		virtual ~DeviceRelatedObjectBase(void)
+		{
+		}
 
-		virtual ~DeviceRelatedObjectBase(void);
+		virtual void OnResetDevice(void)
+		{
+		}
 
-		virtual void OnD3D9ResetDevice(
-			IDirect3DDevice9 * pd3dDevice,
-			const D3DSURFACE_DESC * pBackBufferSurfaceDesc) = 0;
+		virtual void OnLostDevice(void)
+		{
+		}
 
-		virtual void OnD3D9LostDevice(void) = 0;
-
-		virtual void OnD3D9DestroyDevice(void) = 0;
-	};
-
-	class DeviceRelatedObjectBaseSet
-		: public std::set<DeviceRelatedObjectBase *>
-		, public Singleton<DeviceRelatedObjectBaseSet>
-	{
-	public:
-		void OnD3D9ResetDevice(
-			IDirect3DDevice9 * pd3dDevice,
-			const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
-
-		void OnD3D9LostDevice(void);
-
-		void OnD3D9DestroyDevice(void);
+		virtual void OnDestroyDevice(void)
+		{
+		}
 	};
 
 	template <class DrivedClass> 
@@ -59,17 +45,7 @@ namespace my
 			SAFE_RELEASE(m_ptr);
 		}
 
-		void OnD3D9ResetDevice(
-			IDirect3DDevice9 * pd3dDevice,
-			const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
-		{
-		}
-
-		void OnD3D9LostDevice(void)
-		{
-		}
-
-		void OnD3D9DestroyDevice(void)
+		void OnDestroyDevice(void)
 		{
 			SAFE_RELEASE(m_ptr);
 		}
