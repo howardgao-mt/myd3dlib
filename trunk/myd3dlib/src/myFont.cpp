@@ -134,25 +134,35 @@ FontMgr::~FontMgr(void)
 	FT_Error err = FT_Done_FreeType(m_library);
 }
 
-Font::Font(FT_Face face, int height, LPDIRECT3DDEVICE9 pDevice)
+std::vector<Font::CUSTOMVERTEX> Font::vertex_list(1024);
+
+Font::Font(FT_Face face, float height, LPDIRECT3DDEVICE9 pDevice)
 	: m_face(face)
 	, m_Device(pDevice)
 {
 	_ASSERT(m_face);
 
-	FT_Error err = FT_Set_Pixel_Sizes(m_face, height, height);
+	FT_Size_RequestRec_ req;
+	req.type = FT_SIZE_REQUEST_TYPE_NOMINAL;
+	req.width = (FT_Long)(height * 64.0f);
+	req.height = (FT_Long)(height * 64.0f);
+	req.horiResolution = 0;
+	req.vertResolution = 0;
+	FT_Error err = FT_Request_Size(m_face, &req);
 	if(err)
 	{
 		THROW_CUSEXCEPTION("FT_Set_Pixel_Sizes failed");
 	}
 
-	m_lineHeight = m_face->size->metrics.height >> 6;
+	m_LineHeight = m_face->size->metrics.height / 64.0f;
 
-	m_maxAdvance = m_face->size->metrics.max_advance >> 6;
+	m_maxAdvance = m_face->size->metrics.max_advance / 64.0f;
 
-	m_texture = CreateFontTexture(pDevice, m_maxAdvance, m_lineHeight);
+	m_texture = CreateFontTexture(pDevice, (UINT)ceil(m_maxAdvance), (UINT)ceil(m_LineHeight));
 
-	m_textureRectRoot = RectAssignmentNodePtr(new RectAssignmentNode(CRect(0, 0, m_maxAdvance, m_lineHeight)));
+	D3DSURFACE_DESC desc = m_texture->GetLevelDesc(0);
+
+	m_textureRectRoot = RectAssignmentNodePtr(new RectAssignmentNode(CRect(0, 0, desc.Width, desc.Height)));
 }
 
 Font::~Font(void)
@@ -178,7 +188,7 @@ TexturePtr Font::CreateFontTexture(LPDIRECT3DDEVICE9 pDevice, UINT Width, UINT H
 FontPtr Font::CreateFontFromFile(
 	LPDIRECT3DDEVICE9 pDevice,
 	LPCSTR pFilename,
-	int height,
+	float height,
 	FT_Long face_index /*= 0*/)
 {
 	FT_Face face;
@@ -196,7 +206,7 @@ FontPtr Font::CreateFontFromFileInMemory(
 	LPDIRECT3DDEVICE9 pDevice,
 	const void * file_base,
 	long file_size,
-	int height,
+	float height,
 	long face_index /*= 0*/)
 {
 	CachePtr cache(new Cache(file_size));
@@ -251,9 +261,11 @@ void Font::AssignTextureRect(const SIZE & size, RECT & outRect)
 
 void Font::InsertCharacter(
 	int character,
-	int horiAdvance,
-	int horiBearingX,
-	int horiBearingY,
+	float width,
+	float height,
+	float horiBearingX,
+	float horiBearingY,
+	float horiAdvance,
 	const unsigned char * bmpBuffer,
 	int bmpWidth,
 	int bmpHeight,
@@ -261,13 +273,20 @@ void Font::InsertCharacter(
 {
 	_ASSERT(m_characterMap.end() == m_characterMap.find(character));
 
-	CharacterInfo cm;
-	AssignTextureRect(CSize(bmpWidth, bmpHeight), cm.textureRect);
-	cm.horiAdvance = horiAdvance;
-	cm.horiBearingX = horiBearingX;
-	cm.horiBearingY = horiBearingY;
+	CharacterInfo info;
+	AssignTextureRect(CSize(bmpWidth, bmpHeight), info.textureRect);
 
-	D3DLOCKED_RECT lr = m_texture->LockRect(cm.textureRect);
+	info.width = width;
+	info.height = height;
+	info.horiBearingX = horiBearingX;
+	info.horiBearingY = horiBearingY;
+	info.horiAdvance = horiAdvance;
+	info.uvRect.l = (float)info.textureRect.left / m_textureRectRoot->m_rect.right;
+	info.uvRect.t = (float)info.textureRect.top / m_textureRectRoot->m_rect.bottom;
+	info.uvRect.r = (float)info.textureRect.right / m_textureRectRoot->m_rect.right;
+	info.uvRect.b = (float)info.textureRect.bottom / m_textureRectRoot->m_rect.bottom;
+
+	D3DLOCKED_RECT lr = m_texture->LockRect(info.textureRect);
 	for(int y = 0; y < bmpHeight; y++)
 	{
 		memcpy(
@@ -277,7 +296,7 @@ void Font::InsertCharacter(
 	}
 	m_texture->UnlockRect();
 
-	m_characterMap.insert(std::make_pair(character, cm));
+	m_characterMap.insert(std::make_pair(character, info));
 }
 
 void Font::LoadCharacter(int character)
@@ -299,9 +318,11 @@ void Font::LoadCharacter(int character)
 
 	InsertCharacter(
 		character,
-		m_face->glyph->metrics.horiAdvance >> 6,
-		m_face->glyph->metrics.horiBearingX >> 6,
-		m_face->glyph->metrics.horiBearingY >> 6,
+		m_face->glyph->metrics.width / 64.0f,
+		m_face->glyph->metrics.height / 64.0f,
+		m_face->glyph->metrics.horiBearingX / 64.0f,
+		m_face->glyph->metrics.horiBearingY / 64.0f,
+		m_face->glyph->metrics.horiAdvance / 64.0f,
 		m_face->glyph->bitmap.buffer,
 		m_face->glyph->bitmap.width,
 		m_face->glyph->bitmap.rows,
@@ -321,36 +342,219 @@ const Font::CharacterInfo & Font::GetCharacterInfo(int character)
 	return (*char_info_iter).second;
 }
 
+Vector2 Font::CalculateStringExtent(LPCWSTR pString)
+{
+	Vector2 extent(0, m_LineHeight);
+	wchar_t c;
+	while((c = *pString++))
+	{
+		const CharacterInfo & info = GetCharacterInfo(c);
+		extent.x += info.horiAdvance;
+	}
+
+	return extent;
+}
+
+size_t Font::BuildQuadrangle(
+	CUSTOMVERTEX * pBuffer,
+	size_t bufferSize,
+	const my::Rectangle & rect,
+	DWORD color,
+	const my::Rectangle & uvRect)
+{
+	if(bufferSize >= 6)
+	{
+		pBuffer[0].x = rect.l;
+		pBuffer[0].y = rect.t;
+		pBuffer[0].z = 0;
+		pBuffer[0].color = color;
+		pBuffer[0].u = uvRect.l;
+		pBuffer[0].v = uvRect.t;
+
+		pBuffer[1].x = rect.r;
+		pBuffer[1].y = rect.t;
+		pBuffer[1].z = 0;
+		pBuffer[1].color = color;
+		pBuffer[1].u = uvRect.r;
+		pBuffer[1].v = uvRect.t;
+
+		pBuffer[2].x = rect.l;
+		pBuffer[2].y = rect.b;
+		pBuffer[2].z = 0;
+		pBuffer[2].color = color;
+		pBuffer[2].u = uvRect.l;
+		pBuffer[2].v = uvRect.b;
+
+		pBuffer[3].x = rect.r;
+		pBuffer[3].y = rect.b;
+		pBuffer[3].z = 0;
+		pBuffer[3].color = color;
+		pBuffer[3].u = uvRect.r;
+		pBuffer[3].v = uvRect.b;
+
+		pBuffer[4] = pBuffer[2];
+		pBuffer[5] = pBuffer[1];
+
+		return 6;
+	}
+	return 0;
+}
+
+size_t Font::BuildVertexList(
+	CUSTOMVERTEX * pBuffer,
+	size_t bufferSize,
+	LPCWSTR pString,
+	const my::Rectangle & rect,
+	D3DCOLOR Color /*= D3DCOLOR_ARGB(255, 255, 255, 255)*/,
+	Align align /*= AlignLeftTop*/)
+{
+	Vector2 extent = CalculateStringExtent(pString);
+
+	Vector2 pen;
+	if(align & AlignLeft)
+	{
+		pen.x = rect.l;
+	}
+	else if(align & AlignCenter)
+	{
+		pen.x = rect.l + (rect.r - rect.l - extent.x) * 0.5f;
+	}
+	else
+	{
+		pen.x = rect.r - extent.x;
+	}
+	if(align & AlignTop)
+	{
+		pen.y = rect.t;
+	}
+	else if(align & AlignMiddle)
+	{
+		pen.y = rect.t + (rect.b - rect.t - extent.y) * 0.5f;
+	}
+	else
+	{
+		pen.y = rect.b - extent.y;
+	}
+	pen.y += m_LineHeight;
+
+	size_t i = 0;
+	wchar_t c;
+	while((c = *pString++))
+	{
+		const CharacterInfo & info = GetCharacterInfo(c);
+
+		size_t used = BuildQuadrangle(
+			&pBuffer[i],
+			bufferSize - i,
+			my::Rectangle::LeftTop(Vector2(pen.x + info.horiBearingX, pen.y - info.horiBearingY) - 0.5f, Vector2(info.width, info.height)),
+			Color,
+			info.uvRect);
+
+		if(0 == used)
+		{
+			break;
+		}
+
+		i += used;
+		pen.x += info.horiAdvance;
+	}
+
+	return i;
+}
+
+void Font::DrawStringVertices(
+	LPCWSTR pString,
+	const my::Rectangle & rect,
+	D3DCOLOR Color /*= D3DCOLOR_ARGB(255, 255, 255, 255)*/,
+	Align align /*= AlignLeftTop*/)
+{
+	V(m_Device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
+	V(m_Device->SetRenderState(D3DRS_LIGHTING, FALSE));
+	V(m_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE));
+	V(m_Device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA));
+	V(m_Device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA));
+
+	V(m_Device->SetTexture(0, m_texture->m_ptr));
+	V(m_Device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0));
+	V(m_Device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE));
+	V(m_Device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_ALPHAREPLICATE));
+	V(m_Device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE));
+	V(m_Device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE));
+	V(m_Device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE));
+	V(m_Device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE));
+
+	V(m_Device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT));
+	V(m_Device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT));
+	V(m_Device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE));
+
+	D3DVIEWPORT9 vp;
+	V(m_Device->GetViewport(&vp));
+	V(m_Device->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&Matrix4::identity));
+	V(m_Device->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&Matrix4::LookAtLH(my::Vector3(0,0,1), my::Vector3(0,0,0), my::Vector3(0,-1,0))));
+	V(m_Device->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&Matrix4::OrthoOffCenterLH(0, vp.Width, -(float)vp.Height, 0, -50, 50)));
+
+	size_t numVerts = BuildVertexList(&vertex_list[0], vertex_list.size(), pString, rect, Color, align);
+
+	V(m_Device->SetFVF(Font::D3DFVF_CUSTOMVERTEX));
+
+	V(m_Device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, numVerts / 3, &vertex_list[0], sizeof(my::Font::CUSTOMVERTEX)));
+
+	//V(m_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE));
+}
+
 void Font::DrawString(
 	LPD3DXSPRITE pSprite,
 	LPCWSTR pString,
 	const my::Rectangle & rect,
 	D3DCOLOR Color /*= D3DCOLOR_ARGB(255, 255, 255, 255)*/,
-	Align align /*= alignLeftTop*/)
+	Align align /*= AlignLeftTop*/)
 {
-	Vector3 pen(rect.l, rect.t + m_lineHeight, 0);
+	Vector2 extent = CalculateStringExtent(pString);
+
+	Vector2 pen;
+	if(align & AlignLeft)
+	{
+		pen.x = rect.l;
+	}
+	else if(align & AlignCenter)
+	{
+		pen.x = rect.l + (rect.r - rect.l - extent.x) * 0.5f;
+	}
+	else
+	{
+		pen.x = rect.r - extent.x;
+	}
+	if(align & AlignTop)
+	{
+		pen.y = rect.t;
+	}
+	else if(align & AlignMiddle)
+	{
+		pen.y = rect.t + (rect.b - rect.t - extent.y) * 0.5f;
+	}
+	else
+	{
+		pen.y = rect.b - extent.y;
+	}
+	pen.y += m_LineHeight;
+
 	wchar_t c;
 	while((c = *pString++))
 	{
-		switch(c)
-		{
-		case L'\r':
-			break;
+		const CharacterInfo & info = GetCharacterInfo(c);
 
-		case L'\n':
-			pen.x = rect.l;
-			pen.y += m_lineHeight;
-			break;
+		V(m_Device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_ALPHAREPLICATE));
+		V(m_Device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT));
+		V(m_Device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT));
+		V(m_Device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE));
 
-		default:
-			{
-				const CharacterInfo & info = GetCharacterInfo(c);
-				V(m_Device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_ALPHAREPLICATE));
-				V(pSprite->Draw(
-					(IDirect3DTexture9 *)m_texture->m_ptr, &info.textureRect, (D3DXVECTOR3 *)&Vector3(0, 0, 0), (D3DXVECTOR3 *)&Vector3(pen.x + info.horiBearingX, pen.y - info.horiBearingY, 0), Color));
-				pen.x += info.horiAdvance;
-			}
-			break;
-		}
+		V(pSprite->Draw(
+			(IDirect3DTexture9 *)m_texture->m_ptr,
+			&info.textureRect,
+			(D3DXVECTOR3 *)&Vector3(0, 0, 0),
+			(D3DXVECTOR3 *)&Vector3(pen.x + info.horiBearingX, pen.y - info.horiBearingY, 0),
+			Color));
+
+		pen.x += info.horiAdvance;
 	}
 }
