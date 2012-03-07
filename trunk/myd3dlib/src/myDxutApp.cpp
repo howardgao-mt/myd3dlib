@@ -127,9 +127,9 @@ DxutAppBase::~DxutAppBase(void)
 }
 
 int DxutAppBase::Run(
-	bool bWindowed /*= true*/,
-	int nSuggestedWidth /*= 800*/,
-	int nSuggestedHeight /*= 600*/)
+	bool bWindowed,
+	int nSuggestedWidth,
+	int nSuggestedHeight)
 {
 	DXUTInit(true, true, NULL);
 	DXUTSetCursorSettings(true, true);
@@ -174,15 +174,18 @@ HRESULT DxutApp::OnD3D9ResetDevice(
 	IDirect3DDevice9 * pd3dDevice,
 	const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
 {
+	ResourceMgr::getSingleton().OnResetDevice();
 	return S_OK;
 }
 
 void DxutApp::OnD3D9LostDevice(void)
 {
+	ResourceMgr::getSingleton().OnLostDevice();
 }
 
 void DxutApp::OnD3D9DestroyDevice(void)
 {
+	ResourceMgr::getSingleton().OnDestroyDevice();
 }
 
 void DxutApp::OnFrameMove(
@@ -220,9 +223,9 @@ void DxutApp::OnInit(void)
 }
 
 int DxutApp::Run(
-	bool bWindowed /*= true*/,
-	int nSuggestedWidth /*= 800*/,
-	int nSuggestedHeight /*= 600*/)
+	bool bWindowed,
+	int nSuggestedWidth,
+	int nSuggestedHeight)
 {
 	try
 	{
