@@ -141,7 +141,7 @@ Font::Font(FT_Face face, float height, LPDIRECT3DDEVICE9 pDevice, unsigned short
 
 	m_maxAdvance = m_face->size->metrics.max_advance / 64.0f;
 
-	m_texture = CreateFontTexture(pDevice, (UINT)ceil(m_maxAdvance), (UINT)ceil(m_LineHeight));
+	m_texture = CreateFontTexture(pDevice, 256, 256);
 
 	D3DSURFACE_DESC desc = m_texture->GetLevelDesc(0);
 	m_textureRectRoot = RectAssignmentNodePtr(new RectAssignmentNode(CRect(0, 0, desc.Width, desc.Height)));
@@ -172,6 +172,7 @@ FontPtr Font::CreateFontFromFile(
 	LPDIRECT3DDEVICE9 pDevice,
 	LPCSTR pFilename,
 	float height,
+	unsigned short pixel_gap,
 	FT_Long face_index)
 {
 	FT_Face face;
@@ -181,7 +182,7 @@ FontPtr Font::CreateFontFromFile(
 		THROW_CUSEXCEPTION("FT_New_Face failed");
 	}
 
-	FontPtr font(new Font(face, height, pDevice));
+	FontPtr font(new Font(face, height, pDevice, pixel_gap));
 	return font;
 }
 
@@ -190,7 +191,8 @@ FontPtr Font::CreateFontFromFileInMemory(
 	const void * file_base,
 	long file_size,
 	float height,
-	long face_index)
+	unsigned short pixel_gap,
+	FT_Long face_index)
 {
 	CachePtr cache(new Cache(file_size));
 	memcpy(&(*cache)[0], file_base, cache->size());
@@ -202,7 +204,7 @@ FontPtr Font::CreateFontFromFileInMemory(
 		THROW_CUSEXCEPTION("FT_New_Memory_Face failed");
 	}
 
-	FontPtr font(new Font(face, height, pDevice));
+	FontPtr font(new Font(face, height, pDevice, pixel_gap));
 	font->m_cache = cache;
 	return font;
 }
@@ -259,7 +261,7 @@ void Font::InsertCharacter(
 	_ASSERT(m_characterMap.end() == m_characterMap.find(character));
 
 	CharacterInfo info;
-	// add pixel gap around each font cell to avoid uv boundaries issue when Antialiasing
+	// Add pixel gap around each font cell to avoid uv boundaries issue when Antialiasing
 	AssignTextureRect(CSize(bmpWidth + FONT_PIXEL_GAP * 2, bmpHeight + FONT_PIXEL_GAP * 2), info.textureRect);
 	::InflateRect(&info.textureRect, -FONT_PIXEL_GAP, -FONT_PIXEL_GAP);
 
@@ -342,13 +344,7 @@ Vector2 Font::CalculateStringExtent(LPCWSTR pString)
 	return extent;
 }
 
-size_t Font::BuildStringVertices(
-	UIRender::CUSTOMVERTEX * pBuffer,
-	size_t bufferSize,
-	LPCWSTR pString,
-	const my::Rectangle & rect,
-	D3DCOLOR Color,
-	Align align)
+Vector2 Font::CalculateAlignedPen(LPCWSTR pString, const my::Rectangle & rect, Align align)
 {
 	Vector2 extent = CalculateStringExtent(pString);
 
@@ -378,6 +374,23 @@ size_t Font::BuildStringVertices(
 		pen.y = rect.b - extent.y;
 	}
 	pen.y += m_LineHeight;
+
+	// ! Align pen to pixel/UI unit
+	pen.x = floor(pen.x);
+	pen.y = floor(pen.y);
+
+	return pen;
+}
+
+size_t Font::BuildStringVertices(
+	CUSTOMVERTEX * pBuffer,
+	size_t bufferSize,
+	LPCWSTR pString,
+	const my::Rectangle & rect,
+	D3DCOLOR Color,
+	Align align)
+{
+	Vector2 pen = CalculateAlignedPen(pString, rect, align);
 
 	size_t i = 0;
 	wchar_t c;
@@ -413,22 +426,14 @@ void Font::DrawString(
 	UIRender::Begin(m_Device);
 
 	V(m_Device->SetTexture(0, m_texture->m_ptr));
-	V(m_Device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0));
-	V(m_Device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE));
+
+	// ! D3DFMT_A8
 	V(m_Device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_ALPHAREPLICATE));
-	V(m_Device->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE));
-	V(m_Device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE));
-	V(m_Device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE));
-	V(m_Device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE));
 
-	//V(m_Device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR));
-	//V(m_Device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR));
-	//V(m_Device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE));
-
-	UIRender::CUSTOMVERTEX vertex_list[1024];
+	CUSTOMVERTEX vertex_list[1024];
 	size_t numVerts = BuildStringVertices(vertex_list, _countof(vertex_list), pString, rect, Color, align);
 
-	V(m_Device->SetFVF(UIRender::D3DFVF_CUSTOMVERTEX));
+	V(m_Device->SetFVF(D3DFVF_CUSTOMVERTEX));
 
 	V(m_Device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, numVerts / 3, vertex_list, sizeof(*vertex_list)));
 
@@ -442,34 +447,7 @@ void Font::DrawString(
 	D3DCOLOR Color,
 	Align align)
 {
-	Vector2 extent = CalculateStringExtent(pString);
-
-	Vector2 pen;
-	if(align & AlignLeft)
-	{
-		pen.x = rect.l;
-	}
-	else if(align & AlignCenter)
-	{
-		pen.x = rect.l + (rect.r - rect.l - extent.x) * 0.5f;
-	}
-	else
-	{
-		pen.x = rect.r - extent.x;
-	}
-	if(align & AlignTop)
-	{
-		pen.y = rect.t;
-	}
-	else if(align & AlignMiddle)
-	{
-		pen.y = rect.t + (rect.b - rect.t - extent.y) * 0.5f;
-	}
-	else
-	{
-		pen.y = rect.b - extent.y;
-	}
-	pen.y += m_LineHeight;
+	Vector2 pen = CalculateAlignedPen(pString, rect, align);
 
 	wchar_t c;
 	while((c = *pString++))
