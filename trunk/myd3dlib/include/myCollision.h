@@ -283,43 +283,9 @@ namespace my
 			return transform;
 		}
 
-		Vector3 getTransformAxis0(void) const
+		const Vector3 & getTransformAxis(unsigned i) const
 		{
-			return Vector3(transform._11, transform._12, transform._13);
-		}
-
-		Vector3 getTransformAxis1(void) const
-		{
-			return Vector3(transform._21, transform._22, transform._23);
-		}
-
-		Vector3 getTransformAxis2(void) const
-		{
-			return Vector3(transform._31, transform._32, transform._33);
-		}
-
-		Vector3 getTransformAxis3(void) const
-		{
-			return Vector3(transform._41, transform._42, transform._43);
-		}
-
-		Vector3 getTransformAxisN(size_t axis_i) const
-		{
-			switch(axis_i)
-			{
-			case 0:
-				return getTransformAxis0();
-
-			case 1:
-				return getTransformAxis1();
-
-			case 2:
-				return getTransformAxis2();
-
-			case 3:
-				return getTransformAxis3();
-			}
-			_ASSERT(false); return Vector3::zero;
+			return transform[i];
 		}
 
 		void setRotationTransform(const Matrix4 & _rotationTransform)
@@ -493,7 +459,15 @@ namespace my
 			const CollisionBox & box0,
 			const CollisionBox & box1);
 
-		static std::pair<bool, float> rayAndHalfTriangle(
+		typedef std::pair<bool, float> TestResult;
+
+		static TestResult rayAndHalfSpace(
+			const Vector3 & pos,
+			const Vector3 & dir,
+			const Vector3 & planeNormal,
+			float planeDistance);
+
+		static TestResult rayAndTriangle(
 			const Vector3 & pos,
 			const Vector3 & dir,
 			float radius,

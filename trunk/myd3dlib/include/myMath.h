@@ -31,7 +31,15 @@ namespace my
 	class Vector2
 	{
 	public:
-		float x, y;
+		union
+		{
+			struct
+			{
+				float x, y;
+			};
+
+			float _m[2];
+		};
 
 	public:
 		Vector2(void)
@@ -47,6 +55,16 @@ namespace my
 		}
 
 	public:
+		__forceinline float & operator [](int i)
+		{
+			_ASSERT(0 <= i && i < _countof(_m)); return _m[i];
+		}
+
+		__forceinline const float & operator [](int i) const
+		{
+			_ASSERT(0 <= i && i < _countof(_m)); return _m[i];
+		}
+
 		Vector2 operator - (void) const
 		{
 			return Vector2(-x, -y);
@@ -201,9 +219,17 @@ namespace my
 			return *this;
 		}
 
-		Vector2 transform(const Matrix4 & m) const;
+		Vector4 transform(const Matrix4 & m) const;
 
-		Vector2 transformTranspose(const Matrix4 & m) const;
+		Vector4 transformTranspose(const Matrix4 & m) const;
+
+		Vector2 transformCoord(const Matrix4 & m) const;
+
+		Vector2 transformCoordTranspose(const Matrix4 & m) const;
+
+		Vector2 transformNormal(const Matrix4 & m) const;
+
+		Vector2 transformNormalTranspose(const Matrix4 & m) const;
 
 	public:
 		static const Vector2 zero;
@@ -561,7 +587,15 @@ namespace my
 	class Vector3
 	{
 	public:
-		float x, y, z;
+		union
+		{
+			struct
+			{
+				float x, y, z;
+			};
+
+			float _m[3];
+		};
 
 	public:
 		Vector3(void)
@@ -579,6 +613,26 @@ namespace my
 		}
 
 	public:
+		__forceinline float & operator [](int i)
+		{
+			_ASSERT(0 <= i && i < _countof(_m)); return _m[i];
+		}
+
+		__forceinline const float & operator [](int i) const
+		{
+			_ASSERT(0 <= i && i < _countof(_m)); return _m[i];
+		}
+
+		__forceinline operator Vector2 &()
+		{
+			return *(Vector2 *)this;
+		}
+
+		__forceinline operator const Vector2 &() const
+		{
+			return *(const Vector2 *)this;
+		}
+
 		Vector3 operator - (void) const
 		{
 			return Vector3(-x, -y, -z);
@@ -747,11 +801,19 @@ namespace my
 			return *this;
 		}
 
+		Vector4 transform(const Matrix4 & m) const;
+
+		Vector4 transformTranspose(const Matrix4 & m) const;
+
+		Vector3 transformCoord(const Matrix4 & m) const;
+
+		Vector3 transformCoordTranspose(const Matrix4 & m) const;
+
+		Vector3 transformNormal(const Matrix4 & m) const;
+
+		Vector3 transformNormalTranspose(const Matrix4 & m) const;
+
 		Vector3 transform(const Quaternion & q) const;
-
-		Vector3 transform(const Matrix4 & m) const;
-
-		Vector3 transformTranspose(const Matrix4 & m) const;
 
 	public:
 		static const Vector3 zero;
@@ -766,7 +828,15 @@ namespace my
 	class Vector4
 	{
 	public:
-		float x, y, z, w;
+		union
+		{
+			struct
+			{
+				float x, y, z, w;
+			};
+
+			float _m[4];
+		};
 
 	public:
 		Vector4(void)
@@ -786,6 +856,26 @@ namespace my
 		}
 
 	public:
+		__forceinline float & operator [](int i)
+		{
+			_ASSERT(0 <= i && i < _countof(_m)); return _m[i];
+		}
+
+		__forceinline const float & operator [](int i) const
+		{
+			_ASSERT(0 <= i && i < _countof(_m)); return _m[i];
+		}
+
+		__forceinline operator Vector3 &()
+		{
+			return *(Vector3 *)this;
+		}
+
+		__forceinline operator const Vector3 &() const
+		{
+			return *(const Vector3 *)this;
+		}
+
 		Vector4 operator - (void) const
 		{
 			return Vector4(-x, -y, -z, -w);
@@ -1269,7 +1359,10 @@ namespace my
 				float _41, _42, _43, _44;
 			};
 
-			float m[4][4];
+			struct
+			{
+				Vector4 _m[4];
+			};
 		};
 
 	public:
@@ -1293,6 +1386,16 @@ namespace my
 		}
 
 	public:
+		__forceinline Vector4 & operator [](int i)
+		{
+			_ASSERT(0 <= i && i < _countof(_m)); return _m[i];
+		}
+
+		__forceinline const Vector4 & operator [](int i) const
+		{
+			_ASSERT(0 <= i && i < _countof(_m)); return _m[i];
+		}
+
 		Matrix4 operator - (void) const
 		{
 			return Matrix4(
@@ -1966,11 +2069,6 @@ namespace my
 				_41, _42 * c - _43 * s, _42 * s + _43 * c, _44);
 		}
 
-		Matrix4 & rotateXSelf(float angle)
-		{
-			return *this = rotateX(angle);
-		}
-
 		Matrix4 rotateY(float angle) const
 		{
 			float c = cos(angle);
@@ -1981,11 +2079,6 @@ namespace my
 				_21 * c + _23 * s, _22, _23 * s - _21 * c, 14,
 				_31 * c + _33 * s, _32, _33 * s - _31 * c, 14,
 				_41 * c + _43 * s, _42, _43 * s - _41 * c, 14);
-		}
-
-		Matrix4 & rotateYSelf(float angle)
-		{
-			return *this = rotateY(angle);
 		}
 
 		Matrix4 rotateZ(float angle) const
@@ -2000,19 +2093,9 @@ namespace my
 				_41 * c - _42 * s, _41 * s + _42 * c, _43, _44);
 		}
 
-		Matrix4 & rotationZSelf(float angle)
-		{
-			return *this = rotateZ(angle);
-		}
-
 		Matrix4 rotate(const Quaternion & q) const
 		{
 			return *this * RotationQuaternion(q);
-		}
-
-		Matrix4 & rotateSelf(const Quaternion & q)
-		{
-			return *this = rotate(q);
 		}
 
 		Matrix4 translate(float x, float y, float z) const
@@ -2073,37 +2156,89 @@ namespace my
 		static const Matrix4 identity;
 	};
 
-	inline Vector2 Vector2::transform(const Matrix4 & m) const
+	inline Vector4 Vector2::transform(const Matrix4 & m) const
 	{
-		Vector4 ret(Vector4(x, y, 0, 1).transform(m));
-
-		return Vector2(ret.x, ret.y);
+		return Vector4(x, y, 0, 1).transform(m);
 	}
 
-	inline Vector2 Vector2::transformTranspose(const Matrix4 & m) const
+	inline Vector4 Vector2::transformTranspose(const Matrix4 & m) const
 	{
-		Vector4 ret(Vector4(x, y, 0, 1).transformTranspose(m));
+		return Vector4(x, y, 0, 1).transformTranspose(m);
+	}
 
-		return Vector2(ret.x, ret.y);
+	inline Vector2 Vector2::transformCoord(const Matrix4 & m) const
+	{
+		return Vector2(
+			x * m._11 + y * m._21 + m._41,
+			x * m._12 + y * m._22 + m._42);
+	}
+
+	inline Vector2 Vector2::transformCoordTranspose(const Matrix4 & m) const
+	{
+		return Vector2(
+			x * m._11 + y * m._12 + m._14,
+			x * m._21 + y * m._22 + m._24);
+	}
+
+	inline Vector2 Vector2::transformNormal(const Matrix4 & m) const
+	{
+		return Vector2(
+			x * m._11 + y * m._21,
+			x * m._12 + y * m._22);
+	}
+
+	inline Vector2 Vector2::transformNormalTranspose(const Matrix4 & m) const
+	{
+		return Vector2(
+			x * m._11 + y * m._12,
+			x * m._21 + y * m._22);
+	}
+
+	inline Vector4 Vector3::transform(const Matrix4 & m) const
+	{
+		return Vector4(x, y, z, 1).transform(m);
+	}
+
+	inline Vector4 Vector3::transformTranspose(const Matrix4 & m) const
+	{
+		return Vector4(x, y, z, 1).transformTranspose(m);
+	}
+
+	inline Vector3 Vector3::transformCoord(const Matrix4 & m) const
+	{
+		return Vector3(
+			x * m._11 + y * m._21 + z * m._31 + m._41,
+			x * m._12 + y * m._22 + z * m._32 + m._42,
+			x * m._13 + y * m._23 + z * m._33 + m._43);
+	}
+
+	inline Vector3 Vector3::transformCoordTranspose(const Matrix4 & m) const
+	{
+		return Vector3(
+			x * m._11 + y * m._12 + z * m._13 + m._14,
+			x * m._21 + y * m._22 + z * m._23 + m._24,
+			x * m._31 + y * m._32 + z * m._33 + m._34);
+	}
+
+	inline Vector3 Vector3::transformNormal(const Matrix4 & m) const
+	{
+		return Vector3(
+			x * m._11 + y * m._21 + z * m._31,
+			x * m._12 + y * m._22 + z * m._32,
+			x * m._13 + y * m._23 + z * m._33);
+	}
+
+	inline Vector3 Vector3::transformNormalTranspose(const Matrix4 & m) const
+	{
+		return Vector3(
+			x * m._11 + y * m._12 + z * m._13,
+			x * m._21 + y * m._22 + z * m._23,
+			x * m._31 + y * m._32 + z * m._33);
 	}
 
 	inline Vector3 Vector3::transform(const Quaternion & q) const
 	{
 		Quaternion ret(q.conjugate() * Quaternion(x, y, z, 0) * q);
-
-		return Vector3(ret.x, ret.y, ret.z);
-	}
-
-	inline Vector3 Vector3::transform(const Matrix4 & m) const
-	{
-		Vector4 ret(Vector4(x, y, z, 1).transform(m));
-
-		return Vector3(ret.x, ret.y, ret.z);
-	}
-
-	inline Vector3 Vector3::transformTranspose(const Matrix4 & m) const
-	{
-		Vector4 ret(Vector4(x, y, z, 1).transformTranspose(m));
 
 		return Vector3(ret.x, ret.y, ret.z);
 	}
