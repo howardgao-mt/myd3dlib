@@ -21,27 +21,34 @@ namespace my
 
 		static void End(IDirect3DDevice9 * pd3dDevice);
 
+		static Rectangle CalculateUVRect(const SIZE & textureSize, const RECT & textureRect);
+
 		static size_t BuildRectangleVertices(
 			CUSTOMVERTEX * pBuffer,
 			size_t bufferSize,
 			const Rectangle & rect,
-			const Rectangle & uvRect,
-			DWORD color);
+			DWORD color,
+			const Rectangle & uvRect);
 
 		// Example of Draw BuildRectangleVertices
 		static void DrawRectangle(
 			IDirect3DDevice9 * pd3dDevice,
 			const Rectangle & rect,
-			const Rectangle & uvRect,
+			DWORD color,
+			const Rectangle & uvRect);
+
+		static void DrawRectangle(
+			IDirect3DDevice9 * pd3dDevice,
+			const Rectangle & rect,
 			DWORD color);
 	};
 
-	class UIControlSkin
+	class ControlSkin
 	{
 	public:
 		TexturePtr m_Texture;
 
-		Rectangle m_TextureUV;
+		RECT m_TextureRect;
 
 		FontPtr m_Font;
 
@@ -50,21 +57,21 @@ namespace my
 		Font::Align m_TextAlign;
 
 	public:
-		UIControlSkin(void)
-			: m_TextureUV(0,0,1,1)
-			, m_TextColor(D3DCOLOR_ARGB(255,255,255,255))
+		ControlSkin(void)
+			: m_TextureRect(CRect(0,0,0,0))
+			, m_TextColor(D3DCOLOR_ARGB(255,255,255,0))
 			, m_TextAlign(my::Font::AlignLeftTop)
 		{
 		}
 
-		virtual ~UIControlSkin(void)
+		virtual ~ControlSkin(void)
 		{
 		}
 	};
 
-	typedef boost::shared_ptr<UIControlSkin> UIControlSkinPtr;
+	typedef boost::shared_ptr<ControlSkin> ControlSkinPtr;
 
-	class UIControl
+	class Control
 	{
 	public:
 		bool m_bEnabled;
@@ -83,12 +90,12 @@ namespace my
 
 		D3DCOLOR m_Color;
 
-		UIControlSkinPtr m_Skin;
+		ControlSkinPtr m_Skin;
 
 		HRESULT hr;
 
 	public:
-		UIControl(void)
+		Control(void)
 			: m_bEnabled(true)
 			, m_bVisible(true)
 			, m_bMouseOver(false)
@@ -96,11 +103,11 @@ namespace my
 			, m_bIsDefault(false)
 			, m_Location(100, 100)
 			, m_Size(100, 100)
-			, m_Color(D3DCOLOR_ARGB(0,0,0,0))
+			, m_Color(D3DCOLOR_ARGB(255,255,255,255))
 		{
 		}
 
-		virtual ~UIControl(void)
+		virtual ~Control(void)
 		{
 		}
 
@@ -116,11 +123,13 @@ namespace my
 
 		virtual void OnFocusIn(void);
 
+		virtual void OnFocusOut(void);
+
 		virtual void OnMouseEnter(void);
 
 		virtual void OnMouseLeave(void);
 
-		virtual void OnHotkey(void);
+		virtual bool OnHotkey(void);
 
 		virtual bool ContainsPoint(const Vector2 & pt);
 
@@ -133,15 +142,15 @@ namespace my
 		virtual bool GetVisible(void);
 	};
 
-	typedef boost::shared_ptr<UIControl> UIControlPtr;
+	typedef boost::shared_ptr<Control> ControlPtr;
 
-	class UIStatic : public UIControl
+	class Static : public Control
 	{
 	public:
 		std::wstring m_Text;
 
 	public:
-		UIStatic(void)
+		Static(void)
 			: m_Text(L"")
 		{
 		}
@@ -151,42 +160,43 @@ namespace my
 		virtual bool ContainsPoint(const Vector2 & pt);
 	};
 
-	typedef boost::shared_ptr<UIStatic> UIStaticPtr;
+	typedef boost::shared_ptr<Static> StaticPtr;
 
-	class UIButtonSkin : public UIControlSkin
+	class ButtonSkin : public ControlSkin
 	{
 	public:
-		Rectangle m_DisabledTexUV;
+		RECT m_DisabledTexRect;
 
-		Rectangle m_PressedTexUV;
+		RECT m_PressedTexRect;
 
-		Rectangle m_MouseOverTexUV;
+		RECT m_MouseOverTexRect;
 
 		Vector2 m_PressedOffset;
 
 	public:
-		UIButtonSkin(void)
-			: m_DisabledTexUV(0,0,1,1)
-			, m_PressedTexUV(0,0,1,1)
-			, m_MouseOverTexUV(0,0,1,1)
+		ButtonSkin(void)
+			: m_DisabledTexRect(CRect(0,0,0,0))
+			, m_PressedTexRect(CRect(0,0,0,0))
+			, m_MouseOverTexRect(CRect(0,0,0,0))
 			, m_PressedOffset(0,0)
 		{
 		}
 	};
 
-	typedef boost::shared_ptr<UIButtonSkin> UIButtonSkinPtr;
+	typedef boost::shared_ptr<ButtonSkin> ButtonSkinPtr;
 
-	typedef fastdelegate::FastDelegate1<UIControl *> UIEvent;
+	// http://www.boost.org/doc/libs/1_49_0/libs/smart_ptr/sp_techniques.html#from_this
+	typedef fastdelegate::FastDelegate1<Control *> ControlEvent;
 
-	class UIButton : public UIStatic
+	class Button : public Static
 	{
 	public:
 		bool m_bPressed;
 
-		UIEvent EventClick;
+		ControlEvent EventClick;
 
 	public:
-		UIButton(void)
+		Button(void)
 			: m_bPressed(false)
 		{
 		}
@@ -197,8 +207,156 @@ namespace my
 
 		virtual bool HandleMouse(UINT uMsg, const Vector2 & pt, WPARAM wParam, LPARAM lParam);
 
+		virtual bool CanHaveFocus(void);
+
 		virtual bool ContainsPoint(const Vector2 & pt);
 	};
 
-	typedef boost::shared_ptr<UIButton> UIButtonPtr;
+	typedef boost::shared_ptr<Button> ButtonPtr;
+
+	class EditBoxSkin : public ControlSkin
+	{
+	public:
+		RECT m_DisabledTexRect;
+
+		RECT m_FocusedTexRect;
+
+		RECT m_MouseOverTexRect;
+
+		D3DCOLOR m_SelTextColor;
+
+		D3DCOLOR m_SelBkColor;
+
+		D3DCOLOR m_CaretColor;
+
+	public:
+		EditBoxSkin(void)
+			: m_DisabledTexRect(CRect(0,0,0,0))
+			, m_FocusedTexRect(CRect(0,0,0,0))
+			, m_MouseOverTexRect(CRect(0,0,0,0))
+			, m_SelTextColor(D3DCOLOR_ARGB(255,255,255,255))
+			, m_SelBkColor(D3DCOLOR_ARGB(197,0,0,0))
+			, m_CaretColor(D3DCOLOR_ARGB(255,255,255,255))
+		{
+		}
+	};
+
+	typedef boost::shared_ptr<EditBoxSkin> EditBoxSkinPtr;
+
+	class EditBox : public Control
+	{
+	public:
+		std::wstring m_Text;
+
+		int m_nCaret;
+
+		bool m_bCaretOn;
+    
+		double m_dfBlink;
+
+		double m_dfLastBlink;
+
+		int m_nFirstVisible;
+
+		Vector4 m_Border;
+
+		bool m_bMouseDrag;
+
+		int m_nSelStart;
+
+		bool m_bInsertMode;
+
+		ControlEvent EventChange;
+
+		ControlEvent EventEnter;
+
+	public:
+		EditBox(void)
+			: m_nCaret(0)
+			, m_bCaretOn(true)
+			, m_dfBlink(GetCaretBlinkTime() * 0.001f)
+			, m_dfLastBlink(0)
+			, m_nFirstVisible(0)
+			, m_Border(0,0,0,0)
+			, m_bMouseDrag(false)
+			, m_nSelStart(0)
+			, m_bInsertMode(true)
+		{
+		}
+
+		virtual void OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime);
+
+		virtual bool MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+		virtual bool HandleKeyboard(UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+		virtual bool HandleMouse(UINT uMsg, const Vector2 & pt, WPARAM wParam, LPARAM lParam);
+
+		virtual bool CanHaveFocus(void);
+
+		virtual void OnFocusIn(void);
+
+		void PlaceCaret(int nCP);
+
+		void ResetCaretBlink(void);
+
+		void DeleteSelectionText(void);
+
+		void CopyToClipboard(void);
+
+		void PasteFromClipboard(void);
+	};
+
+	typedef boost::shared_ptr<EditBox> EditBoxPtr;
+
+	class Dialog : public Control
+	{
+	public:
+		typedef std::vector<ControlPtr> ControlPtrList;
+
+		ControlPtrList m_Controls;
+
+		ControlPtr m_ControlMouseOver;
+
+		struct Viewport
+		{
+			DWORD Width;
+
+			DWORD Height;
+
+			float Fovy;
+		};
+
+		Viewport m_Viewport;
+
+		struct Camera
+		{
+			Matrix4 World;
+
+			Matrix4 View;
+
+			Matrix4 Proj;
+		};
+
+		Camera m_Camera;
+
+		Matrix4 m_Transform;
+
+	public:
+		Dialog(void);
+
+		virtual ~Dialog(void)
+		{
+		}
+
+		virtual void OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime);
+
+		virtual bool MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+		ControlPtr GetControlAtPoint(const Vector2 & pt);
+
+		void RequestFocus(ControlPtr control);
+	};
+
+	typedef boost::shared_ptr<Dialog> DialogPtr;
 }
