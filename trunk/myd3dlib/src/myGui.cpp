@@ -11,9 +11,9 @@ using namespace my;
 void UIRender::BuildOrthoMatrices(DWORD Width, DWORD Height, Matrix4 & outView, Matrix4 & outProj)
 {
 	outView = Matrix4::LookAtLH(
-		my::Vector3(Width * 0.5f, Height * 0.5f, 1),
-		my::Vector3(Width * 0.5f, Height * 0.5f, 0),
-		my::Vector3(0, -1, 0));
+		Vector3(Width * 0.5f, Height * 0.5f, 1),
+		Vector3(Width * 0.5f, Height * 0.5f, 0),
+		Vector3(0, -1, 0));
 
 	outProj = Matrix4::OrthoLH((float)Width, (float)Height, -50.0f, 50.0f);
 }
@@ -23,9 +23,9 @@ void UIRender::BuildPerspectiveMatrices(float fovy, DWORD Width, DWORD Height, M
 	float Dist = Height * 0.5f * cot(fovy / 2);
 
 	outView = Matrix4::LookAtLH(
-		my::Vector3(Width * 0.5f, Height * 0.5f, Dist),
-		my::Vector3(Width * 0.5f, Height * 0.5f, 0),
-		my::Vector3(0, -1, 0));
+		Vector3(Width * 0.5f, Height * 0.5f, Dist),
+		Vector3(Width * 0.5f, Height * 0.5f, 0),
+		Vector3(0, -1, 0));
 
 	outProj = Matrix4::PerspectiveFovLH(fovy, (float)Width / Height, 0.1f, 3000.0f);
 }
@@ -127,14 +127,13 @@ void UIRender::DrawRectangle(
 	CUSTOMVERTEX vertex_list[6];
 	size_t vertNum = BuildRectangleVertices(vertex_list, _countof(vertex_list), rect, color, uvRect);
 
-	Begin(pd3dDevice);
+	//Begin(pd3dDevice);
 
 	HRESULT hr;
 	V(pd3dDevice->SetFVF(D3DFVF_CUSTOMVERTEX));
-
 	V(pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertNum / 3, vertex_list, sizeof(*vertex_list)));
 
-	End(pd3dDevice);
+	//End(pd3dDevice);
 }
 
 void UIRender::DrawRectangle(
@@ -145,17 +144,20 @@ void UIRender::DrawRectangle(
 	CUSTOMVERTEX vertex_list[6];
 	size_t vertNum = BuildRectangleVertices(vertex_list, _countof(vertex_list), rect, color, Rectangle(0,0,1,1));
 
-	Begin(pd3dDevice);
+	//Begin(pd3dDevice);
 
-    pd3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG2 );
-    pd3dDevice->SetTextureStageState( 0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2 );
+    //pd3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG2 );
+    //pd3dDevice->SetTextureStageState( 0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2 );
 
 	HRESULT hr;
+	V(pd3dDevice->SetTexture(0, NULL));
 	V(pd3dDevice->SetFVF(D3DFVF_CUSTOMVERTEX));
-
 	V(pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertNum / 3, vertex_list, sizeof(*vertex_list)));
 
-	End(pd3dDevice);
+	//V(pd3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE));
+	//V(pd3dDevice->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE));
+
+	//End(pd3dDevice);
 }
 
 void Control::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
@@ -249,7 +251,7 @@ void Static::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 	{
 		if(m_Skin && m_Skin->m_Font)
 		{
-			m_Skin->m_Font->DrawString(m_Text.c_str(), my::Rectangle::LeftTop(m_Location, m_Size), m_Skin->m_TextColor, m_Skin->m_TextAlign);
+			m_Skin->m_Font->DrawString(m_Text.c_str(), Rectangle::LeftTop(m_Location, m_Size), m_Skin->m_TextColor, m_Skin->m_TextAlign);
 		}
 	}
 }
@@ -259,25 +261,13 @@ bool Static::ContainsPoint(const Vector2 & pt)
 	return false;
 }
 
-Dialog::Dialog(void)
-	: m_Transform(my::Matrix4::Identity())
-{
-	m_Viewport.Width = 800;
-	m_Viewport.Height = 600;
-	m_Viewport.Fovy = D3DXToRadian(75.0f);
-
-	UIRender::BuildPerspectiveMatrices(m_Viewport.Fovy, m_Viewport.Width, m_Viewport.Height, m_Camera.View, m_Camera.Proj);
-
-	m_Camera.World = m_Camera.View.inverse();
-}
-
 void Button::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 {
 	if(m_bVisible)
 	{
 		ButtonSkinPtr Skin = boost::dynamic_pointer_cast<ButtonSkin, ControlSkin>(m_Skin);
 
-		my::Rectangle Rect(my::Rectangle::LeftTop(m_Location, m_Size));
+		Rectangle Rect(Rectangle::LeftTop(m_Location, m_Size));
 
 		if(Skin && Skin->m_Texture)
 		{
@@ -411,7 +401,7 @@ void EditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 	{
 		EditBoxSkinPtr Skin = boost::dynamic_pointer_cast<EditBoxSkin, ControlSkin>(m_Skin);
 
-		my::Rectangle Rect(my::Rectangle::LeftTop(m_Location, m_Size));
+		Rectangle Rect(Rectangle::LeftTop(m_Location, m_Size));
 
 		if(Skin && Skin->m_Texture)
 		{
@@ -481,15 +471,15 @@ void EditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 
 				if(!m_bInsertMode)
 				{
-					float charWidth;
-					if(m_nCaret < m_Text.length())
+					int charWidth;
+					if(m_nCaret < (int)m_Text.length())
 					{
-						const my::Font::CharacterInfo & info = Skin->m_Font->GetCharacterInfo(m_Text[m_nCaret]);
+						const Font::CharacterInfo & info = Skin->m_Font->GetCharacterInfo(m_Text[m_nCaret]);
 						charWidth = info.horiAdvance;
 					}
 					else
 					{
-						const my::Font::CharacterInfo & info = Skin->m_Font->GetCharacterInfo(L'_');
+						const Font::CharacterInfo & info = Skin->m_Font->GetCharacterInfo(L'_');
 						charWidth = info.horiAdvance;
 					}
 					CaretRect.r = TextRect.l + caret_x - x1st + charWidth;
@@ -589,7 +579,7 @@ bool EditBox::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					if(m_nCaret != m_nSelStart)
 						DeleteSelectionText();
 
-					if(!m_bInsertMode && m_nCaret < m_Text.length())
+					if(!m_bInsertMode && m_nCaret < (int)m_Text.length())
 					{
 						m_Text[m_nCaret] = (WCHAR)wParam;
 						PlaceCaret(m_nCaret + 1);
@@ -627,14 +617,18 @@ bool EditBox::HandleKeyboard(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case VK_HOME:
 				PlaceCaret(0);
 				if(GetKeyState(VK_SHIFT) >= 0)
+				{
 					m_nSelStart = m_nCaret;
+				}
 				ResetCaretBlink();
 				return true;
 
 			case VK_END:
 				PlaceCaret(m_Text.length());
 				if(GetKeyState(VK_SHIFT) >= 0)
+				{
 					m_nSelStart = m_nCaret;
+				}
 				ResetCaretBlink();
 				return true;
 
@@ -671,18 +665,37 @@ bool EditBox::HandleKeyboard(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				return true;
 
 			case VK_LEFT:
-				if(m_nCaret > 0)
-					PlaceCaret(m_nCaret - 1);
+				if(GetKeyState(VK_CONTROL) < 0)
+				{
+					PlaceCaret(GetPriorItemPos(m_nCaret));
+				}
+				else if(m_nCaret > 0)
+				{
+					if(m_nCaret != m_nSelStart && GetKeyState(VK_SHIFT) >= 0)
+						PlaceCaret(__min(m_nCaret, m_nSelStart));
+					else
+						PlaceCaret(m_nCaret - 1);
+				}
 				if(GetKeyState(VK_SHIFT) >= 0)
+				{
 					m_nSelStart = m_nCaret;
+				}
 				ResetCaretBlink();
 				return true;
 
 			case VK_RIGHT:
-				if(m_nCaret < m_Text.length())
+				if(GetKeyState(VK_CONTROL) < 0)
+				{
+					PlaceCaret(GetNextItemPos(m_nCaret));
+				}
+				else if(m_nCaret < (int)m_Text.length())
+				{
 					PlaceCaret(m_nCaret + 1);
+				}
 				if(GetKeyState(VK_SHIFT) >= 0)
+				{
 					m_nSelStart = m_nCaret;
+				}
 				ResetCaretBlink();
 				return true;
 
@@ -717,19 +730,28 @@ bool EditBox::HandleMouse(UINT uMsg, const Vector2 & pt, WPARAM wParam, LPARAM l
 					float x1st = m_Skin->m_Font->CPtoX(m_Text.c_str(), m_nFirstVisible);
 					float x = pt.x - m_Location.x - m_Border.x + x1st;
 					int nCP = m_Skin->m_Font->XtoCP(m_Text.c_str(), x);
-					if(nCP < m_Text.length())
+					if(nCP < (int)m_Text.length())
 					{
 						float xLeft = m_Skin->m_Font->CPtoX(m_Text.c_str(), nCP);
-						const my::Font::CharacterInfo & info = m_Skin->m_Font->GetCharacterInfo(m_Text[nCP]);
+						const Font::CharacterInfo & info = m_Skin->m_Font->GetCharacterInfo(m_Text[nCP]);
 						if(x > xLeft + info.horiAdvance * 0.5f)
 						{
 							nCP += 1;
 						}
 					}
 
-					PlaceCaret(nCP);
+					if(uMsg == WM_LBUTTONDBLCLK)
+					{
+						m_nSelStart = GetPriorItemPos(nCP);
 
-					m_nSelStart = m_nCaret;
+						PlaceCaret(GetNextItemPos(nCP));
+					}
+					else
+					{
+						PlaceCaret(nCP);
+
+						m_nSelStart = m_nCaret;
+					}
 
 					ResetCaretBlink();
 				}
@@ -753,10 +775,10 @@ bool EditBox::HandleMouse(UINT uMsg, const Vector2 & pt, WPARAM wParam, LPARAM l
 					float x1st = m_Skin->m_Font->CPtoX(m_Text.c_str(), m_nFirstVisible);
 					float x = pt.x - m_Location.x - m_Border.x + x1st;
 					int nCP = m_Skin->m_Font->XtoCP(m_Text.c_str(), x);
-					if(nCP < m_Text.length())
+					if(nCP < (int)m_Text.length())
 					{
 						float xLeft = m_Skin->m_Font->CPtoX(m_Text.c_str(), nCP);
-						const my::Font::CharacterInfo & info = m_Skin->m_Font->GetCharacterInfo(m_Text[nCP]);
+						const Font::CharacterInfo & info = m_Skin->m_Font->GetCharacterInfo(m_Text[nCP]);
 						if(x > xLeft + info.horiAdvance * 0.5f)
 						{
 							nCP += 1;
@@ -793,9 +815,9 @@ void EditBox::PlaceCaret(int nCP)
 		float x1st = m_Skin->m_Font->CPtoX(m_Text.c_str(), m_nFirstVisible);
 		float x = m_Skin->m_Font->CPtoX(m_Text.c_str(), m_nCaret);
 		float x2;
-		if(m_nCaret < m_Text.length())
+		if(m_nCaret < (int)m_Text.length())
 		{
-			const my::Font::CharacterInfo & info = m_Skin->m_Font->GetCharacterInfo(m_Text[m_nCaret]);
+			const Font::CharacterInfo & info = m_Skin->m_Font->GetCharacterInfo(m_Text[m_nCaret]);
 			x2 = x + info.horiAdvance;
 		}
 		else
@@ -893,12 +915,87 @@ void EditBox::PasteFromClipboard(void)
     }
 }
 
+int EditBox::GetPriorItemPos(int nCP)
+{
+	int i = Max(Min(nCP, (int)m_Text.length()) - 1, 0);
+	int state = 0;
+	for(; i >= 0; i--)
+	{
+		switch(state)
+		{
+		case 0:
+			if(IsCharAlphaW(m_Text[i]) || IsCharAlphaNumericW(m_Text[i]))
+				state = 1;
+			else if(L' ' == m_Text[i])
+				state = 0;
+			else
+				state = 2;
+			break;
+
+		case 1:
+			if(IsCharAlphaW(m_Text[i]) || IsCharAlphaNumericW(m_Text[i]))
+				state = 1;
+			else
+				return i + 1;
+			break;
+
+		case 2:
+			if(IsCharAlphaW(m_Text[i]) || IsCharAlphaNumericW(m_Text[i]))
+				return i + 1;
+			else
+				state = 2;
+			break;
+		}
+	}
+	return 0;
+}
+
+int EditBox::GetNextItemPos(int nCP)
+{
+	int i = Max(Min(nCP, (int)m_Text.length() - 1), 0);
+	int state = 0;
+	for(; i < (int)m_Text.length(); i++)
+	{
+		switch(state)
+		{
+		case 0:
+			if(IsCharAlphaW(m_Text[i]) || IsCharAlphaNumericW(m_Text[i]))
+				state = 1;
+			else
+				state = 2;
+			break;
+
+		case 1:
+			if(IsCharAlphaW(m_Text[i]) || IsCharAlphaNumericW(m_Text[i]))
+				state = 1;
+			else if(L' ' == m_Text[i])
+				state = 3;
+			else
+				return i;
+			break;
+
+		case 2:
+			if(IsCharAlphaW(m_Text[i]) || IsCharAlphaNumericW(m_Text[i]))
+				return i;
+			else
+				state = 2;
+			break;
+
+		case 3:
+			if(L' ' == m_Text[i])
+				state = 3;
+			else
+				return i;
+		}
+	}
+	return m_Text.length();
+}
+
 void Dialog::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 {
-	HRESULT hr;
-	V(pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&m_Transform));
-	V(pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&m_Camera.View));
-	V(pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&m_Camera.Proj));
+	//V(pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&m_Transform));
+	//V(pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&m_ViewMatrix));
+	//V(pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&m_ProjMatrix));
 
 	if(m_bVisible)
 	{
@@ -962,18 +1059,15 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_XBUTTONDBLCLK:
 	case WM_MOUSEWHEEL:
 		{
-			// ! DXUT dependency
-			LPDIRECT3DDEVICE9 pd3dDevice = DXUTGetD3D9Device();
-			_ASSERT(NULL != pd3dDevice);
-			D3DVIEWPORT9 vp;
-			pd3dDevice->GetViewport(&vp);
+			Matrix4 invViewMatrix = m_ViewMatrix.inverse();
+			const Vector3 & viewX = invViewMatrix[0];
+			const Vector3 & viewY = invViewMatrix[1];
+			const Vector3 & viewZ = invViewMatrix[2];
+			const Vector3 & ptEye = invViewMatrix[3];
 
 			Vector2 ptScreen((short)LOWORD(lParam) + 0.5f, (short)HIWORD(lParam) + 0.5f);
-			Vector3 ptAt(
-				(ptScreen.x - vp.X) / vp.Width * m_Viewport.Width,
-				(ptScreen.y - vp.Y) / vp.Height * m_Viewport.Height, 0);
-			const Vector3 & ptEye = m_Camera.World[3];
-			Vector3 dir = (ptAt - ptEye).normalize();
+			Vector2 ptProj(Lerp(-1.0f, 1.0f, ptScreen.x / m_vp.Width) / m_ProjMatrix._11, Lerp(1.0f, -1.0f, ptScreen.y / m_vp.Height) / m_ProjMatrix._22);
+			Vector3 dir = (viewX * ptProj.x + viewY * ptProj.y + viewZ).normalize();
 
 			Vector3 dialogNormal = Vector3(0, 0, 1).transformNormal(m_Transform);
 			float dialogDistance = ((Vector3 &)m_Transform[3]).dot(dialogNormal);
@@ -997,6 +1091,11 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						RequestFocus(ControlPtd);
 						return true;
 					}
+				}
+				else if(uMsg == WM_LBUTTONDOWN && ControlFocus)
+				{
+					ControlFocus->OnFocusOut();
+					ResourceMgr::getSingleton().m_ControlFocus.reset();
 				}
 
 				if(ControlPtd != m_ControlMouseOver)
