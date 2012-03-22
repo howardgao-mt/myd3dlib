@@ -1,6 +1,7 @@
 
 #include "stdafx.h"
 #include "myd3dlib.h"
+#include <ImeUi.h>
 
 #ifdef _DEBUG
 #define new new( _CLIENT_BLOCK, __FILE__, __LINE__ )
@@ -335,7 +336,7 @@ bool Button::HandleKeyboard(UINT uMsg, WPARAM wParam, LPARAM lParam)
 					m_bPressed = false;
 
 					if(EventClick)
-						EventClick(this);
+						EventClick(this_ptr.lock());
 				}
 				return true;
 			}
@@ -374,7 +375,7 @@ bool Button::HandleMouse(UINT uMsg, const Vector2 & pt, WPARAM wParam, LPARAM lP
 				if(ContainsPoint(pt))
 				{
 					if(EventClick)
-						EventClick(this);
+						EventClick(this_ptr.lock());
 				}
 
 				return true;
@@ -419,11 +420,6 @@ void EditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 				UIRender::DrawRectangle(
 					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_FocusedTexRect));
 			}
-			else if(m_bMouseOver)
-			{
-				UIRender::DrawRectangle(
-					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_MouseOverTexRect));
-			}
 			else
 			{
 				UIRender::DrawRectangle(
@@ -440,7 +436,7 @@ void EditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 
 		if(Skin && Skin->m_Font)
 		{
-			Rectangle TextRect(Rect.l + m_Border.x, Rect.t + m_Border.y, Rect.r - m_Border.z, Rect.b - m_Border.w);
+			Rectangle TextRect = Rect.shrink(m_Border);
 
 			float x1st = Skin->m_Font->CPtoX(m_Text.c_str(), m_nFirstVisible);
 			float caret_x = Skin->m_Font->CPtoX(m_Text.c_str(), m_nCaret);
@@ -461,7 +457,7 @@ void EditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 
 			Skin->m_Font->DrawString(m_Text.c_str() + m_nFirstVisible, TextRect, Skin->m_TextColor, Font::AlignLeftMiddle);
 
-			if(m_bHasFocus && m_bCaretOn)
+			if(m_bHasFocus && m_bCaretOn && !ImeEditBox::s_bHideCaret)
 			{
 				Rectangle CaretRect(
 					TextRect.l + caret_x - x1st - 1,
@@ -506,7 +502,7 @@ bool EditBox::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						DeleteSelectionText();
 						if(EventChange)
-							EventChange(this);
+							EventChange(this_ptr.lock());
 					}
 					else if(m_nCaret > 0)
 					{
@@ -514,7 +510,7 @@ bool EditBox::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						m_nSelStart = m_nCaret;
 						m_Text.erase(m_nCaret, 1);
 						if(EventChange)
-							EventChange(this);
+							EventChange(this_ptr.lock());
 					}
 					ResetCaretBlink();
 					break;
@@ -526,14 +522,14 @@ bool EditBox::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						DeleteSelectionText();
 						if(EventChange)
-							EventChange(this);
+							EventChange(this_ptr.lock());
 					}
 					break;
 
 				case 22:		// Ctrl-V Paste
 					PasteFromClipboard();
 					if(EventChange)
-						EventChange(this);
+						EventChange(this_ptr.lock());
 					break;
 
 				case 1:
@@ -546,7 +542,7 @@ bool EditBox::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 				case VK_RETURN:
 					if(EventEnter)
-						EventEnter(this);
+						EventEnter(this_ptr.lock());
 					break;
 
 				// Junk characters we don't want in the string
@@ -593,7 +589,7 @@ bool EditBox::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					}
 					ResetCaretBlink();
 					if(EventChange)
-						EventChange(this);
+						EventChange(this_ptr.lock());
 				}
 			}
 			return true;
@@ -653,13 +649,13 @@ bool EditBox::HandleKeyboard(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				{
 					DeleteSelectionText();
 					if(EventChange)
-						EventChange(this);
+						EventChange(this_ptr.lock());
 				}
 				else
 				{
 					m_Text.erase(m_nCaret, 1);
 					if(EventChange)
-						EventChange(this);
+						EventChange(this_ptr.lock());
 				}
 				ResetCaretBlink();
 				return true;
@@ -991,6 +987,213 @@ int EditBox::GetNextItemPos(int nCP)
 	return m_Text.length();
 }
 
+bool ImeEditBox::s_bHideCaret = false;
+
+std::wstring ImeEditBox::s_CompString;
+
+void ImeEditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+{
+	if(m_bVisible)
+	{
+		EditBox::OnRender(pd3dDevice, fElapsedTime);
+
+	    ImeUi_RenderUI();
+
+		if(m_bHasFocus)
+		{
+			RenderIndicator(pd3dDevice, fElapsedTime);
+
+			RenderComposition(pd3dDevice, fElapsedTime);
+
+			if(ImeUi_IsShowCandListWindow())
+				RenderCandidateWindow(pd3dDevice, fElapsedTime);
+		}
+	}
+}
+
+bool ImeEditBox::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if(m_bEnabled && m_bVisible)
+	{
+		switch(uMsg)
+		{
+		case WM_DESTROY:
+			ImeUi_Uninitialize();
+			break;
+		}
+
+		if(!ImeUi_IsEnabled())
+			return EditBox::MsgProc(hWnd, uMsg, wParam, lParam);
+
+		bool trapped = false;
+		ImeUi_ProcessMessage(hWnd, uMsg, wParam, lParam, &trapped);
+		if(!trapped)
+			EditBox::MsgProc(hWnd, uMsg, wParam, lParam);
+
+		return trapped;
+	}
+	return false;
+}
+
+bool ImeEditBox::HandleMouse(UINT uMsg, const Vector2 & pt, WPARAM wParam, LPARAM lParam)
+{
+	if(m_bEnabled && m_bVisible)
+	{
+		return EditBox::HandleMouse(uMsg, pt, wParam, lParam);
+	}
+	return false;
+}
+
+void ImeEditBox::OnFocusIn(void)
+{
+	ImeUi_EnableIme(true);
+
+	EditBox::OnFocusIn();
+}
+
+void ImeEditBox::OnFocusOut(void)
+{
+	ImeUi_FinalizeString();
+	ImeUi_EnableIme(false);
+
+	EditBox::OnFocusOut();
+}
+
+void ImeEditBox::Initialize(HWND hWnd)
+{
+    ImeUiCallback_DrawRect = NULL;
+    ImeUiCallback_Malloc = malloc;
+    ImeUiCallback_Free = free;
+    ImeUiCallback_DrawFans = NULL;
+
+    ImeUi_Initialize(hWnd);
+    
+    ImeUi_EnableIme(true);
+}
+
+void ImeEditBox::Uninitialize(void)
+{
+    ImeUi_EnableIme(false);
+
+    ImeUi_Uninitialize();
+}
+
+bool ImeEditBox::StaticMsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if(!ImeUi_IsEnabled())
+		return false;
+
+	switch(uMsg)
+	{
+	case WM_INPUTLANGCHANGE:
+		return true;
+
+	case WM_IME_SETCONTEXT:
+		lParam = 0;
+		return false;
+
+	case WM_IME_STARTCOMPOSITION:
+		ResetCompositionString();
+		s_bHideCaret = true;
+		return true;
+
+	case WM_IME_ENDCOMPOSITION:
+		s_bHideCaret = false;
+		return false;
+
+	case WM_IME_COMPOSITION:
+		return false;
+	}
+	return false;
+}
+
+void ImeEditBox::ResetCompositionString(void)
+{
+	s_CompString.clear();
+}
+
+void ImeEditBox::EnableImeSystem(bool bEnable)
+{
+	ImeUi_EnableIme(bEnable);
+}
+
+void ImeEditBox::RenderIndicator(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+{
+}
+
+void ImeEditBox::RenderComposition(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+{
+	EditBoxSkinPtr Skin = boost::dynamic_pointer_cast<EditBoxSkin, ControlSkin>(m_Skin);
+	if(Skin)
+	{
+		s_CompString = ImeUi_GetCompositionString();
+
+		Rectangle Rect(Rectangle::LeftTop(m_Location, m_Size));
+
+		Rectangle TextRect = Rect.shrink(m_Border);
+
+		float x, x1st;
+		x = Skin->m_Font->CPtoX(m_Text.c_str(), m_nCaret);
+		x1st = Skin->m_Font->CPtoX(m_Text.c_str(), m_nFirstVisible);
+		Vector2 extent = Skin->m_Font->CalculateStringExtent(s_CompString.c_str());
+
+		Rectangle rc(TextRect.l + x - x1st, TextRect.t, TextRect.l + x - x1st + extent.x, TextRect.b);
+		if(rc.r > TextRect.r)
+			rc.offsetSelf(TextRect.l - rc.l, TextRect.Height());
+
+		UIRender::DrawRectangle(pd3dDevice, rc, m_CompWinColor);
+
+		Skin->m_Font->DrawString(s_CompString.c_str(), rc, Skin->m_TextColor, Font::AlignLeftTop);
+
+		float caret_x = Skin->m_Font->CPtoX(s_CompString.c_str(), ImeUi_GetImeCursorChars());
+		if(m_bCaretOn)
+		{
+			Rectangle CaretRect(rc.l + caret_x - 1, rc.t, rc.l + caret_x + 1, rc.b);
+
+			UIRender::DrawRectangle(pd3dDevice, CaretRect, Skin->m_CaretColor);
+		}
+	}
+}
+
+void ImeEditBox::RenderCandidateWindow(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+{
+	EditBoxSkinPtr Skin = boost::dynamic_pointer_cast<EditBoxSkin, ControlSkin>(m_Skin);
+	if(Skin)
+	{
+		Rectangle Rect(Rectangle::LeftTop(m_Location, m_Size));
+
+		Rectangle TextRect = Rect.shrink(m_Border);
+
+		float x, x1st, comp_x;
+		x = Skin->m_Font->CPtoX(m_Text.c_str(), m_nCaret);
+		x1st = Skin->m_Font->CPtoX(m_Text.c_str(), m_nFirstVisible);
+		Vector2 extent = Skin->m_Font->CalculateStringExtent(s_CompString.c_str());
+
+		Rectangle CompRect(TextRect.l + x - x1st, TextRect.t, TextRect.l + x - x1st + extent.x, TextRect.b);
+		if(CompRect.r > TextRect.r)
+			CompRect.offsetSelf(TextRect.l - CompRect.l, TextRect.Height());
+
+		comp_x = Skin->m_Font->CPtoX(s_CompString.c_str(), ImeUi_GetImeCursorChars());
+
+		float WidthRequired = 0;
+		float HeightRequired = 0;
+		float SingleLineHeight = 0;
+
+		std::wstring horizontalText;
+		for(UINT i = 0; i < MAX_CANDLIST && *ImeUi_GetCandidate(i) != L'\0'; i++)
+		{
+			horizontalText += ImeUi_GetCandidate(i);
+		}
+		extent = Skin->m_Font->CalculateStringExtent(horizontalText.c_str());
+
+		Rectangle CandRect(Rectangle::LeftTop(CompRect.l + comp_x, CompRect.b, extent.x, (float)Skin->m_Font->m_LineHeight));
+
+		UIRender::DrawRectangle(pd3dDevice, CandRect, m_CandidateWinColor);
+
+		Skin->m_Font->DrawString(horizontalText.c_str(), CandRect, Skin->m_TextColor, Font::AlignLeftTop);
+	}
+}
+
 void Dialog::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 {
 	//V(pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&m_Transform));
@@ -1065,8 +1268,10 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			const Vector3 & viewZ = invViewMatrix[2];
 			const Vector3 & ptEye = invViewMatrix[3];
 
+			RECT ClientRect;
+			GetClientRect(hWnd, &ClientRect);
 			Vector2 ptScreen((short)LOWORD(lParam) + 0.5f, (short)HIWORD(lParam) + 0.5f);
-			Vector2 ptProj(Lerp(-1.0f, 1.0f, ptScreen.x / m_vp.Width) / m_ProjMatrix._11, Lerp(1.0f, -1.0f, ptScreen.y / m_vp.Height) / m_ProjMatrix._22);
+			Vector2 ptProj(Lerp(-1.0f, 1.0f, ptScreen.x / ClientRect.right) / m_ProjMatrix._11, Lerp(1.0f, -1.0f, ptScreen.y / ClientRect.bottom) / m_ProjMatrix._22);
 			Vector3 dir = (viewX * ptProj.x + viewY * ptProj.y + viewZ).normalize();
 
 			Vector3 dialogNormal = Vector3(0, 0, 1).transformNormal(m_Transform);
