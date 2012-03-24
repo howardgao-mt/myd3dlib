@@ -123,55 +123,41 @@ void UIRender::DrawRectangle(
 	IDirect3DDevice9 * pd3dDevice,
 	const my::Rectangle & rect,
 	DWORD color,
-	const my::Rectangle & uvRect)
+	TexturePtr texture,
+	const RECT & SrcRect)
 {
-	CUSTOMVERTEX vertex_list[6];
-	size_t vertNum = BuildRectangleVertices(vertex_list, _countof(vertex_list), rect, color, uvRect);
-
 	//Begin(pd3dDevice);
 
+	CUSTOMVERTEX vertex_list[6];
+	size_t vertNum;
 	HRESULT hr;
+	if(texture)
+	{
+		D3DSURFACE_DESC desc = texture->GetLevelDesc(0);
+		vertNum = BuildRectangleVertices(
+			vertex_list, _countof(vertex_list), rect, color, CalculateUVRect(CSize(desc.Width, desc.Height), SrcRect));
+		V(pd3dDevice->SetTexture(0, texture->m_ptr));
+	}
+	else
+	{
+		vertNum = BuildRectangleVertices(vertex_list, _countof(vertex_list), rect, color, Rectangle(0,0,1,1));
+		V(pd3dDevice->SetTexture(0, NULL));
+	}
 	V(pd3dDevice->SetFVF(D3DFVF_CUSTOMVERTEX));
 	V(pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertNum / 3, vertex_list, sizeof(*vertex_list)));
 
 	//End(pd3dDevice);
 }
 
-void UIRender::DrawRectangle(
-	IDirect3DDevice9 * pd3dDevice,
-	const my::Rectangle & rect,
-	DWORD color)
-{
-	CUSTOMVERTEX vertex_list[6];
-	size_t vertNum = BuildRectangleVertices(vertex_list, _countof(vertex_list), rect, color, Rectangle(0,0,1,1));
-
-	//Begin(pd3dDevice);
-
-    //pd3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG2 );
-    //pd3dDevice->SetTextureStageState( 0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2 );
-
-	HRESULT hr;
-	V(pd3dDevice->SetTexture(0, NULL));
-	V(pd3dDevice->SetFVF(D3DFVF_CUSTOMVERTEX));
-	V(pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertNum / 3, vertex_list, sizeof(*vertex_list)));
-
-	//V(pd3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE));
-	//V(pd3dDevice->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE));
-
-	//End(pd3dDevice);
-}
-
-void Control::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+void Control::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
 {
 	if(m_bVisible)
 	{
-		if(m_Skin && m_Skin->m_Texture)
+		if(m_Skin)
 		{
-			D3DSURFACE_DESC desc = m_Skin->m_Texture->GetLevelDesc();
-			CSize TextureSize(desc.Width, desc.Height);
-			V(pd3dDevice->SetTexture(0, m_Skin->m_Texture->m_ptr));
-			UIRender::DrawRectangle(
-				pd3dDevice, Rectangle::LeftTop(m_Location, m_Size), m_Color, UIRender::CalculateUVRect(TextureSize, m_Skin->m_TextureRect));
+			Rectangle Rect(Rectangle::LeftTop(Offset + m_Location, m_Size));
+
+			UIRender::DrawRectangle(pd3dDevice, Rect, m_Color, m_Skin->m_Texture, m_Skin->m_TextureRect);
 		}
 	}
 }
@@ -223,7 +209,7 @@ bool Control::OnHotkey(void)
 
 bool Control::ContainsPoint(const Vector2 & pt)
 {
-	return pt.x >= m_Location.x && pt.x < m_Location.x + m_Size.x && pt.y >= m_Location.y && pt.y < m_Location.y + m_Size.y;
+	return Rectangle::LeftTop(m_Location, m_Size).PtInRect(pt);
 }
 
 void Control::SetEnabled(bool bEnabled)
@@ -246,13 +232,13 @@ bool Control::GetVisible(void)
 	return m_bVisible;
 }
 
-void Static::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+void Static::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
 {
 	if(m_bVisible)
 	{
 		if(m_Skin && m_Skin->m_Font)
 		{
-			m_Skin->m_Font->DrawString(m_Text.c_str(), Rectangle::LeftTop(m_Location, m_Size), m_Skin->m_TextColor, m_Skin->m_TextAlign);
+			m_Skin->m_Font->DrawString(m_Text.c_str(), Rectangle::LeftTop(Offset + m_Location, m_Size), m_Skin->m_TextColor, m_Skin->m_TextAlign);
 		}
 	}
 }
@@ -262,39 +248,31 @@ bool Static::ContainsPoint(const Vector2 & pt)
 	return false;
 }
 
-void Button::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+void Button::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
 {
 	if(m_bVisible)
 	{
 		ButtonSkinPtr Skin = boost::dynamic_pointer_cast<ButtonSkin, ControlSkin>(m_Skin);
 
-		Rectangle Rect(Rectangle::LeftTop(m_Location, m_Size));
+		Rectangle Rect(Rectangle::LeftTop(Offset + m_Location, m_Size));
 
-		if(Skin && Skin->m_Texture)
+		if(Skin)
 		{
-			D3DSURFACE_DESC desc = Skin->m_Texture->GetLevelDesc();
-			CSize TextureSize(desc.Width, desc.Height);
-			V(pd3dDevice->SetTexture(0, Skin->m_Texture->m_ptr));
-
 			if(!m_bEnabled)
 			{
-				UIRender::DrawRectangle(
-					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_DisabledTexRect));
+				UIRender::DrawRectangle(pd3dDevice, Rect, m_Color, Skin->m_Texture, Skin->m_DisabledTexRect);
 			}
 			else if(m_bPressed)
 			{
-				UIRender::DrawRectangle(
-					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_PressedTexRect));
+				UIRender::DrawRectangle(pd3dDevice, Rect, m_Color, Skin->m_Texture, Skin->m_PressedTexRect);
 			}
 			else if(m_bMouseOver)
 			{
-				UIRender::DrawRectangle(
-					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_MouseOverTexRect));
+				UIRender::DrawRectangle(pd3dDevice, Rect, m_Color, Skin->m_Texture, Skin->m_MouseOverTexRect);
 			}
 			else
 			{
-				UIRender::DrawRectangle(
-					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_TextureRect));
+				UIRender::DrawRectangle(pd3dDevice, Rect, m_Color, Skin->m_Texture, Skin->m_TextureRect);
 			}
 		}
 
@@ -393,37 +371,30 @@ bool Button::CanHaveFocus(void)
 
 bool Button::ContainsPoint(const Vector2 & pt)
 {
-	return Control::ContainsPoint(pt);
+	return Rectangle::LeftTop(m_Location, m_Size).PtInRect(pt);
 }
 
-void EditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+void EditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
 {
 	if(m_bVisible)
 	{
 		EditBoxSkinPtr Skin = boost::dynamic_pointer_cast<EditBoxSkin, ControlSkin>(m_Skin);
 
-		Rectangle Rect(Rectangle::LeftTop(m_Location, m_Size));
+		Rectangle Rect(Rectangle::LeftTop(Offset + m_Location, m_Size));
 
-		if(Skin && Skin->m_Texture)
+		if(Skin)
 		{
-			D3DSURFACE_DESC desc = Skin->m_Texture->GetLevelDesc();
-			CSize TextureSize(desc.Width, desc.Height);
-			V(pd3dDevice->SetTexture(0, Skin->m_Texture->m_ptr));
-
 			if(!m_bEnabled)
 			{
-				UIRender::DrawRectangle(
-					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_DisabledTexRect));
+				UIRender::DrawRectangle(pd3dDevice, Rect, m_Color, Skin->m_Texture, Skin->m_DisabledTexRect);
 			}
 			else if(m_bHasFocus)
 			{
-				UIRender::DrawRectangle(
-					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_FocusedTexRect));
+				UIRender::DrawRectangle(pd3dDevice, Rect, m_Color, Skin->m_Texture, Skin->m_FocusedTexRect);
 			}
 			else
 			{
-				UIRender::DrawRectangle(
-					pd3dDevice, Rect, m_Color, UIRender::CalculateUVRect(TextureSize, Skin->m_TextureRect));
+				UIRender::DrawRectangle(pd3dDevice, Rect, m_Color, Skin->m_Texture, Skin->m_TextureRect);
 			}
 		}
 
@@ -991,22 +962,22 @@ bool ImeEditBox::s_bHideCaret = false;
 
 std::wstring ImeEditBox::s_CompString;
 
-void ImeEditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+void ImeEditBox::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
 {
 	if(m_bVisible)
 	{
-		EditBox::OnRender(pd3dDevice, fElapsedTime);
+		EditBox::OnRender(pd3dDevice, fElapsedTime, Offset);
 
 	    ImeUi_RenderUI();
 
 		if(m_bHasFocus)
 		{
-			RenderIndicator(pd3dDevice, fElapsedTime);
+			RenderIndicator(pd3dDevice, fElapsedTime, Offset);
 
-			RenderComposition(pd3dDevice, fElapsedTime);
+			RenderComposition(pd3dDevice, fElapsedTime, Offset);
 
 			if(ImeUi_IsShowCandListWindow())
-				RenderCandidateWindow(pd3dDevice, fElapsedTime);
+				RenderCandidateWindow(pd3dDevice, fElapsedTime, Offset);
 		}
 	}
 }
@@ -1117,18 +1088,18 @@ void ImeEditBox::EnableImeSystem(bool bEnable)
 	ImeUi_EnableIme(bEnable);
 }
 
-void ImeEditBox::RenderIndicator(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+void ImeEditBox::RenderIndicator(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
 {
 }
 
-void ImeEditBox::RenderComposition(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+void ImeEditBox::RenderComposition(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
 {
 	EditBoxSkinPtr Skin = boost::dynamic_pointer_cast<EditBoxSkin, ControlSkin>(m_Skin);
 	if(Skin)
 	{
 		s_CompString = ImeUi_GetCompositionString();
 
-		Rectangle Rect(Rectangle::LeftTop(m_Location, m_Size));
+		Rectangle Rect(Rectangle::LeftTop(Offset + m_Location, m_Size));
 
 		Rectangle TextRect = Rect.shrink(m_Border);
 
@@ -1155,12 +1126,12 @@ void ImeEditBox::RenderComposition(IDirect3DDevice9 * pd3dDevice, float fElapsed
 	}
 }
 
-void ImeEditBox::RenderCandidateWindow(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
+void ImeEditBox::RenderCandidateWindow(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
 {
 	EditBoxSkinPtr Skin = boost::dynamic_pointer_cast<EditBoxSkin, ControlSkin>(m_Skin);
 	if(Skin)
 	{
-		Rectangle Rect(Rectangle::LeftTop(m_Location, m_Size));
+		Rectangle Rect(Rectangle::LeftTop(Offset + m_Location, m_Size));
 
 		Rectangle TextRect = Rect.shrink(m_Border);
 
@@ -1194,20 +1165,225 @@ void ImeEditBox::RenderCandidateWindow(IDirect3DDevice9 * pd3dDevice, float fEla
 	}
 }
 
+void ScrollBar::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Vector2 & Offset)
+{
+    // Check if the arrow button has been held for a while.
+    // If so, update the thumb position to simulate repeated
+    // scroll.
+	if(m_Arrow != CLEAR)
+	{
+		double dCurrTime = DXUTGetTime();
+		switch(m_Arrow)
+		{
+		case CLICKED_UP:
+			if(0.33 < dCurrTime - m_dArrowTS)
+			{
+				Scroll(-1);
+				m_Arrow = HELD_UP;
+				m_dArrowTS = dCurrTime;
+			}
+			break;
+
+		case HELD_UP:
+			if(0.05 < dCurrTime - m_dArrowTS)
+			{
+				Scroll(-1);
+				m_dArrowTS = dCurrTime;
+			}
+			break;
+
+		case CLICKED_DOWN:
+			if(0.33 < dCurrTime - m_dArrowTS)
+			{
+				Scroll( 1);
+				m_Arrow = HELD_DOWN;
+				m_dArrowTS = dCurrTime;
+			}
+			break;
+
+		case HELD_DOWN:
+			if(0.05 < dCurrTime - m_dArrowTS)
+			{
+				Scroll( 1);
+				m_dArrowTS = dCurrTime;
+			}
+			break;
+		}
+	}
+
+	if(m_bEnabled && m_bVisible)
+	{
+		ScrollBarSkinPtr Skin = boost::dynamic_pointer_cast<ScrollBarSkin, ControlSkin>(m_Skin);
+
+		Rectangle Rect(Rectangle::LeftTop(Offset + m_Location, m_Size));
+
+		if(Skin)
+		{
+			Rectangle UpButtonRect(Rectangle::LeftTop(Rect.l, Rect.t, m_Size.x, m_UpDownButtonHeight));
+
+			Rectangle DownButtonRect(Rectangle::RightBottom(Rect.r, Rect.b, m_Size.x, m_UpDownButtonHeight));
+
+			if(m_nEnd - m_nStart > m_nPageSize)
+			{
+				UIRender::DrawRectangle(pd3dDevice, UpButtonRect, m_Color, Skin->m_Texture, Skin->m_UpBtnNormalTexRect);
+
+				UIRender::DrawRectangle(pd3dDevice, DownButtonRect, m_Color, Skin->m_Texture, Skin->m_DownBtnNormalTexRect);
+
+				float fTrackHeight = m_Size.y - m_UpDownButtonHeight * 2;
+				float fThumbHeight = fTrackHeight * m_nPageSize / (m_nEnd - m_nStart);
+				int nMaxPosition = m_nEnd - m_nStart - m_nPageSize;
+				float fThumbTop = UpButtonRect.b + (float)(m_nPosition - m_nStart) / nMaxPosition * (fTrackHeight - fThumbHeight);
+				Rectangle ThumbButtonRect(Rect.l, fThumbTop, Rect.r, fThumbTop + fThumbHeight);
+
+				UIRender::DrawRectangle(pd3dDevice, ThumbButtonRect, m_Color, Skin->m_Texture, Skin->m_ThumbBtnNormalTexRect);
+			}
+			else
+			{
+				UIRender::DrawRectangle(pd3dDevice, UpButtonRect, m_Color, Skin->m_Texture, Skin->m_UpBtnDisabledTexRect);
+
+				UIRender::DrawRectangle(pd3dDevice, DownButtonRect, m_Color, Skin->m_Texture, Skin->m_DownBtnDisabledTexRect);
+			}
+		}
+	}
+}
+
+bool ScrollBar::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	if(WM_CAPTURECHANGED == uMsg)
+	{
+		// ! DXUT dependency
+		if((HWND)lParam != DXUTGetHWND())
+			m_bDrag = false;
+	}
+	return false;
+}
+
+bool ScrollBar::HandleKeyboard(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	return false;
+}
+
+bool ScrollBar::HandleMouse(UINT uMsg, const Vector2 & pt, WPARAM wParam, LPARAM lParam)
+{
+	switch(uMsg)
+	{
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONDBLCLK:
+		{
+			Rectangle UpButtonRect(Rectangle::LeftTop(m_Location, Vector2(m_Size.x, m_UpDownButtonHeight)));
+			if(UpButtonRect.PtInRect(pt))
+			{
+				SetCapture(DXUTGetHWND());
+				if(m_nPosition > m_nStart)
+					--m_nPosition;
+				m_Arrow = CLICKED_UP;
+				m_dArrowTS = DXUTGetTime();
+				return true;
+			}
+
+			Rectangle DownButtonRect(Rectangle::RightBottom(m_Location + m_Size, Vector2(m_Size.x, m_UpDownButtonHeight)));
+			if(DownButtonRect.PtInRect(pt))
+			{
+				SetCapture(DXUTGetHWND());
+				if(m_nPosition + m_nPageSize < m_nEnd)
+					++m_nPosition;
+				m_Arrow = CLICKED_DOWN;
+				m_dArrowTS = DXUTGetTime();
+				return true;
+			}
+
+			float fTrackHeight = m_Size.y - m_UpDownButtonHeight * 2;
+			float fThumbHeight = fTrackHeight * m_nPageSize / (m_nEnd - m_nStart);
+			int nMaxPosition = m_nEnd - m_nStart - m_nPageSize;
+			float fMaxThumb = fTrackHeight - fThumbHeight;
+			float fThumbTop = UpButtonRect.b + (float)(m_nPosition - m_nStart) / nMaxPosition * fMaxThumb;
+			Rectangle ThumbButtonRect(m_Location.x, fThumbTop, m_Location.x + m_Size.x, fThumbTop + fThumbHeight);
+			if(ThumbButtonRect.PtInRect(pt))
+			{
+				SetCapture(DXUTGetHWND());
+				m_bDrag = true;
+				m_fThumbOffsetY = pt.y - fThumbTop;
+				return true;
+			}
+
+			if(pt.x >= ThumbButtonRect.l && pt.x < ThumbButtonRect.r)
+			{
+				SetCapture(DXUTGetHWND());
+				if(pt.y >= UpButtonRect.b && pt.y < ThumbButtonRect.t)
+				{
+					Scroll(-m_nPageSize);
+					return true;
+				}
+				else if(pt.y >= ThumbButtonRect.b && pt.y < DownButtonRect.t)
+				{
+					Scroll( m_nPageSize);
+					return true;
+				}
+			}
+		}
+		break;
+
+	case WM_LBUTTONUP:
+		{
+			m_bDrag = false;
+			ReleaseCapture();
+			m_Arrow = CLEAR;
+			break;
+		}
+		break;
+
+	case WM_MOUSEMOVE:
+		if(m_bDrag)
+		{
+			Rectangle TrackRect(
+				m_Location.x,
+				m_Location.y + m_UpDownButtonHeight,
+				m_Location.x + m_Size.x,
+				m_Location.y + m_Size.y - m_UpDownButtonHeight);
+
+			float fTrackHeight = m_Size.y - m_UpDownButtonHeight * 2;
+			float fThumbHeight = fTrackHeight * m_nPageSize / (m_nEnd - m_nStart);
+			int nMaxPosition = m_nEnd - m_nStart - m_nPageSize;
+			float fMaxThumb = fTrackHeight - fThumbHeight;
+			float fThumbTop = pt.y - m_fThumbOffsetY;
+
+			if(fThumbTop < TrackRect.t)
+				fThumbTop = TrackRect.t;
+			else if(fThumbTop + fThumbHeight > TrackRect.b)
+				fThumbTop = TrackRect.b - fThumbHeight;
+
+			m_nPosition = (int)(m_nStart + (fThumbTop - TrackRect.t + fMaxThumb / (nMaxPosition * 2)) * nMaxPosition / fMaxThumb);
+			return true;
+		}
+		break;
+	}
+	return false;
+}
+
+bool ScrollBar::CanHaveFocus(void)
+{
+	return m_bVisible && m_bEnabled;
+}
+
+void ScrollBar::Scroll(int nDelta)
+{
+	m_nPosition = Max(m_nStart, Min(m_nEnd - m_nPageSize, m_nPosition + nDelta));
+}
+
 void Dialog::OnRender(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 {
 	//V(pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&m_Transform));
 	//V(pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&m_ViewMatrix));
 	//V(pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&m_ProjMatrix));
 
-	if(m_bVisible)
+	if(m_bEnabled && m_bVisible)
 	{
-		Control::OnRender(pd3dDevice, fElapsedTime);
+		Control::OnRender(pd3dDevice, fElapsedTime, Vector2(0,0));
 
-		ControlPtrList::iterator ctrl_iter = m_Controls.begin();
+		ControlPtrSet::iterator ctrl_iter = m_Controls.begin();
 		for(; ctrl_iter != m_Controls.end(); ctrl_iter++)
 		{
-			(*ctrl_iter)->OnRender(pd3dDevice, fElapsedTime);
+			(*ctrl_iter)->OnRender(pd3dDevice, fElapsedTime, m_Location);
 		}
 	}
 }
@@ -1216,10 +1392,12 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	ControlPtr ControlFocus = ResourceMgr::getSingleton().m_ControlFocus.lock();
 
-	if(ControlFocus && ControlFocus->GetEnabled()
-		&& ControlFocus->MsgProc(hWnd, uMsg, wParam, lParam))
+	if(ControlFocus
+		&& ContainsControl(ControlFocus)
+		&& ControlFocus->GetEnabled())
 	{
-		return true;
+		if(ControlFocus->MsgProc(hWnd, uMsg, wParam, lParam))
+			return true;
 	}
 
 	switch(uMsg)
@@ -1228,7 +1406,9 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_SYSKEYDOWN:
 	case WM_KEYUP:
 	case WM_SYSKEYUP:
-		if(ControlFocus && ControlFocus->GetEnabled())
+		if(ControlFocus
+			&& ContainsControl(ControlFocus)
+			&& ControlFocus->GetEnabled())
 		{
 			if(ControlFocus->HandleKeyboard(uMsg, wParam, lParam))
 				return true;
@@ -1236,7 +1416,7 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		if(uMsg == WM_KEYDOWN && !ControlFocus)
 		{
-			ControlPtrList::iterator ctrl_iter = m_Controls.begin();
+			ControlPtrSet::iterator ctrl_iter = m_Controls.begin();
 			for(; ctrl_iter != m_Controls.end(); ctrl_iter++)
 			{
 				if((*ctrl_iter)->OnHotkey())
@@ -1282,26 +1462,33 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			{
 				Vector3 ptInt(ptEye + dir * result.second);
 				Vector3 pt = ptInt.transformCoord(m_Transform.inverse());
-				if(ControlFocus && ControlFocus->GetEnabled())
+				Vector2 ptLocal = Vector2(pt.x - m_Location.x, pt.y - m_Location.y);
+				if(ControlFocus
+					&& ContainsControl(ControlFocus)
+					&& ControlFocus->GetEnabled())
 				{
-					if(ControlFocus->HandleMouse(uMsg, pt, wParam, lParam))
+					if(ControlFocus->HandleMouse(uMsg, ptLocal, wParam, lParam))
 						return true;
 				}
 
-				ControlPtr ControlPtd = GetControlAtPoint(pt);
+				ControlPtr ControlPtd = GetControlAtPoint(ptLocal);
 				if(ControlPtd && ControlPtd->GetEnabled())
 				{
-					if(ControlPtd->HandleMouse(uMsg, pt, wParam, lParam))
+					if(ControlPtd->HandleMouse(uMsg, ptLocal, wParam, lParam))
 					{
 						RequestFocus(ControlPtd);
 						return true;
 					}
 				}
-				else if(uMsg == WM_LBUTTONDOWN && ControlFocus)
+
+				if(uMsg == WM_LBUTTONDOWN && ControlFocus)
 				{
 					ControlFocus->OnFocusOut();
 					ResourceMgr::getSingleton().m_ControlFocus.reset();
 				}
+
+				if(HandleMouse(uMsg, pt, wParam, lParam))
+					return true;
 
 				if(ControlPtd != m_ControlMouseOver)
 				{
@@ -1319,9 +1506,45 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return false;
 }
 
+bool Dialog::HandleMouse(UINT uMsg, const Vector2 & pt, WPARAM wParam, LPARAM lParam)
+{
+	if(m_bEnabled && m_bVisible)
+	{
+		switch(uMsg)
+		{
+		case WM_LBUTTONDOWN:
+		case WM_LBUTTONDBLCLK:
+			if(ContainsPoint(pt))
+			{
+				m_bMouseDrag = true;
+
+				// ! DXUT dependency
+				SetCapture(DXUTGetHWND());
+
+				m_MouseOffset = pt - m_Location;
+				return true;
+			}
+
+		case WM_LBUTTONUP:
+			if(m_bMouseDrag)
+			{
+				ReleaseCapture();
+				m_bMouseDrag = false;
+			}
+
+		case WM_MOUSEMOVE:
+			if(m_bMouseDrag)
+			{
+				m_Location = pt - m_MouseOffset;
+			}
+		}
+	}
+	return false;
+}
+
 ControlPtr Dialog::GetControlAtPoint(const Vector2 & pt)
 {
-	ControlPtrList::iterator ctrl_iter = m_Controls.begin();
+	ControlPtrSet::iterator ctrl_iter = m_Controls.begin();
 	for(; ctrl_iter != m_Controls.end(); ctrl_iter++)
 	{
 		if((*ctrl_iter)->ContainsPoint(pt) && (*ctrl_iter)->GetVisible() && (*ctrl_iter)->GetEnabled())
@@ -1348,4 +1571,9 @@ void Dialog::RequestFocus(ControlPtr control)
 
 	control->OnFocusIn();
 	ResourceMgr::getSingleton().m_ControlFocus = control;
+}
+
+bool Dialog::ContainsControl(ControlPtr control)
+{
+	return m_Controls.end() != m_Controls.find(control);
 }
