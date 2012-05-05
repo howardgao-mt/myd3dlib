@@ -2,6 +2,7 @@
 
 #include <myd3dlib.h>
 #include "Console.h"
+#include "SkyBox.h"
 
 class Game : public my::DxutApp
 {
@@ -31,6 +32,10 @@ public:
 	my::KeyboardPtr m_keyboard;
 
 	my::MousePtr m_mouse;
+
+	my::SoundPtr m_sound;
+
+	SkyBoxPtr m_skyBox;
 
 public:
 	Game(void);
