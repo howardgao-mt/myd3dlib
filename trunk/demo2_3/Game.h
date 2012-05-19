@@ -139,7 +139,24 @@ public:
 	}
 };
 
-class EvLoadOver : public boost::statechart::event<EvLoadOver>
+template <class DrivedClass>
+class GameEvent : public boost::statechart::event<DrivedClass>
+{
+public:
+	GameEvent(void)
+	{
+		// 当内部状态发生变化，新旧资源会被重新创建，
+		// 所以就需要在切换状态时重新 Lost/Reset 一遍“相关”（目前还做不到只更新“相关”)资源
+		Game::getSingleton().OnD3D9LostDevice();
+	}
+
+	virtual ~GameEvent(void)
+	{
+		Game::getSingleton().OnD3D9ResetDevice(DXUTGetD3D9Device(), DXUTGetD3D9BackBufferSurfaceDesc());
+	}
+};
+
+class EvLoadOver : public GameEvent<EvLoadOver>
 {
 };
 
@@ -150,11 +167,11 @@ class GameLoad
 	, public boost::statechart::simple_state<GameLoad, Game>
 {
 public:
+	typedef boost::statechart::transition<EvLoadOver, GamePlay> reactions;
+
 	GameLoad(void);
 
 	~GameLoad(void);
-
-	typedef boost::statechart::transition<EvLoadOver, GamePlay> reactions;
 
 	virtual HRESULT OnD3D9ResetDevice(
 		IDirect3DDevice9 * pd3dDevice,
