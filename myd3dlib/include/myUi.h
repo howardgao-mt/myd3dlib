@@ -2,7 +2,9 @@
 #pragma once
 
 #include <boost/weak_ptr.hpp>
+#pragma warning(disable: 4819)
 #include <boost/function.hpp>
+#pragma warning(default: 4819)
 
 namespace my
 {
@@ -22,7 +24,7 @@ namespace my
 
 		static void End(IDirect3DDevice9 * pd3dDevice);
 
-		static Rectangle CalculateUVRect(const SIZE & textureSize, const RECT & textureRect);
+		static Rectangle CalculateUVRect(const CSize & textureSize, const CRect & textureRect);
 
 		static size_t BuildRectangleVertices(
 			CUSTOMVERTEX * pBuffer,
@@ -32,20 +34,33 @@ namespace my
 			const Rectangle & uvRect);
 
 		// Example of Draw BuildRectangleVertices
-		static void DrawRectangle(
-			IDirect3DDevice9 * pd3dDevice,
-			const Rectangle & rect,
-			DWORD color,
-			TexturePtr texture = TexturePtr(),
-			const RECT & SrcRect = CRect(0,0,0,0));
+		static void DrawRectangle(IDirect3DDevice9 * pd3dDevice, const Rectangle & rect, DWORD color);
 	};
 
-	class ControlSkin
+	class ControlImage
 	{
 	public:
 		TexturePtr m_Texture;
 
-		RECT m_TextureRect;
+		Vector4 m_Border;
+
+		ControlImage(TexturePtr Texture, const Vector4 & Border)
+			: m_Texture(Texture)
+			, m_Border(Border)
+		{
+		}
+
+		size_t BuildVertices(UIRender::CUSTOMVERTEX * pBuffer, size_t buffer_size, const Rectangle & rect, DWORD color);
+
+		void Draw(IDirect3DDevice9 * pd3dDevice, const Rectangle & rect, DWORD color);
+	};
+
+	typedef boost::shared_ptr<ControlImage> ControlImagePtr;
+
+	class ControlSkin
+	{
+	public:
+		ControlImagePtr m_Image;
 
 		FontPtr m_Font;
 
@@ -55,8 +70,7 @@ namespace my
 
 	public:
 		ControlSkin(void)
-			: m_TextureRect(CRect(0,0,0,0))
-			, m_TextColor(D3DCOLOR_ARGB(255,255,255,0))
+			: m_TextColor(D3DCOLOR_ARGB(255,255,255,0))
 			, m_TextAlign(my::Font::AlignLeftTop)
 		{
 		}
@@ -64,6 +78,10 @@ namespace my
 		virtual ~ControlSkin(void)
 		{
 		}
+
+		void DrawImage(IDirect3DDevice9 * pd3dDevice, ControlImagePtr Image, const Rectangle & rect, DWORD color);
+
+		void DrawString(LPCWSTR pString, const Rectangle & rect, DWORD color);
 	};
 
 	typedef boost::shared_ptr<ControlSkin> ControlSkinPtr;
@@ -174,20 +192,17 @@ namespace my
 	class ButtonSkin : public ControlSkin
 	{
 	public:
-		RECT m_DisabledTexRect;
+		ControlImagePtr m_DisabledImage;
 
-		RECT m_PressedTexRect;
+		ControlImagePtr m_PressedImage;
 
-		RECT m_MouseOverTexRect;
+		ControlImagePtr m_MouseOverImage;
 
 		Vector2 m_PressedOffset;
 
 	public:
 		ButtonSkin(void)
-			: m_DisabledTexRect(CRect(0,0,0,0))
-			, m_PressedTexRect(CRect(0,0,0,0))
-			, m_MouseOverTexRect(CRect(0,0,0,0))
-			, m_PressedOffset(0,0)
+			: m_PressedOffset(0,0)
 		{
 		}
 	};
@@ -233,9 +248,9 @@ namespace my
 	class EditBoxSkin : public ControlSkin
 	{
 	public:
-		RECT m_DisabledTexRect;
+		ControlImagePtr m_DisabledImage;
 
-		RECT m_FocusedTexRect;
+		ControlImagePtr m_FocusedImage;
 
 		D3DCOLOR m_SelTextColor;
 
@@ -245,9 +260,7 @@ namespace my
 
 	public:
 		EditBoxSkin(void)
-			: m_DisabledTexRect(CRect(0,0,0,0))
-			, m_FocusedTexRect(CRect(0,0,0,0))
-			, m_SelTextColor(D3DCOLOR_ARGB(255,255,255,255))
+			: m_SelTextColor(D3DCOLOR_ARGB(255,255,255,255))
 			, m_SelBkColor(D3DCOLOR_ARGB(197,0,0,0))
 			, m_CaretColor(D3DCOLOR_ARGB(255,255,255,255))
 		{
@@ -377,26 +390,18 @@ namespace my
 	class ScrollBarSkin : public ControlSkin
 	{
 	public:
-		RECT m_UpBtnNormalTexRect;
+		ControlImagePtr m_UpBtnNormalImage;
 
-		RECT m_UpBtnDisabledTexRect;
+		ControlImagePtr m_UpBtnDisabledImage;
 
-		RECT m_DownBtnNormalTexRect;
+		ControlImagePtr m_DownBtnNormalImage;
 
-		RECT m_DownBtnDisabledTexRect;
+		ControlImagePtr m_DownBtnDisabledImage;
 
-		RECT m_ThumbBtnNormalTexRect;
-
-		RECT m_ThumbBtnDisabledTexRect;
+		ControlImagePtr m_ThumbBtnNormalImage;
 
 	public:
 		ScrollBarSkin(void)
-			: m_UpBtnNormalTexRect(CRect(0,0,0,0))
-			, m_UpBtnDisabledTexRect(CRect(0,0,0,0))
-			, m_DownBtnNormalTexRect(CRect(0,0,0,0))
-			, m_DownBtnDisabledTexRect(CRect(0,0,0,0))
-			, m_ThumbBtnNormalTexRect(CRect(0,0,0,0))
-			, m_ThumbBtnDisabledTexRect(CRect(0,0,0,0))
 		{
 		}
 	};
