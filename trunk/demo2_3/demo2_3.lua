@@ -8,16 +8,6 @@ console.Skin.Font=ui_fnt
 console.Skin.TextColor=ARGB(255,255,255,255)
 console.Skin.TextAlign=Font.AlignLeftTop
 
-local e=ImeEditBox()
-e.Color=ARGB(15,255,255,255)
-e.Location=Vector2(5, 410-5-20)
-e.Size=Vector2(700-5-5,20)
-e.Border=Vector4(0,0,0,0)
-e.Text="在这里输入命令"
-e.Skin.Font=ui_fnt
-e.Skin.TextColor=ARGB(255,63,188,239)
-console:InsertControl(e)
-
 panel=MessagePanel()
 panel.Color=ARGB(0,0,0,0)
 panel.Location=Vector2(5,5)
@@ -30,14 +20,36 @@ panel.scrollbar.nPageSize=3
 panel.scrollbar.Skin=ScrollBarSkin()
 console:InsertControl(panel)
 
+local e_texts={}
+local e_texts_idx=0
+local e=ConsoleImeEditBox()
+e.Color=ARGB(15,255,255,255)
+e.Location=Vector2(5, 410-5-20)
+e.Size=Vector2(700-5-5,20)
+e.Border=Vector4(0,0,0,0)
+e.Text="在这里输入命令"
+e.Skin.Font=ui_fnt
+e.Skin.TextColor=ARGB(255,63,188,239)
 e.EventEnter=function()
 	local t=e.Text
 	e.Text=""
-	e.nCaret=0
-	e.nFirstVisible=0
 	panel:AddLine(t, e.Skin.TextColor)
+	table.insert(e_texts, t)
+	if #e_texts > 16 then
+		table.remove(e_texts,1)
+	end
+	e_texts_idx=#e_texts+1
 	game:ExecuteCode(t)
 end
+e.EventPrevLine=function()
+	e_texts_idx=math.max(1,e_texts_idx-1)
+	e.Text=e_texts[e_texts_idx]
+end
+e.EventNextLine=function()
+	e_texts_idx=math.min(#e_texts,e_texts_idx+1)
+	e.Text=e_texts[e_texts_idx]
+end
+console:InsertControl(e)
 
 game:InsertDlg(console)
 
@@ -69,18 +81,16 @@ btn.EventClick=function()
 end
 hud:InsertControl(btn)
 
-toggle_ref_btn=Button()
-toggle_ref_btn.Text="Toggle REF (F3)"
-toggle_ref_btn:SetHotkey(114) -- VK_F3
-toggle_ref_btn.Location=Vector2(35,35)
-toggle_ref_btn.Size=Vector2(125,22)
-toggle_ref_btn.Skin=btn_skin
--- toggle_ref_btn.EventClick=function()
-	-- 不能在这里调用ToggleRef，会导致lua被中途销毁，
-	-- 参见Game::OnD3D9DestroyDevice
-	-- game:ToggleRef()
--- end
-hud:InsertControl(toggle_ref_btn)
+local btn=Button()
+btn.Text="Toggle REF (F3)"
+btn:SetHotkey(114) -- VK_F3
+btn.Location=Vector2(35,35)
+btn.Size=Vector2(125,22)
+btn.Skin=btn_skin
+btn.EventClick=function()
+	game:ToggleRef()
+end
+hud:InsertControl(btn)
 
 local btn=Button()
 btn.Text="Change device (F2)"
