@@ -190,11 +190,11 @@ namespace luabind
 					: obj(_obj)
 				{
 				}
-				void operator()(my::ControlPtr control)
+				void operator()(my::EventArgsPtr args)
 				{
 					try
 					{
-						obj(control);
+						obj(args);
 					}
 					catch(const luabind::error & e)
 					{
@@ -263,15 +263,29 @@ void Export2Lua(lua_State * L)
 				LPDIRECT3DDEVICE9 pDevice = Game::getSingleton().GetD3D9Device();
 				std::string full_path = my::ResourceMgr::getSingleton().GetFullPath(path);
 				if(!full_path.empty())
-					return my::Font::CreateFontFromFile(pDevice, full_path.c_str(), height);
+					return my::Font::CreateFontFromFile(pDevice, full_path.c_str(), height, 1);
 
 				my::CachePtr cache = my::ResourceMgr::getSingleton().OpenArchiveStream(path)->GetWholeCache();
-				return my::Font::CreateFontFromFileInCache(pDevice, cache, height);
+				return my::Font::CreateFontFromFileInCache(pDevice, cache, height, 1);
 			}
 			catch(const my::Exception & e)
 			{
 				throw my::LuaContext::ExecutionErrorException(e.GetDescription());
 			}
+		}
+
+		static void SetEditBoxText(boost::shared_ptr<my::Control> control, const std::wstring & text)
+		{
+			my::EditBoxPtr edit = boost::static_pointer_cast<my::EditBox>(control);
+			edit->m_Text = text;
+			edit->PlaceCaret(text.length());
+			edit->m_nSelStart = edit->m_nCaret;
+		}
+
+		static const std::wstring & GetEditBoxText(boost::shared_ptr<my::Control> control)
+		{
+			my::EditBoxPtr edit = boost::static_pointer_cast<my::EditBox>(control);
+			return edit->m_Text;
 		}
 	};
 
@@ -342,6 +356,10 @@ void Export2Lua(lua_State * L)
 				, luabind::value("AlignRightBottom", my::Font::AlignRightBottom)
 			]
 
+		, luabind::class_<my::EventArgs, boost::shared_ptr<my::EventArgs> >("EventArgs")
+
+		, luabind::class_<my::ControlEvent>("ControlEvent")
+
 		, luabind::class_<my::ControlImage, boost::shared_ptr<my::ControlImage> >("ControlImage")
 			.def(luabind::constructor<boost::shared_ptr<my::Texture>, const my::Vector4 &>())
 
@@ -372,8 +390,6 @@ void Export2Lua(lua_State * L)
 			.def_readwrite("MouseOverImage", &my::ButtonSkin::m_MouseOverImage)
 			.def_readwrite("PressedOffset", &my::ButtonSkin::m_PressedOffset)
 
-		, luabind::class_<my::ControlEvent>("ControlEvent")
-
 		, luabind::class_<my::Button, my::Static, boost::shared_ptr<my::Control> >("Button")
 			.def(luabind::constructor<>())
 			.def_readwrite("EventClick", &my::Button::EventClick)
@@ -389,8 +405,7 @@ void Export2Lua(lua_State * L)
 
 		, luabind::class_<my::EditBox, my::Static, boost::shared_ptr<my::Control> >("EditBox")
 			.def(luabind::constructor<>())
-			.def_readwrite("nCaret", &my::EditBox::m_nCaret) // ! should be removed
-			.def_readwrite("nFirstVisible", &my::EditBox::m_nFirstVisible) // ! should be removed
+			.property("Text", &HelpFunc::GetEditBoxText, &HelpFunc::SetEditBoxText)
 			.def_readwrite("Border", &my::EditBox::m_Border)
 			.def_readwrite("EventChange", &my::EditBox::EventChange)
 			.def_readwrite("EventEnter", &my::EditBox::EventEnter)
@@ -426,10 +441,14 @@ void Export2Lua(lua_State * L)
 			.def("AddLine", &MessagePanel::AddLine)
 			.def("puts", &MessagePanel::puts)
 
+		, luabind::class_<ConsoleImeEditBox, my::ImeEditBox, boost::shared_ptr<my::Control> >("ConsoleImeEditBox")
+			.def(luabind::constructor<>())
+			.def_readwrite("EventPrevLine", &ConsoleImeEditBox::EventPrevLine)
+			.def_readwrite("EventNextLine", &ConsoleImeEditBox::EventNextLine)
+
 		, luabind::class_<Game>("Game")
-			.def_readonly("uiFnt", &Game::m_uiFnt)
 			.def("ToggleFullScreen", &Game::ToggleFullScreen)
-			//.def("ToggleRef", &Game::ToggleRef)
+			.def("ToggleRef", &Game::ToggleRef)
 			.def("ChangeDevice", &Game::ChangeDevice)
 			.def("ExecuteCode", &Game::ExecuteCode)
 			.def("InsertDlg", &Game::InsertDlg)
