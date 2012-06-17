@@ -92,12 +92,6 @@ HRESULT Game::OnD3D9CreateDevice(
 	// 必须保证这个脚本没有错误，否则将看不到控制台
 	ExecuteCode("dofile(\"demo2_3.lua\")");
 
-	// 获取主控制台（用以[`]符号控制），并获取默认字体，及默认输出面板
-	luabind::object obj = luabind::globals(m_lua->_state);
-	m_uiFnt = luabind::object_cast<my::FontPtr>(obj["ui_fnt"]);
-	m_console = luabind::object_cast<my::DialogPtr>(obj["console"]);
-	m_panel = boost::dynamic_pointer_cast<MessagePanel>(luabind::object_cast<my::ControlPtr>(obj["panel"]));
-
 	if(!m_input)
 	{
 		m_input = my::Input::CreateInput(GetModuleHandle(NULL));
@@ -120,7 +114,8 @@ HRESULT Game::OnD3D9ResetDevice(
 	IDirect3DDevice9 * pd3dDevice,
 	const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
 {
-	Game::getSingleton().m_panel->AddLine(L"Game::OnD3D9ResetDevice", D3DCOLOR_ARGB(255,255,255,0));
+	if(m_panel)
+		m_panel->AddLine(L"Game::OnD3D9ResetDevice", D3DCOLOR_ARGB(255,255,255,0));
 
 	HRESULT hres;
 	if(FAILED(hres = DxutApp::OnD3D9ResetDevice(
@@ -136,7 +131,7 @@ HRESULT Game::OnD3D9ResetDevice(
 	DialogPtrSet::iterator dlg_iter = m_dlgSet.begin();
 	for(; dlg_iter != m_dlgSet.end(); dlg_iter++)
 	{
-		UpdateDlgPerspective((*dlg_iter));
+		UpdateDlgViewProj(dlg_iter->second);
 	}
 
 	return S_OK;
@@ -144,7 +139,8 @@ HRESULT Game::OnD3D9ResetDevice(
 
 void Game::OnD3D9LostDevice(void)
 {
-	Game::getSingleton().m_panel->AddLine(L"Game::OnD3D9LostDevice", D3DCOLOR_ARGB(255,255,255,0));
+	if(m_panel)
+		m_panel->AddLine(L"Game::OnD3D9LostDevice", D3DCOLOR_ARGB(255,255,255,0));
 
 	m_dlgResourceMgr.OnD3D9LostDevice();
 
@@ -172,6 +168,12 @@ void Game::OnFrameMove(
 {
 	DxutApp::OnFrameMove(fTime, fElapsedTime);
 
+	BaseScenePtrSet::iterator scene_iter = m_sceneSet.begin();
+	for(; scene_iter != m_sceneSet.end(); scene_iter++)
+	{
+		scene_iter->second->OnFrameMove(fTime, fElapsedTime);
+	}
+
 	m_keyboard->Capture();
 
 	m_mouse->Capture();
@@ -189,7 +191,13 @@ void Game::OnD3D9FrameRender(
 	}
 
 	V(pd3dDevice->Clear(
-		0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_ARGB(0, 72, 72, 72), 1, 0));
+		0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00484848, 1, 0));
+
+	BaseScenePtrSet::iterator scene_iter = m_sceneSet.begin();
+	for(; scene_iter != m_sceneSet.end(); scene_iter++)
+	{
+		scene_iter->second->OnFrameRender(pd3dDevice, fTime, fElapsedTime);
+	}
 
 	if(SUCCEEDED(hr = pd3dDevice->BeginScene()))
 	{
@@ -198,21 +206,24 @@ void Game::OnD3D9FrameRender(
 		DialogPtrSet::iterator dlg_iter = m_dlgSet.begin();
 		for(; dlg_iter != m_dlgSet.end(); dlg_iter++)
 		{
-			(*dlg_iter)->OnRender(pd3dDevice, fElapsedTime);
+			dlg_iter->second->OnRender(pd3dDevice, fElapsedTime);
 		}
 
-		my::Matrix4 View, Proj;
-		D3DVIEWPORT9 vp;
-		pd3dDevice->GetViewport(&vp);
-		my::UIRender::BuildPerspectiveMatrices(
-			D3DXToRadian(75.0f), (float)vp.Width, (float)vp.Height, View, Proj);
-		V(pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&my::Matrix4::identity));
-		V(pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&View));
-		V(pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&Proj));
-		m_uiFnt->DrawString(DXUTGetFrameStats(DXUTIsVsyncEnabled()),
-			my::Rectangle::LeftTop(5,5,500,10), D3DCOLOR_ARGB(255,255,255,0), my::Font::AlignLeftTop);
-		m_uiFnt->DrawString(DXUTGetDeviceStats(),
-			my::Rectangle::LeftTop(5,5 + (float)m_uiFnt->m_LineHeight,500,10), D3DCOLOR_ARGB(255,255,255,0), my::Font::AlignLeftTop);
+		if(m_font)
+		{
+			my::Matrix4 View, Proj;
+			D3DVIEWPORT9 vp;
+			pd3dDevice->GetViewport(&vp);
+			my::UIRender::BuildPerspectiveMatrices(
+				D3DXToRadian(75.0f), (float)vp.Width, (float)vp.Height, View, Proj);
+			V(pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&my::Matrix4::identity));
+			V(pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&View));
+			V(pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&Proj));
+			m_font->DrawString(DXUTGetFrameStats(DXUTIsVsyncEnabled()),
+				my::Rectangle::LeftTop(5,5,500,10), D3DCOLOR_ARGB(255,255,255,0), my::Font::AlignLeftTop);
+			m_font->DrawString(DXUTGetDeviceStats(),
+				my::Rectangle::LeftTop(5,5 + (float)m_font->m_LineHeight,500,10), D3DCOLOR_ARGB(255,255,255,0), my::Font::AlignLeftTop);
+		}
 
 		my::UIRender::End(pd3dDevice);
 
@@ -245,9 +256,9 @@ LRESULT Game::MsgProc(
 		return 0;
 	}
 
-	if(m_console && uMsg == WM_CHAR && (WCHAR)wParam == L'`')
+	if(EventToggleConsole && uMsg == WM_CHAR && (WCHAR)wParam == L'`')
 	{
-		m_console->SetEnabled(!m_console->GetEnabled());
+		EventToggleConsole(my::EventArgsPtr(new my::EventArgs()));
 		*pbNoFurtherProcessing = true;
 		return 0;
 	}
@@ -255,7 +266,7 @@ LRESULT Game::MsgProc(
 	DialogPtrSet::reverse_iterator dlg_iter = m_dlgSet.rbegin();
 	for(; dlg_iter != m_dlgSet.rend(); dlg_iter++)
 	{
-		if((*pbNoFurtherProcessing = (*dlg_iter)->MsgProc(hWnd, uMsg, wParam, lParam)))
+		if((*pbNoFurtherProcessing = dlg_iter->second->MsgProc(hWnd, uMsg, wParam, lParam)))
 			return 0;
 	}
 
@@ -278,7 +289,7 @@ void Game::ChangeDevice(void)
 	DialogPtrSet::iterator dlg_iter = m_dlgSet.begin();
 	for(; dlg_iter != m_dlgSet.end(); dlg_iter++)
 	{
-		(*dlg_iter)->Refresh();
+		dlg_iter->second->Refresh();
 	}
 }
 
@@ -297,7 +308,7 @@ void Game::ExecuteCode(const char * code)
 	}
 }
 
-void Game::UpdateDlgPerspective(my::DialogPtr dlg)
+void Game::UpdateDlgViewProj(my::DialogPtr dlg)
 {
 	const D3DSURFACE_DESC * pBackBufferSurfaceDesc = DXUTGetD3D9BackBufferSurfaceDesc();
 
@@ -310,12 +321,17 @@ void Game::UpdateDlgPerspective(my::DialogPtr dlg)
 	my::UIRender::BuildPerspectiveMatrices(D3DXToRadian(75.0f), vp.x, vp.y, dlg->m_ViewMatrix, dlg->m_ProjMatrix);
 
 	if(dlg->EventAlign)
-		dlg->EventAlign(my::EventArgsPtr(new my::AlignEventArgs(vp)));
+		dlg->EventAlign(my::EventArgsPtr(new AlignEventArgs(vp)));
 }
 
-void Game::InsertDlg(my::DialogPtr dlg)
+void Game::InsertDlg(int id, my::DialogPtr dlg)
 {
-	UpdateDlgPerspective(dlg);
+	UpdateDlgViewProj(dlg);
 
-	m_dlgSet.insert(dlg);
+	m_dlgSet.insert(std::make_pair(id, dlg));
+}
+
+void Game::InsertScene(int id, BaseScenePtr scene)
+{
+	m_sceneSet.insert(std::make_pair(id, scene));
 }

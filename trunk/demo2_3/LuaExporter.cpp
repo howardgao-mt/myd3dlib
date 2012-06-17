@@ -56,7 +56,7 @@ static const char *getF (lua_State *L, void *ud, size_t *size) {
 //	return LUA_ERRFILE;
 //}
 
-static int lua_loadfile (lua_State *L, const char *filename)
+static int luaL_loadfile (lua_State *L, const char *filename)
 {
 	LoadF lf;
 	//int status, readstatus;
@@ -107,16 +107,30 @@ static int lua_loadfile (lua_State *L, const char *filename)
 	return status;
 }
 
-static int lua_dofile(lua_State * L)
-{
+static int load_aux (lua_State *L, int status) {
+	if (status == 0)  /* OK? */
+		return 1;
+	else {
+		lua_pushnil(L);
+		lua_insert(L, -2);  /* put before error message */
+		return 2;  /* return nil plus error message */
+	}
+}
+
+static int luaB_loadfile (lua_State *L) {
+	const char *fname = luaL_optstring(L, 1, NULL);
+	return load_aux(L, luaL_loadfile(L, fname));
+}
+
+static int luaB_dofile (lua_State *L) {
 	const char *fname = luaL_optstring(L, 1, NULL);
 	int n = lua_gettop(L);
-	if (lua_loadfile(L, fname) != 0) lua_error(L);
+	if (luaL_loadfile(L, fname) != 0) lua_error(L);
 	lua_call(L, 0, LUA_MULTRET);
 	return lua_gettop(L) - n;
 }
 
-static int lua_exit(lua_State * L)
+static int os_exit(lua_State * L)
 {
 	HWND hwnd = my::DxutApp::getSingleton().GetHWND();
 	_ASSERT(NULL != hwnd);
@@ -223,11 +237,14 @@ void Export2Lua(lua_State * L)
 	lua_pushcfunction(L, lua_print);
 	lua_setglobal(L, "print");
 
-	lua_pushcfunction(L, lua_dofile);
+	lua_pushcfunction(L, luaB_loadfile);
+	lua_setglobal(L, "loadfile");
+
+	lua_pushcfunction(L, luaB_dofile);
 	lua_setglobal(L, "dofile");
 
 	lua_getglobal(L, "os");
-	lua_pushcclosure(L, lua_exit, 0);
+	lua_pushcclosure(L, os_exit, 0);
 	lua_setfield(L, -2, "exit");
 	lua_pop(L, 1);
 
@@ -433,9 +450,6 @@ void Export2Lua(lua_State * L)
 			.def_readwrite("nStart", &my::ScrollBar::m_nStart) // ! should be removed
 			.def_readwrite("nEnd", &my::ScrollBar::m_nEnd) // ! should be removed
 
-		, luabind::class_<my::AlignEventArgs, my::EventArgs, boost::shared_ptr<my::EventArgs> >("AlignEventArgs")
-			.def_readonly("vp", &my::AlignEventArgs::vp)
-
 		, luabind::class_<my::Dialog, my::Control, boost::shared_ptr<my::Dialog> >("Dialog")
 			.def(luabind::constructor<>())
 			.def_readwrite("Transform", &my::Dialog::m_Transform)
@@ -455,12 +469,36 @@ void Export2Lua(lua_State * L)
 			.def_readwrite("EventPrevLine", &ConsoleImeEditBox::EventPrevLine)
 			.def_readwrite("EventNextLine", &ConsoleImeEditBox::EventNextLine)
 
+		, luabind::class_<BaseCamera, boost::shared_ptr<BaseCamera> >("BaseCamera")
+			.def_readwrite("aspect", &BaseCamera::m_aspect)
+			.def_readwrite("nz", &BaseCamera::m_nz)
+			.def_readwrite("fz", &BaseCamera::m_fz)
+
+		, luabind::class_<Camera, BaseCamera, boost::shared_ptr<BaseCamera> >("Camera")
+			.def(luabind::constructor<float, float, float, float>())
+			.def_readwrite("pos", &Camera::m_pos)
+			.def_readwrite("ori", &Camera::m_ori)
+			.def_readwrite("fovy", &Camera::m_fovy)
+
+		, luabind::class_<BaseScene, boost::shared_ptr<BaseScene> >("BaseScene")
+
+		, luabind::class_<Scene, BaseScene, boost::shared_ptr<BaseScene> >("Scene")
+			.def(luabind::constructor<>())
+			.def_readwrite("Camera", &Scene::m_Camera)
+
+		, luabind::class_<AlignEventArgs, my::EventArgs, boost::shared_ptr<my::EventArgs> >("AlignEventArgs")
+			.def_readonly("vp", &AlignEventArgs::vp)
+
 		, luabind::class_<Game>("Game")
+			.def_readwrite("EventToggleConsole", &Game::EventToggleConsole)
+			.def_readwrite("font", &Game::m_font)
+			.property("Panel", &Game::GetPanel, &Game::SetPanel)
 			.def("ToggleFullScreen", &Game::ToggleFullScreen)
 			.def("ToggleRef", &Game::ToggleRef)
 			.def("ChangeDevice", &Game::ChangeDevice)
 			.def("ExecuteCode", &Game::ExecuteCode)
 			.def("InsertDlg", &Game::InsertDlg)
+			.def("InsertScene", &Game::InsertScene)
 	];
 
 	luabind::globals(L)["game"] = Game::getSingletonPtr();
