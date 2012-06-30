@@ -58,7 +58,7 @@ bool Game::ModifyDeviceSettings(
 	if( caps.MaxVertexBlendMatrices < 2 )
 		pDeviceSettings->d3d9.BehaviorFlags = D3DCREATE_SOFTWARE_VERTEXPROCESSING;
 
-	// ! Fix lua bug: print(0xffffffff), ref: http://www.lua.org/bugs.html
+	// ! Fix lua print(0xffffffff), ref: http://www.lua.org/bugs.html
 	pDeviceSettings->d3d9.BehaviorFlags |= D3DCREATE_FPU_PRESERVE;
 
 	static bool s_bFirstTime = true;
@@ -98,7 +98,9 @@ HRESULT Game::OnD3D9CreateDevice(
 	{
 		m_input = my::Input::CreateInput(GetModuleHandle(NULL));
 		m_keyboard = my::Keyboard::CreateKeyboard(m_input->m_ptr);
+		m_keyboard->SetCooperativeLevel(GetHWND(), DISCL_NONEXCLUSIVE | DISCL_FOREGROUND);
 		m_mouse = my::Mouse::CreateMouse(m_input->m_ptr);
+		m_mouse->SetCooperativeLevel(GetHWND(), DISCL_NONEXCLUSIVE | DISCL_FOREGROUND);
 	}
 
 	if(!m_sound)
