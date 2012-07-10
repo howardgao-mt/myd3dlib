@@ -7,28 +7,36 @@
 
 static int lua_print(lua_State * L)
 {
-	MessagePanelPtr panel = Game::getSingleton().m_panel;
-	if(!panel)
-		return luaL_error(L, "must have game.panel to output");
-	panel->_push_enter(D3DCOLOR_ARGB(255,255,255,255));
+	// ! u8tows会抛异常，不要让 C++异常直接抛到 lua函数以外
+	try
+	{
+		MessagePanelPtr panel = Game::getSingleton().m_panel;
+		if(!panel)
+			return luaL_error(L, "must have game.panel to output");
 
-	int n = lua_gettop(L);  /* number of arguments */
-	int i;
-	lua_getglobal(L, "tostring");
-	for (i=1; i<=n; i++) {
-		const char *s;
-		lua_pushvalue(L, -1);  /* function to be called */
-		lua_pushvalue(L, i);   /* value to print */
-		lua_call(L, 1, 1);
-		s = lua_tostring(L, -1);  /* get result */
-		if (s == NULL)
-			return luaL_error(L, LUA_QL("tostring") " must return a string to "
-			LUA_QL("print"));
-		if (i>1) panel->puts(L"\t");
-		panel->puts(u8tows(s));
-		lua_pop(L, 1);  /* pop result */
+		int n = lua_gettop(L);  /* number of arguments */
+		int i;
+		lua_getglobal(L, "tostring");
+		for (i=1; i<=n; i++) {
+			const char *s;
+			lua_pushvalue(L, -1);  /* function to be called */
+			lua_pushvalue(L, i);   /* value to print */
+			lua_call(L, 1, 1);
+			s = lua_tostring(L, -1);  /* get result */
+			if (s == NULL)
+				return luaL_error(L, LUA_QL("tostring") " must return a string to "
+				LUA_QL("print"));
+			if (i>1) panel->puts(L"\t");
+			else panel->_push_enter(D3DCOLOR_ARGB(255,255,255,255));
+			panel->puts(u8tows(s));
+			lua_pop(L, 1);  /* pop result */
+		}
+		return 0;
 	}
-	return 0;
+	catch(const my::Exception & e)
+	{
+		return luaL_error(L, e.GetFullDescription().c_str());
+	}
 }
 
 typedef struct LoadF {
@@ -140,25 +148,25 @@ static int os_exit(lua_State * L)
 	SendMessage(hwnd, WM_CLOSE, 0, 0);
 	return 0;
 }
-//
-//static int lua_error_pcall(lua_State * L)
-//{
-//   lua_Debug d;
-//   lua_getstack(L, 1, &d);
-//   lua_getinfo(L, "Sln", &d);
-//   std::string err = lua_tostring(L, -1);
-//   lua_pop(L, 1);
-//   std::stringstream msg;
-//   msg << d.short_src << ":" << d.currentline;
-//
-//   if (d.name != 0)
-//   {
-//      msg << "(" << d.namewhat << " " << d.name << ")";
-//   }
-//   msg << " " << err;
-//   lua_pushstring(L, msg.str().c_str());
-//   return 1;
-//}
+
+static int lua_error_pcall(lua_State * L)
+{
+   lua_Debug d;
+   lua_getstack(L, 1, &d);
+   lua_getinfo(L, "Sln", &d);
+   std::string err = lua_tostring(L, -1);
+   lua_pop(L, 1);
+   std::stringstream msg;
+   msg << d.short_src << ":" << d.currentline;
+
+   if (d.name != 0)
+   {
+      msg << "(" << d.namewhat << " " << d.name << ")";
+   }
+   msg << " " << err;
+   lua_pushstring(L, msg.str().c_str());
+   return 1;
+}
 
 static void translate_my_exception(lua_State* L, my::Exception const & e)
 {
@@ -317,9 +325,10 @@ void Export2Lua(lua_State * L)
 
 	luabind::open(L);
 
-	luabind::register_exception_handler<my::Exception>(&translate_my_exception);
+	//// ! will lead memory leak
+	//luabind::register_exception_handler<my::Exception>(&translate_my_exception);
 
-	// 木有用？
+	//// ! 为什么不起作用
 	//luabind::set_pcall_callback(lua_error_pcall);
 
 	luabind::module(L)
@@ -329,6 +338,8 @@ void Export2Lua(lua_State * L)
 		, luabind::def("LoadTexture", &HelpFunc::LoadTexture)
 
 		, luabind::def("LoadFont", &HelpFunc::LoadFont)
+
+		//, luabind::class_<std::wstring>("wstring")
 
 		, luabind::class_<my::Vector2, boost::shared_ptr<my::Vector2> >("Vector2")
 			.def(luabind::constructor<float, float>())
