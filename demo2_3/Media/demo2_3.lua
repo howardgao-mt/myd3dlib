@@ -10,55 +10,32 @@ dofile "Hud.lua"
 -- scene.Camera=camera
 -- game:InsertScene(scene)
 
--- -- 利用 EventAlign调整相机的 Aspect
--- local d=Dialog();d.Visible=false;d.EventAlign=function(args) camera.Aspect=args.vp.x/args.vp.y end;game:InsertDlg(d)
-
 local state=game:CurrentState()
+
+local camera = state.Camera
+camera.LookAt=Vector3(0,1,0)
+
+-- 利用 EventAlign调整相机的 Aspect
+local d=Dialog();d.Visible=false;d.EventAlign=function(args) camera.Aspect=args.vp.x/args.vp.y end;game:InsertDlg(d)
 
 -- 防止garbage collect时清理掉还在使用的资源
 texture_pool = {}
 
 local function CreateScene()
 	local effectMesh = game:LoadEffectMesh("plane.mesh.xml")
-	local effect = game:LoadEffect("SimpleSample.fx")
-	local material = Material()
-	material.Effect = effect
-	local texture = game:LoadTexture("Checker.bmp")
-	table.insert(texture_pool, texture)
-	effect:SetTechnique("RenderScene")
-	material:BeginParameterBlock()
-	effect:SetVector("g_MaterialAmbientColor", Vector4(1,1,1,1))
-	effect:SetVector("g_MaterialDiffuseColor", Vector4(1,1,1,1))
-	effect:SetTexture("g_MeshTexture", texture)
-	material:EndParameterBlock()
-	effectMesh:InsertMaterial(material)
 	state:InsertStaticMesh(effectMesh)
 end
 
 local function CreateRole()
-	local effectMesh = game:LoadEffectMesh("aaa.mesh.xml")
-	local effect = game:LoadEffect("SkinedMesh.fx")
-	local material = Material()
-	material.Effect = effect
-	local texture = game:LoadTexture("Checker.bmp")
-	table.insert(texture_pool, texture)
-	effect:SetTechnique("RenderScene")
-	material:BeginParameterBlock()
-	effect:SetVector("g_MaterialAmbientColor", Vector4(1,1,1,1))
-	effect:SetVector("g_MaterialDiffuseColor", Vector4(1,1,1,1))
-	effect:SetTexture("g_MeshTexture", texture)
-	material:EndParameterBlock()
-	effectMesh:InsertMaterial(material)
-	
-	local skeleton = game:LoadSkeleton("aaa.skeleton.xml")
-	
+	local effectMesh = game:LoadEffectMesh("casual19_m_highpoly.mesh.xml")
+	local skeleton = game:LoadSkeleton("casual19_m_highpoly.skeleton.xml")
 	local character = Character()
 	character:InsertMeshLOD(effectMesh)
 	character:InsertSkeletonLOD(skeleton)
-	
+	character.Scale = Vector3(0.01,0.01,0.01)
 	state:InsertCharacter(character)
 end
 
-CreateScene()
+-- CreateScene()
 
 CreateRole()
