@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Windows.h>
+#include <atlwin.h>
 
 namespace my
 {
@@ -109,4 +110,45 @@ namespace my
 
 		bool WaitForThreadStopped(DWORD dwMilliseconds = INFINITE);
 	};
+
+	class Window
+		: public CWindowImpl<Window, CWindow, CWinTraits<WS_OVERLAPPEDWINDOW, 0> >
+	{
+	public:
+		static std::string GetWindowMessageStr(UINT message);
+
+	public:
+		LONG SetStyle(LONG dwStyle);
+
+		LONG SetExStyle(LONG dwExStyle);
+
+		BOOL AdjustClientRect(const CRect & rect);
+
+		DECLARE_WND_CLASS_EX(GetWndClassName(), CS_HREDRAW | CS_VREDRAW, -1);
+
+		DECLARE_EMPTY_MSG_MAP();
+
+		void OnFinalMessage(HWND hwnd);
+	};
+
+	typedef boost::shared_ptr<Window> WindowPtr;
+
+	class Application
+	{
+	public:
+		HINSTANCE m_hinst;
+
+	public:
+		Application(HINSTANCE hInstance = ::GetModuleHandle(NULL));
+
+		virtual ~Application(void);
+
+		HINSTANCE GetHandle(void) const;
+
+		static std::wstring GetModuleFileName(void);
+
+		int Run(void);
+	};
+
+	typedef boost::shared_ptr<Application> ApplicationPtr;
 }
