@@ -163,7 +163,7 @@ static int os_exit(lua_State * L)
 	return 0;
 }
 
-static int lua_error_pcall(lua_State * L)
+static int add_file_and_line(lua_State * L)
 {
    lua_Debug d;
    lua_getstack(L, 1, &d);
@@ -349,7 +349,7 @@ void Export2Lua(lua_State * L)
 	//register_exception_handler<my::Exception>(&translate_my_exception);
 
 	//// ! 为什么不起作用
-	//set_pcall_callback(lua_error_pcall);
+	//set_pcall_callback(add_file_and_line);
 
 	module(L)
 	[
@@ -764,6 +764,7 @@ void Export2Lua(lua_State * L)
 			.def_readwrite("Proj", &my::Dialog::m_Proj)
 			.def("Refresh", &my::Dialog::Refresh)
 			.def("InsertControl", &my::Dialog::InsertControl)
+			.def("RemoveControl", &my::Dialog::RemoveControl)
 			.def("ClearAllControl", &my::Dialog::ClearAllControl)
 			.def_readwrite("EventAlign", &my::Dialog::EventAlign)
 			.def_readwrite("EventRefresh", &my::Dialog::EventRefresh)
@@ -900,8 +901,7 @@ void Export2Lua(lua_State * L)
 
 		, class_<Timer, boost::shared_ptr<Timer> >("Timer")
 			.def(constructor<float>())
-			.def_readwrite("Interval", &Timer::m_Interval)
-			.def_readwrite("RemainingTime", &Timer::m_RemainingTime)
+			.def_readonly("Interval", &Timer::m_Interval)
 			.def_readwrite("EventTimer", &Timer::m_EventTimer)
 			.def("OnFrameMove", &Timer::OnFrameMove)
 
@@ -921,22 +921,18 @@ void Export2Lua(lua_State * L)
 		, class_<DialogMgr, my::DxutApp>("DialogMgr")
 			.def("InsertDlg", &DialogMgr::InsertDlg)
 			.def("RemoveDlg", &DialogMgr::RemoveDlg)
-			.def("ClearAllDlg", &DialogMgr::ClearAllDlg)
+			.def("RemoveAllDlg", &DialogMgr::RemoveAllDlg)
 
 		, class_<Game, bases<LoaderMgr, DialogMgr, TimerMgr> >("Game")
 			.def_readwrite("font", &Game::m_font)
 			.def_readwrite("console", &Game::m_console)
 			.property("panel", &Game::GetPanel, &Game::SetPanel) // ! luabind unsupport cast shared_ptr to derived class
-			.def("CurrentState", &Game::CurrentState)
-			.def("process_event", &Game::process_event)
 			.def("ExecuteCode", &Game::ExecuteCode)
+			.def("GetCurrentState", &Game::GetCurrentState)
+			.def("GetCurrentStateKey", &Game::GetCurrentStateKey)
+			.def("ChangeState", &Game::ChangeState)
 
 		, class_<GameStateBase>("GameStateBase")
-
-		, class_<GameEventBase, boost::shared_ptr<GameEventBase> >("GameEventBase")
-
-		, class_<GameEventLoadOver, GameEventBase, boost::shared_ptr<GameEventBase> >("GameEventLoadOver")
-			.def(constructor<>())
 
 		, class_<GameStateLoad, GameStateBase>("GameStateLoad")
 

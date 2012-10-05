@@ -1,14 +1,6 @@
-require "Hud.lua"
-require "Settings.lua"
-
--- 设置Device Settings事件
-Settings.dlg.Visible=false
-Hud.btn_change_device.EventClick=function(args)
-	Settings.dlg.Visible=not Settings.dlg.Visible
-end
 
 -- 获取当前state
-local state=game:CurrentState()
+local state=game:GetCurrentState()
 
 -- -- 创建相机
 -- local camera=ModelViewerCamera(math.rad(75),4/3.0,0.1,3000)
