@@ -3,6 +3,7 @@
 #include "GameState.h"
 #include "LuaExtension.h"
 #include <luabind/luabind.hpp>
+#include <signal.h>
 
 #ifdef _DEBUG
 #define new new( _CLIENT_BLOCK, __FILE__, __LINE__ )
@@ -316,6 +317,19 @@ void LoaderMgr::OnDestroyDevice(void)
 	m_resourceSet.clear();
 }
 
+void LoaderMgr::SetResource(const std::string & key, boost::shared_ptr<my::DeviceRelatedObjectBase> res)
+{
+	DeviceRelatedResourceSet::const_iterator old_res_iter = m_resourceSet.find(key);
+	if(m_resourceSet.end() != old_res_iter)
+	{
+		boost::shared_ptr<my::DeviceRelatedObjectBase> old_res = old_res_iter->second.lock();
+		if(old_res)
+			old_res->OnDestroyDevice();
+	}
+
+	m_resourceSet[key] = res;
+}
+
 boost::shared_ptr<my::BaseTexture> LoaderMgr::LoadTexture(const std::string & path)
 {
 	TexturePtr ret(new Texture());
@@ -331,7 +345,7 @@ boost::shared_ptr<my::BaseTexture> LoaderMgr::LoadTexture(const std::string & pa
 		ret->CreateTextureFromFileInMemory(GetD3D9Device(), &(*cache)[0], cache->size());
 	}
 
-	m_resourceSet.insert(std::make_pair(path, ret));
+	SetResource(path, ret);
 	return ret;
 }
 
@@ -350,7 +364,7 @@ boost::shared_ptr<my::BaseTexture> LoaderMgr::LoadCubeTexture(const std::string 
 		ret->CreateCubeTextureFromFileInMemory(GetD3D9Device(), &(*cache)[0], cache->size());
 	}
 
-	m_resourceSet.insert(std::make_pair(path, ret));
+	SetResource(path, ret);
 	return ret;
 }
 
@@ -369,7 +383,7 @@ OgreMeshPtr LoaderMgr::LoadMesh(const std::string & path)
 		ret->CreateMeshFromOgreXmlInMemory(GetD3D9Device(), (char *)&(*cache)[0], cache->size(), true);
 	}
 
-	m_resourceSet.insert(std::make_pair(path, ret));
+	SetResource(path, ret);
 	return ret;
 }
 
@@ -405,7 +419,7 @@ EffectPtr LoaderMgr::LoadEffect(const std::string & path)
 		ret->CreateEffect(GetD3D9Device(), &(*cache)[0], cache->size(), NULL, this, 0, m_EffectPool);
 	}
 
-	m_resourceSet.insert(std::make_pair(path, ret));
+	SetResource(path, ret);
 	return ret;
 }
 
@@ -424,7 +438,7 @@ FontPtr LoaderMgr::LoadFont(const std::string & path, int height)
 		ret->CreateFontFromFileInCache(GetD3D9Device(), cache, height);
 	}
 
-	m_resourceSet.insert(std::make_pair(str_printf("%s, %d", path.c_str(), height), ret));
+	SetResource(str_printf("%s, %d", path.c_str(), height), ret);
 	return ret;
 }
 
@@ -434,7 +448,7 @@ void Timer::OnFrameMove(
 {
 	m_RemainingTime += fElapsedTime;
 	unsigned int iter = 0;
-	while(m_RemainingTime >= 0 && iter++ < m_MaxIter)
+	while(m_RemainingTime >= 0 && iter++ < m_MaxIter && m_Running)
 	{
 		m_RemainingTime -= m_Interval;
 
@@ -448,9 +462,10 @@ void TimerMgr::OnFrameMove(
 	float fElapsedTime)
 {
 	TimerPtrSet::const_iterator timer_iter = m_timerSet.begin();
-	for(; timer_iter != m_timerSet.end(); timer_iter++)
+	for(; timer_iter != m_timerSet.end(); )
 	{
-		(*timer_iter)->OnFrameMove(fElapsedTime, fElapsedTime);
+		// ! take care of EventTimer removing self
+		(*timer_iter++)->OnFrameMove(fElapsedTime, fElapsedTime);
 	}
 }
 
@@ -504,12 +519,12 @@ Game::Game(void)
 	m_lua.reset(new LuaContext());
 
 	Export2Lua(m_lua->_state);
+
+	m_CurrentStateIter = m_stateMap.end();
 }
 
 Game::~Game(void)
 {
-	ClearAllDlg(); // ! m_dlgSet must be destroyed before distruct m_lua for some EventXxx Delegates
-
 	ImeEditBox::Uninitialize();
 }
 
@@ -574,7 +589,9 @@ HRESULT Game::OnCreateDevice(
 
 	ImeEditBox::EnableImeSystem(false);
 
-	ExecuteCode("require \"Console.lua\"");
+	ExecuteCode("dofile \"Console.lua\"");
+
+	ExecuteCode("dofile \"Hud.lua\"");
 
 	if(!m_font || !m_console || !m_panel)
 	{
@@ -608,9 +625,11 @@ HRESULT Game::OnCreateDevice(
 		m_sound->SetCooperativeLevel(GetHWND(), DSSCL_PRIORITY);
 	}
 
-	initiate();
+	SetState("GameStateLoad", GameStateBasePtr(new GameStateLoad()));
 
-	SafeCreateCurrentState();
+	SetState("GameStateMain", GameStateBasePtr(new GameStateMain()));
+
+	ChangeState("GameStateLoad");
 
 	//THROW_CUSEXCEPTION("aaa");
 
@@ -634,7 +653,7 @@ HRESULT Game::OnResetDevice(
 
 	OnAlign();
 
-	SafeResetCurrentState();
+	SafeResetState(GetCurrentState());
 
 	return S_OK;
 }
@@ -643,7 +662,7 @@ void Game::OnLostDevice(void)
 {
 	AddLine(L"Game::OnLostDevice", D3DCOLOR_ARGB(255,255,255,0));
 
-	SafeLostCurrentState();
+	SafeLostState(GetCurrentState());
 
 	LoaderMgr::OnLostDevice();
 }
@@ -652,9 +671,9 @@ void Game::OnDestroyDevice(void)
 {
 	AddLine(L"Game::OnDestroyDevice", D3DCOLOR_ARGB(255,255,255,0));
 
-	SafeDestroyCurrentState();
+	SafeDestroyState(GetCurrentState());
 
-	terminate();
+	RemoveAllState();
 
 	m_EffectPool.Release();
 
@@ -662,7 +681,7 @@ void Game::OnDestroyDevice(void)
 
 	m_console.reset();
 
-	ClearAllDlg();
+	RemoveAllDlg();
 
 	ImeEditBox::Uninitialize();
 
@@ -679,10 +698,10 @@ void Game::OnFrameMove(
 
 	m_mouse->Capture();
 
-	if(cs = CurrentState())
-		cs->OnFrameMove(fTime, fElapsedTime);
-
 	TimerMgr::OnFrameMove(fTime, fElapsedTime);
+
+	if(m_stateMap.end() != m_CurrentStateIter)
+		m_CurrentStateIter->second->OnFrameMove(fTime, fElapsedTime);
 }
 
 void Game::OnFrameRender(
@@ -690,9 +709,8 @@ void Game::OnFrameRender(
 	double fTime,
 	float fElapsedTime)
 {
-	// 当状态切换时发生异常会导致新状态没有被创建，所以有必要判断之
-	if(cs = CurrentState())
-		cs->OnFrameRender(pd3dDevice, fTime, fElapsedTime);
+	if(m_stateMap.end() != m_CurrentStateIter)
+		m_CurrentStateIter->second->OnFrameRender(pd3dDevice, fTime, fElapsedTime);
 	else
 		V(pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_ARGB(0,45,50,170), 1.0f, 0));
 
@@ -746,31 +764,203 @@ LRESULT Game::MsgProc(
 		return 0;
 	}
 
-	if((cs = CurrentState()) &&
-		(FAILED(hr = cs->MsgProc(hWnd, uMsg, wParam, lParam, pbNoFurtherProcessing)) || *pbNoFurtherProcessing))
+	if(m_stateMap.end() != m_CurrentStateIter)
 	{
-		return hr;
+		LRESULT lr;
+		if(lr = m_CurrentStateIter->second->MsgProc(hWnd, uMsg, wParam, lParam, pbNoFurtherProcessing) || *pbNoFurtherProcessing)
+			return lr;
 	}
 
 	return 0;
 }
 
+static int traceback (lua_State *L) {
+  if (!lua_isstring(L, 1))  /* 'message' not a string? */
+    return 1;  /* keep it intact */
+  lua_getfield(L, LUA_GLOBALSINDEX, "debug");
+  if (!lua_istable(L, -1)) {
+    lua_pop(L, 1);
+    return 1;
+  }
+  lua_getfield(L, -1, "traceback");
+  if (!lua_isfunction(L, -1)) {
+    lua_pop(L, 2);
+    return 1;
+  }
+  lua_pushvalue(L, 1);  /* pass error message */
+  lua_pushinteger(L, 2);  /* skip this function and traceback */
+  lua_call(L, 2, 1);  /* call debug.traceback */
+  return 1;
+}
+
+static void lstop (lua_State *L, lua_Debug *ar) {
+  (void)ar;  /* unused arg. */
+  lua_sethook(L, NULL, 0, 0);
+  luaL_error(L, "interrupted!");
+}
+
+static void laction (int i) {
+  signal(i, SIG_DFL); /* if another SIGINT happens before lstop,
+                              terminate process (default action) */
+  lua_sethook(Game::getSingleton().m_lua->_state, lstop, LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);
+}
+
+static int docall (lua_State *L, int narg, int clear) {
+  int status;
+  int base = lua_gettop(L) - narg;  /* function index */
+  lua_pushcfunction(L, traceback);  /* push traceback function */
+  lua_insert(L, base);  /* put it under chunk and args */
+  signal(SIGINT, laction);
+  status = lua_pcall(L, narg, (clear ? 0 : LUA_MULTRET), base);
+  signal(SIGINT, SIG_DFL);
+  lua_remove(L, base);  /* remove traceback function */
+  /* force a complete garbage collection in case of errors */
+  if (status != 0) lua_gc(L, LUA_GCCOLLECT, 0);
+  return status;
+}
+
+static void l_message (const char *pname, const char *msg) {
+  //if (pname) fprintf(stderr, "%s: ", pname);
+  //fprintf(stderr, "%s\n", msg);
+  //fflush(stderr);
+	Game::getSingleton().AddLine(L"");
+	Game::getSingleton().puts(ms2ws(msg).c_str());
+}
+
+static int report (lua_State *L, int status) {
+  if (status && !lua_isnil(L, -1)) {
+    const char *msg = lua_tostring(L, -1);
+    if (msg == NULL) msg = "(error object is not a string)";
+    l_message("aaa", msg);
+    lua_pop(L, 1);
+  }
+  return status;
+}
+
+static int dostring (lua_State *L, const char *s, const char *name) {
+  int status = luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
+  return report(L, status);
+}
+
 bool Game::ExecuteCode(const char * code)
 {
-	try
-	{
-		m_lua->executeCode(code);
-		return true;
-	}
-	catch(const std::runtime_error & e)
-	{
-		if(!m_panel)
-			THROW_CUSEXCEPTION(e.what());
+	return 0 == dostring(m_lua->_state, code, "Game::ExecuteCode");
+}
 
-		AddLine(L"");
-		puts(ms2ws(e.what()));
+void Game::SetState(const std::string & key, GameStateBasePtr state)
+{
+	_ASSERT(!GetState(key));
 
-		m_console->SetVisible(true);
+	m_stateMap[key] = state;
+}
+
+GameStateBasePtr Game::GetState(const std::string & key) const
+{
+	GameStateBasePtrMap::const_iterator state_iter = m_stateMap.find(key);
+	if(m_stateMap.end() != state_iter)
+		return state_iter->second;
+
+	return GameStateBasePtr();
+}
+
+GameStateBasePtr Game::GetCurrentState(void) const
+{
+	if(m_stateMap.end() != m_CurrentStateIter)
+		return m_CurrentStateIter->second;
+
+	return GameStateBasePtr();
+}
+
+std::string Game::GetCurrentStateKey(void) const
+{
+	if(m_stateMap.end() != m_CurrentStateIter)
+		return m_CurrentStateIter->first;
+
+	return "";
+}
+
+void Game::SafeCreateState(GameStateBasePtr state)
+{
+	if(state)
+	{
+		_ASSERT(!state->m_DeviceObjectsCreated);
+		if(FAILED(state->OnCreateDevice(GetD3D9Device(), &m_BackBufferSurfaceDesc)))
+		{
+			THROW_CUSEXCEPTION("state->OnCreateDevice failed");
+		}
+		state->m_DeviceObjectsCreated = true;
 	}
-	return false;
+}
+
+void Game::SafeResetState(GameStateBasePtr state)
+{
+	if(state && state->m_DeviceObjectsCreated && m_DeviceObjectsCreated)
+	{
+		_ASSERT(!state->m_DeviceObjectsReset);
+		if(FAILED(state->OnResetDevice(GetD3D9Device(), &m_BackBufferSurfaceDesc)))
+		{
+			THROW_CUSEXCEPTION("state->OnResetDevice failed");
+		}
+		state->m_DeviceObjectsReset = true;
+	}
+}
+
+void Game::SafeLostState(GameStateBasePtr state)
+{
+	if(state && state->m_DeviceObjectsReset)
+	{
+		state->OnLostDevice();
+		state->m_DeviceObjectsReset = false;
+	}
+}
+
+void Game::SafeDestroyState(GameStateBasePtr state)
+{
+	if(state && state->m_DeviceObjectsCreated)
+	{
+		_ASSERT(!state->m_DeviceObjectsReset);
+		state->OnDestroyDevice();
+		state->m_DeviceObjectsCreated = false;
+	}
+}
+
+void Game::SafeChangeState(GameStateBasePtr old_state, GameStateBasePtrMap::const_iterator new_state_iter)
+{
+	SafeLostState(old_state);
+
+	SafeDestroyState(old_state);
+
+	m_CurrentStateIter = new_state_iter;
+
+	if(m_stateMap.end() != new_state_iter)
+	{
+		try
+		{
+			SafeCreateState(new_state_iter->second);
+
+			SafeResetState(new_state_iter->second);
+		}
+		catch(const my::Exception & e)
+		{
+			SafeLostState(new_state_iter->second);
+
+			SafeDestroyState(new_state_iter->second);
+
+			m_CurrentStateIter = m_stateMap.end();
+
+			AddLine(ms2ws(e.GetDescription().c_str()));
+		}
+	}
+}
+
+void Game::ChangeState(const std::string & key)
+{
+	SafeChangeState(GetCurrentState(), m_stateMap.find(key));
+}
+
+void Game::RemoveAllState(void)
+{
+	m_stateMap.clear();
+
+	m_CurrentStateIter = m_stateMap.end();
 }

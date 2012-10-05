@@ -1,6 +1,3 @@
-require "Font.lua"
-require "CommonUI.lua"
-
 module("Settings",package.seeall)
 
 dlg=Dialog()
@@ -589,5 +586,7 @@ end
 dlg.EventRefresh=function(args)
 	RefreshDisplayAdapter()
 end
+
+dlg.Visible=false
 
 game:InsertDlg(dlg)

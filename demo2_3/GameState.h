@@ -7,18 +7,25 @@
 #include "EffectMesh.h"
 #include "Character.h"
 
-class GameStateMain;
-
 class GameStateLoad
 	: public GameStateBase
-	, public boost::statechart::simple_state<GameStateLoad, Game>
 {
 public:
-	typedef boost::statechart::transition<GameEventLoadOver, GameStateMain> reactions;
-
 	GameStateLoad(void);
 
 	~GameStateLoad(void);
+
+	virtual HRESULT OnCreateDevice(
+		IDirect3DDevice9 * pd3dDevice,
+		const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
+
+	virtual HRESULT OnResetDevice(
+		IDirect3DDevice9 * pd3dDevice,
+		const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
+
+	virtual void OnLostDevice(void);
+
+	virtual void OnDestroyDevice(void);
 
 	virtual void OnFrameMove(
 		double fTime,
@@ -32,7 +39,6 @@ public:
 
 class GameStateMain
 	: public GameStateBase
-	, public boost::statechart::simple_state<GameStateMain, Game>
 {
 public:
 	boost::shared_ptr<btDefaultCollisionConfiguration> m_collisionConfiguration;
@@ -41,8 +47,6 @@ public:
 	boost::shared_ptr<btConstraintSolver> m_constraintSolver;
 	boost::shared_ptr<btDiscreteDynamicsWorld> m_dynamicsWorld;
 	btAlignedObjectArray<boost::shared_ptr<btCollisionShape> > m_collisionShapes;
-
-	TimerPtr m_timer;
 
 	my::EffectPtr m_SimpleSample;
 

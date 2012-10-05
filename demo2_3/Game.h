@@ -3,12 +3,6 @@
 #include <myd3dlib.h>
 #include <LuaContext.h>
 #include "Console.h"
-#pragma warning(disable: 4819)
-#include <boost/statechart/event.hpp>
-#include <boost/statechart/state_machine.hpp>
-#include <boost/statechart/simple_state.hpp>
-#include <boost/statechart/transition.hpp>
-#pragma warning(default: 4819)
 
 class DrawHelper
 {
@@ -135,12 +129,7 @@ public:
 	}
 };
 
-class GameStateLoad;
-
-typedef boost::statechart::event_base GameEventBase;
-
-// ! Release build with Pch will suffer LNK2001, ref: http://thread.gmane.org/gmane.comp.lib.boost.user/23065
-template< class Event > void boost::statechart::detail::no_context<Event>::no_function( const Event & ) {}
+typedef boost::shared_ptr<GameStateBase> GameStateBasePtr;
 
 class LoaderMgr
 	: public my::ResourceMgr
@@ -179,6 +168,8 @@ public:
 
 	virtual void OnDestroyDevice(void);
 
+	void SetResource(const std::string & key, boost::shared_ptr<my::DeviceRelatedObjectBase> res);
+
 	// ! luabind cannt convert boost::shared_ptr<Derived Class> to base ptr
 	boost::shared_ptr<my::BaseTexture> LoadTexture(const std::string & path);
 
@@ -192,8 +183,6 @@ public:
 
 	my::FontPtr LoadFont(const std::string & path, int height);
 };
-
-typedef boost::function<void (void)> TimerEvent;
 
 class DialogMgr
 	: virtual public my::DxutApp
@@ -232,18 +221,20 @@ public:
 
 	void RemoveDlg(my::DialogPtr dlg)
 	{
-		DialogPtrSet::iterator dlg_iter = std::find(m_dlgSet.begin(), m_dlgSet.end(), dlg);
+		DialogPtrSet::const_iterator dlg_iter = std::find(m_dlgSet.begin(), m_dlgSet.end(), dlg);
 		if(dlg_iter != m_dlgSet.end())
 		{
 			m_dlgSet.erase(dlg_iter);
 		}
 	}
 
-	void ClearAllDlg(void)
+	void RemoveAllDlg(void)
 	{
 		m_dlgSet.clear();
 	}
 };
+
+typedef boost::function<void (void)> TimerEvent;
 
 class Timer
 {
@@ -254,13 +245,16 @@ public:
 
 	const unsigned int m_MaxIter;
 
+	bool m_Running;
+
 	TimerEvent m_EventTimer;
 
 public:
-	Timer(float Interval, unsigned int MaxIter = 4)
+	Timer(float Interval)
 		: m_Interval(Interval)
 		, m_RemainingTime(-Interval)
-		, m_MaxIter(MaxIter)
+		, m_MaxIter(4)
+		, m_Running(false)
 	{
 	}
 
@@ -286,11 +280,15 @@ public:
 	void InsertTimer(TimerPtr timer)
 	{
 		m_timerSet.insert(timer);
+
+		timer->m_Running = true;
 	}
 
 	void RemoveTimer(TimerPtr timer)
 	{
 		m_timerSet.erase(timer);
+
+		timer->m_Running = false;
 	}
 
 	void ClearAllTimer(void)
@@ -307,11 +305,8 @@ class Game
 	: public LoaderMgr
 	, public DialogMgr
 	, public TimerMgr
-	, public boost::statechart::state_machine<Game, GameStateLoad>
 {
 public:
-	GameStateBase * cs;
-
 	my::LuaContextPtr m_lua;
 
 	my::FontPtr m_font;
@@ -328,78 +323,16 @@ public:
 
 	my::SoundPtr m_sound;
 
+	typedef stdext::hash_map<std::string, GameStateBasePtr> GameStateBasePtrMap;
+
+	GameStateBasePtrMap m_stateMap;
+
+	GameStateBasePtrMap::const_iterator m_CurrentStateIter;
+
 public:
 	Game(void);
 
 	virtual ~Game(void);
-
-	GameStateBase * CurrentState(void)
-	{
-		return const_cast<GameStateBase *>(state_cast<const GameStateBase *>());
-	}
-
-	void SafeCreateCurrentState(void)
-	{
-		if((cs = CurrentState()) && !cs->m_DeviceObjectsCreated)
-		{
-			cs->OnCreateDevice(GetD3D9Device(), &m_BackBufferSurfaceDesc);
-			cs->m_DeviceObjectsCreated = true;
-		}
-	}
-
-	void SafeResetCurrentState(void)
-	{
-		if((cs = CurrentState()) && !cs->m_DeviceObjectsReset)
-		{
-			cs->OnResetDevice(GetD3D9Device(), &m_BackBufferSurfaceDesc);
-			cs->m_DeviceObjectsReset = true;
-		}
-	}
-
-	void SafeLostCurrentState(void)
-	{
-		if((cs = CurrentState()) && cs->m_DeviceObjectsReset)
-		{
-			cs->OnLostDevice();
-			cs->m_DeviceObjectsReset = false;
-		}
-	}
-
-	void SafeDestroyCurrentState(void)
-	{
-		if((cs = CurrentState()) && cs->m_DeviceObjectsCreated)
-		{
-			cs->OnDestroyDevice();
-			cs->m_DeviceObjectsCreated = false;
-		}
-	}
-
-	void process_event(const boost::statechart::event_base & evt)
-	{
-		SafeLostCurrentState();
-
-		SafeDestroyCurrentState();
-
-		try
-		{
-			state_machine::process_event(evt);
-
-			// ! 当状态切换时发生异常 正确的做法应该是让状态切换失败，而不是继续下去
-			SafeCreateCurrentState();
-
-			SafeResetCurrentState();
-		}
-		catch(const my::Exception & e)
-		{
-			SafeLostCurrentState();
-
-			SafeDestroyCurrentState();
-
-			terminate();
-
-			THROW_CUSEXCEPTION(e.GetDescription());
-		}
-	}
 
 	my::ControlPtr GetPanel(void) const
 	{
@@ -469,8 +402,26 @@ public:
 		bool * pbNoFurtherProcessing);
 
 	bool ExecuteCode(const char * code);
-};
 
-class GameEventLoadOver : public boost::statechart::event<GameEventLoadOver>
-{
+	void SetState(const std::string & key, GameStateBasePtr state);
+
+	GameStateBasePtr GetState(const std::string & key) const;
+
+	GameStateBasePtr GetCurrentState(void) const;
+
+	std::string GetCurrentStateKey(void) const;
+
+	void SafeCreateState(GameStateBasePtr state);
+
+	void SafeResetState(GameStateBasePtr state);
+
+	void SafeLostState(GameStateBasePtr state);
+
+	void SafeDestroyState(GameStateBasePtr state);
+
+	void SafeChangeState(GameStateBasePtr old_state, GameStateBasePtrMap::const_iterator new_state);
+
+	void ChangeState(const std::string & key);
+
+	void RemoveAllState(void);
 };
