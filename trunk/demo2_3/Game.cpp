@@ -317,77 +317,67 @@ void LoaderMgr::OnDestroyDevice(void)
 	m_resourceSet.clear();
 }
 
-void LoaderMgr::SetResource(const std::string & key, boost::shared_ptr<my::DeviceRelatedObjectBase> res)
+boost::shared_ptr<my::BaseTexture> LoaderMgr::LoadTexture(const std::string & path, bool reload)
 {
-	DeviceRelatedResourceSet::const_iterator old_res_iter = m_resourceSet.find(key);
-	if(m_resourceSet.end() != old_res_iter)
+	TexturePtr ret = GetResource<Texture>(path, reload);
+	if(!ret->m_ptr)
 	{
-		boost::shared_ptr<my::DeviceRelatedObjectBase> old_res = old_res_iter->second.lock();
-		if(old_res)
-			old_res->OnDestroyDevice();
+		std::string loc_path = std::string("texture/") + path;
+		std::string full_path = GetFullPath(loc_path);
+		if(!full_path.empty())
+		{
+			ret->CreateTextureFromFile(GetD3D9Device(), ms2ts(full_path.c_str()).c_str());
+		}
+		else
+		{
+			CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
+			ret->CreateTextureFromFileInMemory(GetD3D9Device(), &(*cache)[0], cache->size());
+		}
 	}
-
-	m_resourceSet[key] = res;
-}
-
-boost::shared_ptr<my::BaseTexture> LoaderMgr::LoadTexture(const std::string & path)
-{
-	TexturePtr ret(new Texture());
-	std::string loc_path = std::string("texture/") + path;
-	std::string full_path = GetFullPath(loc_path);
-	if(!full_path.empty())
-	{
-		ret->CreateTextureFromFile(GetD3D9Device(), ms2ts(full_path.c_str()).c_str());
-	}
-	else
-	{
-		CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
-		ret->CreateTextureFromFileInMemory(GetD3D9Device(), &(*cache)[0], cache->size());
-	}
-
-	SetResource(path, ret);
 	return ret;
 }
 
-boost::shared_ptr<my::BaseTexture> LoaderMgr::LoadCubeTexture(const std::string & path)
+boost::shared_ptr<my::BaseTexture> LoaderMgr::LoadCubeTexture(const std::string & path, bool reload)
 {
-	CubeTexturePtr ret(new CubeTexture());
-	std::string loc_path = std::string("texture/") + path;
-	std::string full_path = GetFullPath(loc_path);
-	if(!full_path.empty())
+	CubeTexturePtr ret = GetResource<CubeTexture>(path, reload);
+	if(!ret->m_ptr)
 	{
-		ret->CreateCubeTextureFromFile(GetD3D9Device(), ms2ts(full_path.c_str()).c_str());
+		std::string loc_path = std::string("texture/") + path;
+		std::string full_path = GetFullPath(loc_path);
+		if(!full_path.empty())
+		{
+			ret->CreateCubeTextureFromFile(GetD3D9Device(), ms2ts(full_path.c_str()).c_str());
+		}
+		else
+		{
+			CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
+			ret->CreateCubeTextureFromFileInMemory(GetD3D9Device(), &(*cache)[0], cache->size());
+		}
 	}
-	else
-	{
-		CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
-		ret->CreateCubeTextureFromFileInMemory(GetD3D9Device(), &(*cache)[0], cache->size());
-	}
-
-	SetResource(path, ret);
 	return ret;
 }
 
-OgreMeshPtr LoaderMgr::LoadMesh(const std::string & path)
+OgreMeshPtr LoaderMgr::LoadMesh(const std::string & path, bool reload)
 {
-	OgreMeshPtr ret(new OgreMesh());
-	std::string loc_path = std::string("mesh/") + path;
-	std::string full_path = GetFullPath(loc_path);
-	if(!full_path.empty())
+	OgreMeshPtr ret = GetResource<OgreMesh>(path, reload);
+	if(!ret->m_ptr)
 	{
-		ret->CreateMeshFromOgreXml(GetD3D9Device(), full_path.c_str(), true);
+		std::string loc_path = std::string("mesh/") + path;
+		std::string full_path = GetFullPath(loc_path);
+		if(!full_path.empty())
+		{
+			ret->CreateMeshFromOgreXml(GetD3D9Device(), full_path.c_str(), true);
+		}
+		else
+		{
+			CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
+			ret->CreateMeshFromOgreXmlInMemory(GetD3D9Device(), (char *)&(*cache)[0], cache->size(), true);
+		}
 	}
-	else
-	{
-		CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
-		ret->CreateMeshFromOgreXmlInMemory(GetD3D9Device(), (char *)&(*cache)[0], cache->size(), true);
-	}
-
-	SetResource(path, ret);
 	return ret;
 }
 
-OgreSkeletonAnimationPtr LoaderMgr::LoadSkeleton(const std::string & path)
+OgreSkeletonAnimationPtr LoaderMgr::LoadSkeleton(const std::string & path, bool reload)
 {
 	OgreSkeletonAnimationPtr ret(new OgreSkeletonAnimation());
 	std::string loc_path = std::string("mesh/") + path;
@@ -404,41 +394,43 @@ OgreSkeletonAnimationPtr LoaderMgr::LoadSkeleton(const std::string & path)
 	return ret;
 }
 
-EffectPtr LoaderMgr::LoadEffect(const std::string & path)
+EffectPtr LoaderMgr::LoadEffect(const std::string & path, bool reload)
 {
-	EffectPtr ret(new Effect());
-	std::string loc_path = std::string("shader/") + path;
-	std::string full_path = GetFullPath(loc_path);
-	if(!full_path.empty())
+	EffectPtr ret = GetResource<Effect>(path, reload);
+	if(!ret->m_ptr)
 	{
-		ret->CreateEffectFromFile(GetD3D9Device(), ms2ts(full_path.c_str()).c_str(), NULL, NULL, 0, m_EffectPool);
+		std::string loc_path = std::string("shader/") + path;
+		std::string full_path = GetFullPath(loc_path);
+		if(!full_path.empty())
+		{
+			ret->CreateEffectFromFile(GetD3D9Device(), ms2ts(full_path.c_str()).c_str(), NULL, NULL, 0, m_EffectPool);
+		}
+		else
+		{
+			CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
+			ret->CreateEffect(GetD3D9Device(), &(*cache)[0], cache->size(), NULL, this, 0, m_EffectPool);
+		}
 	}
-	else
-	{
-		CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
-		ret->CreateEffect(GetD3D9Device(), &(*cache)[0], cache->size(), NULL, this, 0, m_EffectPool);
-	}
-
-	SetResource(path, ret);
 	return ret;
 }
 
-FontPtr LoaderMgr::LoadFont(const std::string & path, int height)
+FontPtr LoaderMgr::LoadFont(const std::string & path, int height, bool reload)
 {
-	FontPtr ret(new Font());
-	std::string loc_path = std::string("font/") + path;
-	std::string full_path = GetFullPath(loc_path);
-	if(!full_path.empty())
+	FontPtr ret = GetResource<Font>(str_printf("%s, %d", path.c_str(), height), reload);
+	if(!ret->m_face)
 	{
-		ret->CreateFontFromFile(GetD3D9Device(), full_path.c_str(), height);
+		std::string loc_path = std::string("font/") + path;
+		std::string full_path = GetFullPath(loc_path);
+		if(!full_path.empty())
+		{
+			ret->CreateFontFromFile(GetD3D9Device(), full_path.c_str(), height);
+		}
+		else
+		{
+			CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
+			ret->CreateFontFromFileInCache(GetD3D9Device(), cache, height);
+		}
 	}
-	else
-	{
-		CachePtr cache = OpenArchiveStream(loc_path)->GetWholeCache();
-		ret->CreateFontFromFileInCache(GetD3D9Device(), cache, height);
-	}
-
-	SetResource(str_printf("%s, %d", path.c_str(), height), ret);
 	return ret;
 }
 
@@ -453,7 +445,7 @@ void Timer::OnFrameMove(
 		m_RemainingTime -= m_Interval;
 
 		if(m_EventTimer)
-			m_EventTimer();
+			m_EventTimer(m_DefaultArgs);
 	}
 }
 
@@ -525,6 +517,10 @@ Game::Game(void)
 
 Game::~Game(void)
 {
+	RemoveAllDlg();
+
+	RemoveAllTimer();
+
 	ImeEditBox::Uninitialize();
 }
 
@@ -685,7 +681,7 @@ void Game::OnDestroyDevice(void)
 
 	ImeEditBox::Uninitialize();
 
-	ClearAllTimer();
+	RemoveAllTimer();
 
 	LoaderMgr::OnDestroyDevice();
 }
@@ -818,33 +814,43 @@ static int docall (lua_State *L, int narg, int clear) {
   if (status != 0) lua_gc(L, LUA_GCCOLLECT, 0);
   return status;
 }
+//
+//static void l_message (const char *pname, const char *msg) {
+//  //if (pname) fprintf(stderr, "%s: ", pname);
+//  //fprintf(stderr, "%s\n", msg);
+//  //fflush(stderr);
+//	Game::getSingleton().AddLine(L"");
+//	Game::getSingleton().puts(ms2ws(msg).c_str());
+//}
+//
+//static int report (lua_State *L, int status) {
+//  if (status && !lua_isnil(L, -1)) {
+//    const char *msg = lua_tostring(L, -1);
+//    if (msg == NULL) msg = "(error object is not a string)";
+//    l_message("aaa", msg);
+//    lua_pop(L, 1);
+//  }
+//  return status;
+//}
 
-static void l_message (const char *pname, const char *msg) {
-  //if (pname) fprintf(stderr, "%s: ", pname);
-  //fprintf(stderr, "%s\n", msg);
-  //fflush(stderr);
-	Game::getSingleton().AddLine(L"");
-	Game::getSingleton().puts(ms2ws(msg).c_str());
-}
-
-static int report (lua_State *L, int status) {
-  if (status && !lua_isnil(L, -1)) {
-    const char *msg = lua_tostring(L, -1);
-    if (msg == NULL) msg = "(error object is not a string)";
-    l_message("aaa", msg);
-    lua_pop(L, 1);
+static int dostring (lua_State *L, const char *s, const char *name) {
+  //int status = luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
+  //return report(L, status);
+  int status = luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
+  if(status && !lua_isnil(L, -1))
+  {
+	  std::string msg = lua_tostring(L, -1);
+	  if(msg.empty())
+		  msg = "(error object is not a string)";
+	  lua_pop(L, 1);
+	  THROW_CUSEXCEPTION(msg);
   }
   return status;
 }
 
-static int dostring (lua_State *L, const char *s, const char *name) {
-  int status = luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
-  return report(L, status);
-}
-
-bool Game::ExecuteCode(const char * code)
+void Game::ExecuteCode(const char * code)
 {
-	return 0 == dostring(m_lua->_state, code, "Game::ExecuteCode");
+	dostring(m_lua->_state, code, "Game::ExecuteCode");
 }
 
 void Game::SetState(const std::string & key, GameStateBasePtr state)
@@ -884,10 +890,7 @@ void Game::SafeCreateState(GameStateBasePtr state)
 	if(state)
 	{
 		_ASSERT(!state->m_DeviceObjectsCreated);
-		if(FAILED(state->OnCreateDevice(GetD3D9Device(), &m_BackBufferSurfaceDesc)))
-		{
-			THROW_CUSEXCEPTION("state->OnCreateDevice failed");
-		}
+		state->OnCreateDevice(GetD3D9Device(), &m_BackBufferSurfaceDesc);
 		state->m_DeviceObjectsCreated = true;
 	}
 }
@@ -897,10 +900,7 @@ void Game::SafeResetState(GameStateBasePtr state)
 	if(state && state->m_DeviceObjectsCreated && m_DeviceObjectsCreated)
 	{
 		_ASSERT(!state->m_DeviceObjectsReset);
-		if(FAILED(state->OnResetDevice(GetD3D9Device(), &m_BackBufferSurfaceDesc)))
-		{
-			THROW_CUSEXCEPTION("state->OnResetDevice failed");
-		}
+		state->OnResetDevice(GetD3D9Device(), &m_BackBufferSurfaceDesc);
 		state->m_DeviceObjectsReset = true;
 	}
 }
@@ -948,6 +948,7 @@ void Game::SafeChangeState(GameStateBasePtr old_state, GameStateBasePtrMap::cons
 
 			m_CurrentStateIter = m_stateMap.end();
 
+			// ! 状态切换是可以容错的，只是当状态切换失败后，将没有CurrentState
 			AddLine(ms2ws(e.GetDescription().c_str()));
 		}
 	}

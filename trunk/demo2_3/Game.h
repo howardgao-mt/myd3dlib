@@ -168,20 +168,39 @@ public:
 
 	virtual void OnDestroyDevice(void);
 
-	void SetResource(const std::string & key, boost::shared_ptr<my::DeviceRelatedObjectBase> res);
+	template <class ResourceType>
+	boost::shared_ptr<ResourceType> GetResource(const std::string & key, bool reload)
+	{
+		DeviceRelatedResourceSet::const_iterator res_iter = m_resourceSet.find(key);
+		if(m_resourceSet.end() != res_iter)
+		{
+			boost::shared_ptr<my::DeviceRelatedObjectBase> res = res_iter->second.lock();
+			if(res)
+			{
+				if(reload)
+					res->OnDestroyDevice();
+
+				return boost::dynamic_pointer_cast<ResourceType>(res);
+			}
+		}
+
+		boost::shared_ptr<ResourceType> res(new ResourceType());
+		m_resourceSet[key] = res;
+		return res;
+	}
 
 	// ! luabind cannt convert boost::shared_ptr<Derived Class> to base ptr
-	boost::shared_ptr<my::BaseTexture> LoadTexture(const std::string & path);
+	boost::shared_ptr<my::BaseTexture> LoadTexture(const std::string & path, bool reload = false);
 
-	boost::shared_ptr<my::BaseTexture> LoadCubeTexture(const std::string & path);
+	boost::shared_ptr<my::BaseTexture> LoadCubeTexture(const std::string & path, bool reload = false);
 
-	my::OgreMeshPtr LoadMesh(const std::string & path);
+	my::OgreMeshPtr LoadMesh(const std::string & path, bool reload = false);
 
-	my::OgreSkeletonAnimationPtr LoadSkeleton(const std::string & path);
+	my::OgreSkeletonAnimationPtr LoadSkeleton(const std::string & path, bool reload = false);
 
-	my::EffectPtr LoadEffect(const std::string & path);
+	my::EffectPtr LoadEffect(const std::string & path, bool reload = false);
 
-	my::FontPtr LoadFont(const std::string & path, int height);
+	my::FontPtr LoadFont(const std::string & path, int height, bool reload = false);
 };
 
 class DialogMgr
@@ -234,8 +253,6 @@ public:
 	}
 };
 
-typedef boost::function<void (void)> TimerEvent;
-
 class Timer
 {
 public:
@@ -247,7 +264,9 @@ public:
 
 	bool m_Running;
 
-	TimerEvent m_EventTimer;
+	my::ControlEvent m_EventTimer;
+
+	my::EventArgsPtr m_DefaultArgs;
 
 public:
 	Timer(float Interval)
@@ -255,6 +274,7 @@ public:
 		, m_RemainingTime(-Interval)
 		, m_MaxIter(4)
 		, m_Running(false)
+		, m_DefaultArgs(new my::EventArgs())
 	{
 	}
 
@@ -291,7 +311,7 @@ public:
 		timer->m_Running = false;
 	}
 
-	void ClearAllTimer(void)
+	void RemoveAllTimer(void)
 	{
 		m_timerSet.clear();
 	}
@@ -401,7 +421,7 @@ public:
 		LPARAM lParam,
 		bool * pbNoFurtherProcessing);
 
-	bool ExecuteCode(const char * code);
+	void ExecuteCode(const char * code);
 
 	void SetState(const std::string & key, GameStateBasePtr state);
 
