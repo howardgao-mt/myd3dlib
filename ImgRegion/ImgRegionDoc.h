@@ -15,12 +15,15 @@ public:
 
 	ImagePtr m_image;
 
+	my::Vector4 m_border;
+
 	FontPtr2 m_font;
 
 	CImgRegion(const CRect & rc, const CString & name, const Gdiplus::Color & color)
 		: m_rc(rc)
 		, m_name(name)
 		, m_color(color)
+		, m_border(0,0,0,0)
 	{
 	}
 };
