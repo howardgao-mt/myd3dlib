@@ -4,6 +4,21 @@ typedef boost::shared_ptr<Gdiplus::Image> ImagePtr;
 
 typedef boost::shared_ptr<Gdiplus::Font> FontPtr2;
 
+class Vector4i
+{
+public:
+	int x, y, z, w;
+
+	Vector4i(int _x, int _y, int _z, int _w)
+		: x(_x), y(_y), z(_z), w(_w)
+	{
+	}
+
+	Vector4i(void)
+	{
+	}
+};
+
 class CImgRegion
 {
 public:
@@ -15,7 +30,7 @@ public:
 
 	ImagePtr m_image;
 
-	my::Vector4 m_border;
+	Vector4i m_border;
 
 	FontPtr2 m_font;
 
