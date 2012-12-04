@@ -131,23 +131,7 @@ void CImgRegionView::DrawRegionNode(Gdiplus::Graphics & grap, const CImgRegionNo
 
 	if(node->m_image)
 	{
-		Gdiplus::ColorMatrix colorMatrix = {	1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-												0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-												0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-												0.0f, 0.0f, 0.0f, node->m_color.GetA() / 255.0f, 0.0f,
-												0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
-		Gdiplus::ImageAttributes imageAtt;
-		imageAtt.SetColorMatrix(&colorMatrix, Gdiplus::ColorMatrixFlagsDefault, Gdiplus::ColorAdjustTypeBitmap);
-		grap.SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
-		grap.DrawImage(
-			node->m_image.get(), 
-			Gdiplus::Rect(rectNode.left, rectNode.top, rectNode.Width(), rectNode.Height()),
-			0,
-			0,
-			node->m_image->GetWidth(),
-			node->m_image->GetHeight(),
-			Gdiplus::UnitPixel,
-			&imageAtt);
+		DrawRegionImage(grap, node->m_image.get(), rectNode, node->m_border, node->m_color.GetAlpha());
 	}
 	else
 	{
@@ -172,6 +156,45 @@ void CImgRegionView::DrawRegionNode(Gdiplus::Graphics & grap, const CImgRegionNo
 	{
 		DrawRegionNode(grap, child_iter->get(), CPoint(ptOff.x + node->m_rc.left, ptOff.y + node->m_rc.top));
 	}
+}
+
+void CImgRegionView::DrawRegionImage(Gdiplus::Graphics & grap, Gdiplus::Image * img, const CRect & dstRect, const my::Vector4 & border, int alpha)
+{
+		Gdiplus::ColorMatrix colorMatrix = {	1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+												0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+												0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+												0.0f, 0.0f, 0.0f, alpha / 255.0f, 0.0f,
+												0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+		Gdiplus::ImageAttributes imageAtt;
+		imageAtt.SetColorMatrix(&colorMatrix, Gdiplus::ColorMatrixFlagsDefault, Gdiplus::ColorAdjustTypeBitmap);
+		grap.SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.left, dstRect.top, border.x, border.y),
+			-0.5f, -0.5f, border.x, border.y, Gdiplus::UnitPixel, &imageAtt);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.left + border.x, dstRect.top, dstRect.Width() - border.x - border.z, border.y),
+			-0.5f + border.x, -0.5f, img->GetWidth() - border.x - border.z, border.y, Gdiplus::UnitPixel, &imageAtt);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.right - border.z, dstRect.top, border.x, border.y),
+			-0.5f + img->GetWidth() - border.z, -0.5f, border.z, border.y, Gdiplus::UnitPixel, &imageAtt);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.left, dstRect.top + border.y, border.x, dstRect.Height() - border.y - border.w),
+			-0.5f, -0.5f + border.y, border.x, img->GetHeight() - border.y - border.w, Gdiplus::UnitPixel, &imageAtt);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.left + border.x, dstRect.top + border.y, dstRect.Width() - border.x - border.z, dstRect.Height() - border.y - border.w),
+			-0.5f + border.x, -0.5f + border.y, img->GetWidth() - border.x - border.z, img->GetHeight() - border.y - border.w, Gdiplus::UnitPixel, &imageAtt);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.right - border.z, dstRect.top + border.y, border.x, dstRect.Height() - border.y - border.w),
+			-0.5f + img->GetWidth() - border.z, -0.5f + border.y, border.z, img->GetHeight() - border.y - border.w, Gdiplus::UnitPixel, &imageAtt);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.left, dstRect.bottom - border.w, border.x, border.w),
+			-0.5f, -0.5f + img->GetHeight() - border.w, border.x, border.w, Gdiplus::UnitPixel, &imageAtt);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.left + border.x, dstRect.bottom - border.w, dstRect.Width() - border.x - border.z, border.w),
+			-0.5f + border.x, -0.5f + img->GetHeight() - border.w, img->GetWidth() - border.x - border.z, border.w, Gdiplus::UnitPixel, &imageAtt);
+
+		grap.DrawImage(img, Gdiplus::Rect(dstRect.right - border.z, dstRect.bottom - border.w, border.x, border.w),
+			-0.5f + img->GetWidth() - border.z, -0.5f + img->GetHeight() - border.w, border.z, border.w, Gdiplus::UnitPixel, &imageAtt);
 }
 
 BOOL CImgRegionView::OnEraseBkgnd(CDC* pDC)

@@ -16,6 +16,8 @@ CImgRegionDoc::CImgRegionDoc(void)
 
 	m_root->m_image.reset(Gdiplus::Image::FromFile(L"Checker.bmp"));
 
+	m_root->m_border = my::Vector4(100,50,100,50);
+
 	Gdiplus::FontFamily fontFamily(L"Arial");
 	m_root->m_font.reset(new Gdiplus::Font(&fontFamily, 12, Gdiplus::FontStyleBold, Gdiplus::UnitPoint));
 }
