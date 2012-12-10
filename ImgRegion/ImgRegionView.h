@@ -30,13 +30,19 @@ public:
 	enum DragState
 	{
 		DragStateNone = 0,
-		DragStateImage,
+		DragStateScroll,
 		DragStateControl,
 	};
 
 	DragState m_DragState;
 
 	CPoint m_DragPos;
+
+	CPoint m_DragRegLocal;
+
+	CSize m_DragRegSize;
+
+	CPoint m_DragScrollPos;
 
 	enum HandleType
 	{
@@ -63,7 +69,7 @@ public:
 
 	void DrawRegionNode(Gdiplus::Graphics & grap, HTREEITEM hItem, const CPoint & ptOff = CPoint(0,0));
 
-	void DrawRegionImage(Gdiplus::Graphics & grap, Gdiplus::Image * img, const CRect & dstRect, const Vector4i & border, int alpha);
+	void DrawRegionImage(Gdiplus::Graphics & grap, Gdiplus::Image * img, const CRect & dstRect, const Vector4i & border, const Gdiplus::Color & color);
 
 	void DrawRectHandle(Gdiplus::Graphics & grap, const CRect & rectHandle);
 
