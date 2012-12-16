@@ -207,7 +207,8 @@ BOOL CImgRegionDoc::CreateTreeCtrl(void)
 
 	static DWORD dwCtrlID = 4;
 
-	if (!m_TreeCtrl.CreateEx(WS_EX_CLIENTEDGE, WS_CHILD | WS_VISIBLE | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS, CRect(), &pFrame->m_wndFileView, dwCtrlID++))
+	if (!m_TreeCtrl.CreateEx(WS_EX_CLIENTEDGE,
+		WS_CHILD | WS_VISIBLE | TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS | TVS_SHOWSELALWAYS, CRect(), &pFrame->m_wndFileView, dwCtrlID++))
 	{
 		TRACE0("CImgRegionDoc::CreateTreeCtrl failed \n");
 		return FALSE;
@@ -318,10 +319,16 @@ void CImgRegionDoc::OnCloseDocument()
 	CDocument::OnCloseDocument();
 }
 
+static const int FILE_VERSION = 339;
+
+static const TCHAR FILE_VERSION_DESC[] = _T("ImgRegion File Version: %d");
+
 void CImgRegionDoc::Serialize(CArchive& ar)
 {
 	if (ar.IsStoring())
 	{	// storing code
+		CString strVersion; strVersion.Format(FILE_VERSION_DESC, FILE_VERSION); ar << strVersion;
+
 		ar << m_Size;
 		DWORD argb = m_Color.GetValue(); ar << argb;
 		ar << m_ImageStr;
@@ -332,6 +339,19 @@ void CImgRegionDoc::Serialize(CArchive& ar)
 	}
 	else
 	{	// loading code
+		CString strVersion; ar >> strVersion;
+
+		// ! 版本控制用以将来转换低版本文档
+		int nVersion;
+		if(1 != _stscanf_s(strVersion, FILE_VERSION_DESC, &nVersion))
+		{
+			AfxThrowArchiveException(CArchiveException::genericException);
+		}
+		if(nVersion != FILE_VERSION)
+		{
+			AfxThrowArchiveException(CArchiveException::badIndex);
+		}
+
 		ar >> m_Size;
 		DWORD argb; ar >> argb; m_Color.SetValue(argb);
 		ar >> m_ImageStr; m_Image = theApp.GetImage(GetFullPath(m_ImageStr));
