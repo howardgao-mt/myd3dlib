@@ -120,8 +120,6 @@ class CImgRegionDoc
 public:
 	CImgRegionTreeCtrl m_TreeCtrl;
 
-	CString m_CurrentDir;
-
 public:
 	DECLARE_DYNCREATE(CImgRegionDoc)
 
@@ -151,15 +149,11 @@ public:
 
 	int GetChildCount(HTREEITEM hItem);
 
-	void SerializeRegionNode(CArchive & ar, HTREEITEM hParent = TVI_ROOT);
+	void SerializeRegionNode(CArchive & ar, CImgRegion * pReg);
+
+	void SerializeRegionNodeTree(CArchive & ar, HTREEITEM hParent = TVI_ROOT);
 
 public:
-	const CString & GetCurrentDir(void) const;
-
-	CString GetRelativePath(const CString & strPath) const;
-
-	CString GetFullPath(const CString & strPath) const;
-
 	afx_msg void OnAddRegion();
 
 	afx_msg void OnUpdateAddRegion(CCmdUI *pCmdUI);
@@ -171,4 +165,8 @@ public:
 	afx_msg void OnExportImg();
 
 	afx_msg void OnFileProperty();
+
+	afx_msg void OnEditCopy();
+
+	afx_msg void OnEditPaste();
 };
