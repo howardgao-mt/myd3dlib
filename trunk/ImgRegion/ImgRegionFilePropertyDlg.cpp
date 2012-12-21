@@ -11,7 +11,7 @@ CImgRegionFilePropertyDlg::CImgRegionFilePropertyDlg(CWnd* pParent /*=NULL*/)
 	, m_Color(RGB(255,255,255))
 	, m_ImageStr(_T(""))
 	, m_strFontFamily(_T("Î¢ÈíÑÅºÚ"))
-	, m_FontSize(12)
+	, m_FontSize(16)
 {
 }
 
@@ -46,7 +46,8 @@ END_MESSAGE_MAP()
 
 void CImgRegionFilePropertyDlg::OnBnClickedOpenImage()
 {
-	CFileDialog dlg(TRUE, NULL, m_ImageStr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("Í¼Æ¬ÎÄ¼þ(*.bmp; *.jpg; *.png)|*.bmp;*.jpg;*.png|All Files(*.*)|*.*||"), this);
+	CFileDialog dlg(TRUE, NULL, m_ImageStr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		_T("Í¼Æ¬ÎÄ¼þ(*.bmp; *.jpg; *.png; *.tga)|*.bmp;*.jpg;*.png;*.tga|All Files(*.*)|*.*||"), this);
 	if(dlg.DoModal() == IDOK)
 	{
 		m_ImageStr = dlg.GetPathName();

@@ -104,6 +104,11 @@ HTREEITEM CImgRegionDoc::GetPointedRegionNode(HTREEITEM hItem, const CPoint & pt
 BOOL CImgRegionDoc::OnNewDocument(void)
 {
 	CImgRegionFilePropertyDlg dlg;
+	dlg.m_Size.cx = theApp.GetProfileInt(_T("Settings"), _T("SizeX"), dlg.m_Size.cx);
+	dlg.m_Size.cy = theApp.GetProfileInt(_T("Settings"), _T("SizeY"), dlg.m_Size.cy);
+	dlg.m_Color = theApp.GetProfileInt(_T("Settings"), _T("Color"), dlg.m_Color);
+	dlg.m_strFontFamily = theApp.GetProfileString(_T("Settings"), _T("FontFamily"), dlg.m_strFontFamily);
+	dlg.m_FontSize = theApp.GetProfileInt(_T("Settings"), _T("FontSize"), dlg.m_FontSize);
 	if(dlg.DoModal() == IDOK)
 	{
 		if (!CreateTreeCtrl())
@@ -122,6 +127,12 @@ BOOL CImgRegionDoc::OnNewDocument(void)
 		ASSERT(pFrame);
 
 		pFrame->m_wndFileView.InvalidLayout();
+
+		theApp.WriteProfileInt(_T("Settings"), _T("SizeX"), dlg.m_Size.cx);
+		theApp.WriteProfileInt(_T("Settings"), _T("SizeY"), dlg.m_Size.cy);
+		theApp.WriteProfileInt(_T("Settings"), _T("Color"), dlg.m_Color);
+		theApp.WriteProfileString(_T("Settings"), _T("FontFamily"), dlg.m_strFontFamily);
+		theApp.WriteProfileInt(_T("Settings"), _T("FontSize"), dlg.m_FontSize);
 
 		return TRUE;
 	}
