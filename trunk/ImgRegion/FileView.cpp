@@ -59,11 +59,23 @@ void CImgRegionTreeCtrl::OnMouseMove(UINT nFlags, CPoint point)
 		TVHITTESTINFO info;
 		info.pt = point;
 		HitTest(&info);
-		if(info.flags & TVHT_TOLEFT || info.flags & TVHT_TORIGHT)
+		if(info.flags & TVHT_TOLEFT)
 		{
 			SetInsertMark(NULL);
 			SelectDropTarget(NULL);
 			m_DragDropType = DropTypeNone;
+
+			if(point.x < m_LastDragPos.x)
+				SendMessage(WM_HSCROLL, SB_LINEUP, 0);
+		}
+		else if(info.flags & TVHT_TORIGHT)
+		{
+			SetInsertMark(NULL);
+			SelectDropTarget(NULL);
+			m_DragDropType = DropTypeNone;
+
+			if(point.x > m_LastDragPos.x)
+				SendMessage(WM_HSCROLL, SB_LINEDOWN, 0);
 		}
 		else if(info.flags & TVHT_ABOVE)
 		{
@@ -225,6 +237,8 @@ HTREEITEM CImgRegionTreeCtrl::MoveTreeItem(HTREEITEM hParent, HTREEITEM hInsertA
 		hChild = MoveTreeItem(hItem, hChild, hOtherChild);
 	}
 
+	Expand(hItem, TVE_EXPAND);
+
 	DeleteItem(hOtherItem);
 	return hItem;
 }
@@ -380,16 +394,20 @@ afx_msg void CFileView::OnTvnDragchangedTree(UINT id, NMHDR *pNMHDR, LRESULT *pR
 
 			HTREEITEM hItem = pTreeCtrl->MoveTreeItem(pDragInfo->hDragTagParent, pDragInfo->hDragTagFront, pDragInfo->hDragItem);
 			pTreeCtrl->SelectItem(hItem);
-			pTreeCtrl->Expand(hItem, TVE_EXPAND);
 
-			CImgRegion * pReg = (CImgRegion *)pTreeCtrl->GetItemData(hItem);
-			ASSERT(pReg);
+			if(hItem != pDragInfo->hDragItem)
+			{
+				CImgRegion * pReg = (CImgRegion *)pTreeCtrl->GetItemData(hItem);
+				ASSERT(pReg);
 
-			pReg->m_Local = pDoc->RootToLocal(pDragInfo->hDragTagParent, ptOrg);
+				pReg->m_Local = pDoc->RootToLocal(pDragInfo->hDragTagParent, ptOrg);
+			}
 
 			pDoc->UpdateAllViews(NULL);
 
 			pDoc->SetModifiedFlag();
+
+			pFrame->m_wndProperties.InvalidProperties();
 		}
 	}
 }
