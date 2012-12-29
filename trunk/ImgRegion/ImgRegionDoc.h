@@ -1,7 +1,7 @@
 #pragma once
 
 #include "FileView.h"
-#include "MainApp.h"
+#include "PropertiesWnd.h"
 
 static const float ZoomTable[] = {
 	32, 16, 12, 8, 7, 6, 5, 4, 3, 2, 1, 2.0f/3, 1.0f/2, 1.0f/3, 1.0f/4, 1.0f/6, 1.0f/8, 1.0f/12, 1.0f/16, 1.0f/20, 1.0f/25, 3.0f/100, 2.0f/100, 1.5f/100, 1.0f/100, 0.7f/100 };
@@ -79,6 +79,200 @@ public:
 	}
 };
 
+class CImgRegionDoc;
+
+class HistoryChange
+{
+public:
+	CImgRegionDoc * m_pDoc;
+
+	HistoryChange(CImgRegionDoc * pDoc)
+		: m_pDoc(pDoc)
+	{
+	}
+
+	virtual void Do(void) = 0;
+
+	virtual void Undo(void) = 0;
+};
+
+typedef boost::shared_ptr<HistoryChange> HistoryChangePtr;
+
+template <typename ValueType>
+class HistoryChangeItemValue
+	: public HistoryChange
+{
+public:
+	std::wstring m_itemID;
+
+	ValueType m_oldValue;
+
+	ValueType m_newValue;
+
+	CPropertiesWnd::Property m_property;
+
+	HistoryChangeItemValue(CImgRegionDoc * pDoc, LPCTSTR itemID, const ValueType & oldValue, const ValueType & newValue)
+		: HistoryChange(pDoc)
+		, m_itemID(itemID)
+		, m_oldValue(oldValue)
+		, m_newValue(newValue)
+	{
+	}
+};
+
+class HistoryChangeItemLocal
+	: public HistoryChangeItemValue<CPoint>
+{
+public:
+	HistoryChangeItemLocal(CImgRegionDoc * pDoc, LPCTSTR itemID, const CPoint & oldValue, const CPoint & newValue)
+		: HistoryChangeItemValue(pDoc, itemID, oldValue, newValue)
+	{
+	}
+
+	virtual void Do(void);
+
+	virtual void Undo(void);
+};
+
+class HistoryChangeItemSize
+	: public HistoryChangeItemValue<CSize>
+{
+public:
+	HistoryChangeItemSize(CImgRegionDoc * pDoc, LPCTSTR itemID, const CSize & oldValue, const CSize & newValue)
+		: HistoryChangeItemValue(pDoc, itemID, oldValue, newValue)
+	{
+	}
+
+	virtual void Do(void);
+
+	virtual void Undo(void);
+};
+
+class HistoryChangeItemTextOff
+	: public HistoryChangeItemValue<CPoint>
+{
+public:
+	HistoryChangeItemTextOff(CImgRegionDoc * pDoc, LPCTSTR itemID, const CPoint & oldValue, const CPoint & newValue)
+		: HistoryChangeItemValue(pDoc, itemID, oldValue, newValue)
+	{
+	}
+
+	virtual void Do(void);
+
+	virtual void Undo(void);
+};
+
+class History
+{
+public:
+	History(void)
+	{
+	}
+
+	virtual void Do(void) = 0;
+
+	virtual void Undo(void) = 0;
+};
+
+typedef boost::shared_ptr<History> HistoryPtr;
+
+typedef std::vector<HistoryPtr> HistoryPtrList;
+
+class HistoryAddRegion
+	: public History
+{
+public:
+	CImgRegionDoc * m_pDoc;
+
+	std::wstring m_itemID;
+
+	std::wstring m_parentID;
+
+	std::wstring m_beforeID;
+
+	CMemFile m_NodeCache;
+
+	DWORD m_OverideRegId;
+
+	HistoryAddRegion(CImgRegionDoc * pDoc, LPCTSTR itemID, LPCTSTR parentID, LPCTSTR beforeID);
+
+	virtual void Do(void);
+
+	virtual void Undo(void);
+};
+
+typedef boost::shared_ptr<HistoryAddRegion> HistoryAddRegionPtr;
+
+class HistoryDelRegion
+	: public History
+{
+public:
+	CImgRegionDoc * m_pDoc;
+
+	std::wstring m_itemID;
+
+	std::wstring m_parentID;
+
+	std::wstring m_beforeID;
+
+	CMemFile m_NodeCache;
+
+	HistoryDelRegion(CImgRegionDoc * pDoc, LPCTSTR itemID)
+		: m_pDoc(pDoc)
+		, m_itemID(itemID)
+	{
+	}
+
+	virtual void Do(void);
+
+	virtual void Undo(void);
+};
+
+class HistoryMovRegion
+	: public History
+{
+public:
+	CImgRegionDoc * m_pDoc;
+
+	std::wstring m_itemID;
+
+	std::wstring m_oldParentID;
+
+	std::wstring m_oldBeforeID;
+
+	std::wstring m_newParentID;
+
+	std::wstring m_newBeforeID;
+
+	HistoryMovRegion(CImgRegionDoc * pDoc, LPCTSTR itemID, LPCTSTR newParentID, LPCTSTR newBeforeID)
+		: m_pDoc(pDoc)
+		, m_itemID(itemID)
+		, m_newParentID(newParentID)
+		, m_newBeforeID(newBeforeID)
+	{
+	}
+
+	virtual void Do(void);
+
+	virtual void Undo(void);
+};
+
+class HistoryModifyRegion
+	: public History
+	, public std::vector<HistoryChangePtr>
+{
+public:
+	HistoryModifyRegion(void)
+	{
+	}
+
+	virtual void Do(void);
+
+	virtual void Undo(void);
+};
+
+typedef boost::shared_ptr<HistoryModifyRegion> HistoryModifyRegionPtr;
+
 class CImgRegionDoc
 	: public CDocument
 {
@@ -86,6 +280,10 @@ public:
 	CImgRegionTreeCtrl m_TreeCtrl;
 
 	CSize m_ImageSizeTable[_countof(ZoomTable)];
+
+	HistoryPtrList m_HistoryList;
+
+	DWORD m_HistoryStep;
 
 	DWORD m_NextRegId;
 
@@ -126,12 +324,15 @@ public:
 
 	int GetChildCount(HTREEITEM hItem);
 
+public:
 	void SerializeRegionNode(CArchive & ar, CImgRegion * pReg);
 
-	void SerializeRegionNodeTree(CArchive & ar, HTREEITEM hParent = TVI_ROOT);
+	void SerializeRegionNodeSubTree(CArchive & ar, HTREEITEM hParent = TVI_ROOT, BOOL bOverideName = FALSE);
 
 	void UpdateImageSizeTable(const CSize & sizeRoot);
-public:
+
+	void AddNewHistory(HistoryPtr hist);
+
 	afx_msg void OnAddRegion();
 
 	afx_msg void OnUpdateAddRegion(CCmdUI *pCmdUI);
@@ -151,4 +352,12 @@ public:
 	afx_msg void OnEditPaste();
 
 	afx_msg void OnUpdateEditPaste(CCmdUI *pCmdUI);
+
+	afx_msg void OnEditUndo();
+
+	afx_msg void OnUpdateEditUndo(CCmdUI *pCmdUI);
+
+	afx_msg void OnEditRedo();
+
+	afx_msg void OnUpdateEditRedo(CCmdUI *pCmdUI);
 };

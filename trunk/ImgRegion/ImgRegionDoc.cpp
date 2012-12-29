@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ImgRegionDoc.h"
+#include "MainApp.h"
 #include "MainFrm.h"
 #include "resource.h"
 #include "ImgRegionFilePropertyDlg.h"
@@ -8,6 +9,242 @@
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+void HistoryChangeItemLocal::Do(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
+	ASSERT(pReg);
+
+	pReg->m_Local = m_newValue;
+}
+
+void HistoryChangeItemLocal::Undo(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
+	ASSERT(pReg);
+
+	pReg->m_Local = m_oldValue;
+}
+
+void HistoryChangeItemSize::Do(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
+	ASSERT(pReg);
+
+	pReg->m_Size = m_newValue;
+}
+
+void HistoryChangeItemSize::Undo(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
+	ASSERT(pReg);
+
+	pReg->m_Size = m_oldValue;
+}
+
+void HistoryChangeItemTextOff::Do(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
+	ASSERT(pReg);
+
+	pReg->m_TextOff = m_newValue;
+}
+
+void HistoryChangeItemTextOff::Undo(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
+	ASSERT(pReg);
+
+	pReg->m_TextOff = m_oldValue;
+}
+
+HistoryAddRegion::HistoryAddRegion(CImgRegionDoc * pDoc, LPCTSTR itemID, LPCTSTR parentID, LPCTSTR beforeID)
+	: m_pDoc(pDoc)
+	, m_itemID(itemID)
+	, m_parentID(parentID)
+	, m_beforeID(beforeID)
+	, m_OverideRegId(0)
+{
+}
+
+void HistoryAddRegion::Do(void)
+{
+	HTREEITEM hParent = m_parentID.empty() ? TVI_ROOT : m_pDoc->m_TreeCtrl.m_ItemMap[m_parentID];
+	HTREEITEM hBefore = m_beforeID.empty() ? TVI_LAST : m_pDoc->m_TreeCtrl.m_ItemMap[m_beforeID];
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.InsertItem(m_itemID.c_str(), hParent, hBefore);
+
+	CImgRegion * pReg = new CImgRegion(CPoint(10,10), CSize(100,100));
+	ASSERT(pReg);
+
+	m_pDoc->m_TreeCtrl.SetItemData(hItem, (DWORD_PTR)pReg);
+
+	// ! 使用 OverideRegId，防止发生重名，又可以再undo之后重名创建
+	if(0 == m_OverideRegId)
+	{
+		m_OverideRegId = m_pDoc->m_NextRegId;
+	}
+
+	DWORD oldRegId = m_pDoc->m_NextRegId;
+	{
+		m_pDoc->m_NextRegId = m_OverideRegId;
+		ASSERT(m_NodeCache.GetLength() > 0);
+		m_NodeCache.SeekToBegin();
+		CArchive ar(&m_NodeCache, CArchive::load);
+		m_pDoc->SerializeRegionNode(ar, pReg);
+		m_pDoc->SerializeRegionNodeSubTree(ar, hItem, TRUE);
+		ar.Close();
+	}
+	m_pDoc->m_NextRegId = max(oldRegId, m_pDoc->m_NextRegId);
+
+	m_pDoc->m_TreeCtrl.Expand(hItem, TVE_EXPAND);
+
+	m_pDoc->m_TreeCtrl.SelectItem(hItem);
+}
+
+void HistoryAddRegion::Undo(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	m_pDoc->m_TreeCtrl.DeleteTreeItem<CImgRegion>(hItem, TRUE);
+}
+
+void HistoryDelRegion::Do(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
+	ASSERT(pReg);
+
+	m_NodeCache.SetLength(0);
+	CArchive ar(&m_NodeCache, CArchive::store);
+	m_pDoc->SerializeRegionNode(ar, pReg);
+	m_pDoc->SerializeRegionNodeSubTree(ar, hItem);
+	ar.Close();
+
+	HTREEITEM hParent = m_pDoc->m_TreeCtrl.GetParentItem(hItem);
+	m_parentID = hParent ? m_pDoc->m_TreeCtrl.GetItemText(hParent) : _T("");
+
+	HTREEITEM hBefore = m_pDoc->m_TreeCtrl.GetPrevSiblingItem(hItem);
+	m_beforeID = hBefore ? m_pDoc->m_TreeCtrl.GetItemText(hBefore) : _T("");
+
+	m_pDoc->m_TreeCtrl.DeleteTreeItem<CImgRegion>(hItem, TRUE);
+}
+
+void HistoryDelRegion::Undo(void)
+{
+	HTREEITEM hParent = m_parentID.empty() ? TVI_ROOT : m_pDoc->m_TreeCtrl.m_ItemMap[m_parentID];
+	HTREEITEM hBefore = m_beforeID.empty() ? TVI_LAST : m_pDoc->m_TreeCtrl.m_ItemMap[m_beforeID];
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.InsertItem(m_itemID.c_str(), hParent, hBefore);
+
+	CImgRegion * pReg = new CImgRegion(CPoint(10,10), CSize(100,100));
+	ASSERT(pReg);
+
+	m_pDoc->m_TreeCtrl.SetItemData(hItem, (DWORD_PTR)pReg);
+
+	ASSERT(m_NodeCache.GetLength() > 0);
+	m_NodeCache.SeekToBegin();
+	CArchive ar(&m_NodeCache, CArchive::load);
+	m_pDoc->SerializeRegionNode(ar, pReg);
+	m_pDoc->SerializeRegionNodeSubTree(ar, hItem);
+	ar.Close();
+
+	m_pDoc->m_TreeCtrl.Expand(hItem, TVE_EXPAND);
+}
+
+void HistoryMovRegion::Do(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+	HTREEITEM hParent = m_pDoc->m_TreeCtrl.GetParentItem(hItem);
+	HTREEITEM hBefore = m_pDoc->m_TreeCtrl.GetPrevSiblingItem(hItem);
+
+	m_oldParentID = hParent ? m_pDoc->m_TreeCtrl.GetItemText(hParent) : _T("");
+	m_oldBeforeID = hBefore ? m_pDoc->m_TreeCtrl.GetItemText(hBefore) : _T("");
+
+	CPoint ptOrg = m_pDoc->LocalToRoot(hItem, CPoint(0,0));
+
+	HTREEITEM hNewParent = m_newParentID.empty() ? TVI_ROOT : m_pDoc->m_TreeCtrl.m_ItemMap[m_newParentID];
+	HTREEITEM hNewBefore = m_newBeforeID.empty() ? TVI_LAST : m_pDoc->m_TreeCtrl.m_ItemMap[m_newBeforeID];
+
+	HTREEITEM hNewItem = m_pDoc->m_TreeCtrl.MoveTreeItem(hNewParent, hNewBefore, hItem);
+	if(hNewItem != hItem)
+	{
+		m_pDoc->m_TreeCtrl.SelectItem(hNewItem);
+
+		CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hNewItem);
+		ASSERT(pReg);
+
+		pReg->m_Local = m_pDoc->RootToLocal(hNewParent, ptOrg);
+	}
+}
+
+void HistoryMovRegion::Undo(void)
+{
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CPoint ptOrg = m_pDoc->LocalToRoot(hItem, CPoint(0,0));
+
+	HTREEITEM hOldParent = m_oldParentID.empty() ? TVI_ROOT : m_pDoc->m_TreeCtrl.m_ItemMap[m_oldParentID];
+	HTREEITEM hOldBefore = m_oldBeforeID.empty() ? TVI_FIRST : m_pDoc->m_TreeCtrl.m_ItemMap[m_oldBeforeID];
+
+	HTREEITEM hOldItem = m_pDoc->m_TreeCtrl.MoveTreeItem(hOldParent, hOldBefore, hItem);
+	if(hOldItem != hItem)
+	{
+		m_pDoc->m_TreeCtrl.SelectItem(hOldItem);
+
+		CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hOldItem);
+		ASSERT(pReg);
+
+		pReg->m_Local = m_pDoc->RootToLocal(hOldParent, ptOrg);
+	}
+}
+
+void HistoryModifyRegion::Do(void)
+{
+	iterator hist_iter = begin();
+	for(; hist_iter != end(); hist_iter++)
+	{
+		(*hist_iter)->Do();
+	}
+}
+
+void HistoryModifyRegion::Undo(void)
+{
+	iterator hist_iter = begin();
+	for(; hist_iter != end(); hist_iter++)
+	{
+		(*hist_iter)->Undo();
+	}
+}
 
 IMPLEMENT_DYNCREATE(CImgRegionDoc, CDocument)
 
@@ -22,10 +259,15 @@ BEGIN_MESSAGE_MAP(CImgRegionDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_COPY, &CImgRegionDoc::OnUpdateEditCopy)
 	ON_COMMAND(ID_EDIT_PASTE, &CImgRegionDoc::OnEditPaste)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE, &CImgRegionDoc::OnUpdateEditPaste)
+	ON_COMMAND(ID_EDIT_UNDO, &CImgRegionDoc::OnEditUndo)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_UNDO, &CImgRegionDoc::OnUpdateEditUndo)
+	ON_COMMAND(ID_EDIT_REDO, &CImgRegionDoc::OnEditRedo)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_REDO, &CImgRegionDoc::OnUpdateEditRedo)
 END_MESSAGE_MAP()
 
 CImgRegionDoc::CImgRegionDoc(void)
-	: m_NextRegId(1)
+	: m_HistoryStep(0)
+	, m_NextRegId(1)
 {
 }
 
@@ -78,6 +320,7 @@ void CImgRegionDoc::DestroyTreeCtrl(void)
 		m_TreeCtrl.DeleteTreeItem<CImgRegion>(hItem, TRUE);
 	}
 
+	ASSERT(m_TreeCtrl.m_ItemMap.empty());
 	m_TreeCtrl.DestroyWindow();
 }
 
@@ -184,7 +427,7 @@ void CImgRegionDoc::Serialize(CArchive& ar)
 		DWORD argb = m_Color.GetValue(); ar << argb;
 		ar << m_ImageStr;
 
-		SerializeRegionNodeTree(ar);
+		SerializeRegionNodeSubTree(ar);
 	}
 	else
 	{	// loading code
@@ -209,7 +452,7 @@ void CImgRegionDoc::Serialize(CArchive& ar)
 		DWORD argb; ar >> argb; m_Color.SetValue(argb);
 		ar >> m_ImageStr; m_Image = theApp.GetImage(m_ImageStr);
 
-		SerializeRegionNodeTree(ar);
+		SerializeRegionNodeSubTree(ar);
 	}
 }
 
@@ -259,7 +502,7 @@ void CImgRegionDoc::SerializeRegionNode(CArchive & ar, CImgRegion * pReg)
 	}
 }
 
-void CImgRegionDoc::SerializeRegionNodeTree(CArchive & ar, HTREEITEM hParent)
+void CImgRegionDoc::SerializeRegionNodeSubTree(CArchive & ar, HTREEITEM hParent, BOOL bOverideName)
 {
 	if (ar.IsStoring())
 	{
@@ -276,7 +519,7 @@ void CImgRegionDoc::SerializeRegionNodeTree(CArchive & ar, HTREEITEM hParent)
 
 			SerializeRegionNode(ar, pReg);
 
-			SerializeRegionNodeTree(ar, hItem);
+			SerializeRegionNodeSubTree(ar, hItem, bOverideName);
 		}
 	}
 	else
@@ -286,7 +529,11 @@ void CImgRegionDoc::SerializeRegionNodeTree(CArchive & ar, HTREEITEM hParent)
 		for(int i = 0; i < nChilds; i++)
 		{
 			CString strName;
-			ar >> strName; HTREEITEM hItem = m_TreeCtrl.InsertItem(strName, hParent, TVI_LAST); ASSERT(hItem);
+			ar >> strName;
+			if(bOverideName)
+				strName.Format(_T("图层 %03d"), m_NextRegId++);
+
+			HTREEITEM hItem = m_TreeCtrl.InsertItem(strName, hParent, TVI_LAST); ASSERT(hItem);
 
 			CImgRegion * pReg = new CImgRegion(CPoint(10,10), CSize(100,100));
 			ASSERT(pReg);
@@ -295,7 +542,7 @@ void CImgRegionDoc::SerializeRegionNodeTree(CArchive & ar, HTREEITEM hParent)
 
 			SerializeRegionNode(ar, pReg);
 
-			SerializeRegionNodeTree(ar, hItem);
+			SerializeRegionNodeSubTree(ar, hItem, bOverideName);
 
 			m_TreeCtrl.Expand(hItem, TVE_EXPAND);
 		}
@@ -322,6 +569,12 @@ void CImgRegionDoc::UpdateImageSizeTable(const CSize & sizeRoot)
 	}
 }
 
+void CImgRegionDoc::AddNewHistory(HistoryPtr hist)
+{
+	m_HistoryList.resize(m_HistoryStep++);
+	m_HistoryList.push_back(hist);
+}
+
 void CImgRegionDoc::OnAddRegion()
 {
 	HTREEITEM hParent = NULL;
@@ -333,20 +586,23 @@ void CImgRegionDoc::OnAddRegion()
 		CImgRegion * pReg = (CImgRegion *)m_TreeCtrl.GetItemData(hSelected);
 		ptOrg += pReg->m_Local;
 	}
-	if(!hParent)
-	{
-		hParent = TVI_ROOT;
-	}
 
 	CString strName;
 	strName.Format(_T("图层 %03d"), m_NextRegId++);
-	HTREEITEM hItem = m_TreeCtrl.InsertItem(strName, hParent, TVI_LAST);
-	CImgRegion * pReg = new CImgRegion(ptOrg, CSize(100,100),
-		Gdiplus::Color(255,my::Random<int>(0,255),my::Random<int>(0,255),my::Random<int>(0,255)));
-	pReg->m_Font = theApp.GetFont(_T("微软雅黑"), 16);
-	pReg->m_FontColor = Gdiplus::Color(255,my::Random<int>(0,255),my::Random<int>(0,255),my::Random<int>(0,255));
-	m_TreeCtrl.SetItemData(hItem, (DWORD_PTR)pReg);
-	m_TreeCtrl.SelectItem(hItem);
+	HistoryAddRegionPtr hist(new HistoryAddRegion(
+		this, strName, hParent ? m_TreeCtrl.GetItemText(hParent) : _T(""), hSelected ? m_TreeCtrl.GetItemText(hSelected) : _T("")));
+
+	CImgRegion reg(ptOrg, CSize(100,100));
+	reg.m_Color = Gdiplus::Color(255,my::Random<int>(0,255),my::Random<int>(0,255),my::Random<int>(0,255));
+	reg.m_Font = theApp.GetFont(_T("微软雅黑"), 16);
+	reg.m_FontColor = Gdiplus::Color(255,my::Random<int>(0,255),my::Random<int>(0,255),my::Random<int>(0,255));
+	CArchive ar(&hist->m_NodeCache, CArchive::store);
+	SerializeRegionNode(ar, &reg);
+	ar << 0;
+	ar.Close();
+
+	AddNewHistory(hist);
+	hist->Do();
 
 	UpdateAllViews(NULL);
 
@@ -382,7 +638,11 @@ void CImgRegionDoc::OnDelRegion()
 
 		if(!pReg->m_Locked)
 		{
-			m_TreeCtrl.DeleteTreeItem<CImgRegion>(hSelected, TRUE); pReg = NULL;
+			HistoryPtr hist(new HistoryDelRegion(
+				this, m_TreeCtrl.GetItemText(hSelected)));
+
+			AddNewHistory(hist);
+			hist->Do();
 
 			UpdateAllViews(NULL);
 
@@ -485,6 +745,7 @@ void CImgRegionDoc::OnEditCopy()
 		theApp.m_ClipboardFile.SetLength(0);
 		CArchive ar(&theApp.m_ClipboardFile, CArchive::store);
 		SerializeRegionNode(ar, pReg);
+		SerializeRegionNodeSubTree(ar, hSelected);
 		ar.Close();
 	}
 }
@@ -506,39 +767,21 @@ void CImgRegionDoc::OnEditPaste()
 		{
 			hParent = m_TreeCtrl.GetParentItem(hSelected);
 		}
-		if(!hParent)
-		{
-			hParent = TVI_ROOT;
-		}
-
-		CImgRegion * pReg = new CImgRegion(CPoint(10,10), CSize(100,100));
-		ASSERT(pReg);
-
-		TRY
-		{
-			theApp.m_ClipboardFile.SeekToBegin();
-			CArchive ar(&theApp.m_ClipboardFile, CArchive::load);
-			SerializeRegionNode(ar, pReg);
-
-			pReg->m_Locked = FALSE;
-		}
-		CATCH_ALL(e)
-		{
-			TCHAR buff[256];
-			e->GetErrorMessage(buff, _countof(buff));
-			AfxMessageBox(buff);
-
-			DELETE_EXCEPTION(e);
-			delete pReg;
-			return;
-		}
-		END_CATCH_ALL
 
 		CString strName;
 		strName.Format(_T("图层 %03d"), m_NextRegId++);
-		HTREEITEM hItem = m_TreeCtrl.InsertItem(strName, hParent, TVI_LAST);
-		m_TreeCtrl.SetItemData(hItem, (DWORD_PTR)pReg);
-		m_TreeCtrl.SelectItem(hItem);
+		HistoryAddRegionPtr hist(new HistoryAddRegion(
+			this, strName, hParent ? m_TreeCtrl.GetItemText(hParent) : _T(""), m_TreeCtrl.GetItemText(hSelected)));
+
+		void * pBuffer;
+		void * pBufferMax;
+		theApp.m_ClipboardFile.SeekToBegin();
+		UINT len = theApp.m_ClipboardFile.GetBufferPtr(CFile::bufferRead, -1, &pBuffer, &pBufferMax);
+		hist->m_NodeCache.Write(pBuffer, len);
+		hist->m_NodeCache.Flush();
+
+		AddNewHistory(hist);
+		hist->Do();
 
 		UpdateAllViews(NULL);
 
@@ -563,4 +806,46 @@ void CImgRegionDoc::OnEditPaste()
 void CImgRegionDoc::OnUpdateEditPaste(CCmdUI *pCmdUI)
 {
 	pCmdUI->Enable(theApp.m_ClipboardFile.GetLength() > 0);
+}
+
+void CImgRegionDoc::OnEditUndo()
+{
+	if(m_HistoryStep > 0)
+	{
+		m_HistoryList[--m_HistoryStep]->Undo();
+
+		UpdateAllViews(NULL);
+
+		SetModifiedFlag();
+
+		CMainFrame * pFrame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
+		ASSERT(pFrame);
+		pFrame->m_wndProperties.InvalidProperties();
+	}
+}
+
+void CImgRegionDoc::OnUpdateEditUndo(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(m_HistoryStep > 0);
+}
+
+void CImgRegionDoc::OnEditRedo()
+{
+	if(m_HistoryStep < m_HistoryList.size())
+	{
+		m_HistoryList[m_HistoryStep++]->Do();
+
+		UpdateAllViews(NULL);
+
+		SetModifiedFlag();
+
+		CMainFrame * pFrame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
+		ASSERT(pFrame);
+		pFrame->m_wndProperties.InvalidProperties();
+	}
+}
+
+void CImgRegionDoc::OnUpdateEditRedo(CCmdUI *pCmdUI)
+{
+	pCmdUI->Enable(m_HistoryStep < m_HistoryList.size());
 }
