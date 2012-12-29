@@ -391,12 +391,18 @@ void CPropertiesWnd::UpdateProperties(void)
 				m_pProp[PropertyItemBorderZ]->SetValue((_variant_t)pReg->m_Border.z);
 				m_pProp[PropertyItemBorderW]->SetValue((_variant_t)pReg->m_Border.w);
 
-				Gdiplus::FontFamily family;
-				pReg->m_Font->GetFamily(&family);
 				CString strFamily;
-				family.GetFamilyName(strFamily.GetBufferSetLength(LF_FACESIZE));
+				if(pReg->m_Font)
+				{
+					Gdiplus::FontFamily family; pReg->m_Font->GetFamily(&family); family.GetFamilyName(strFamily.GetBufferSetLength(LF_FACESIZE));
+				}
 				m_pProp[PropertyItemFont]->SetValue((_variant_t)strFamily);
-				m_pProp[PropertyItemFontSize]->SetValue((long)pReg->m_Font->GetSize());
+				long fntSize = 16;
+				if(pReg->m_Font)
+				{
+					fntSize = (long)pReg->m_Font->GetSize();
+				}
+				m_pProp[PropertyItemFontSize]->SetValue(fntSize);
 				m_pProp[PropertyItemFontAlpha]->SetValue((_variant_t)(long)pReg->m_FontColor.GetAlpha());
 				((CMFCPropertyGridColorProperty *)m_pProp[PropertyItemFontRGB])->SetColor(pReg->m_FontColor.ToCOLORREF());
 
@@ -443,15 +449,25 @@ LRESULT CPropertiesWnd::OnPropertyChanged(WPARAM wParam, LPARAM lParam)
 				case PropertyItemLocal:
 				case PropertyItemLocalX:
 				case PropertyItemLocalY:
-					pReg->m_Local.x = m_pProp[PropertyItemLocalX]->GetValue().lVal;
-					pReg->m_Local.y = m_pProp[PropertyItemLocalY]->GetValue().lVal;
+					{
+						HistoryModifyRegionPtr hist(new HistoryModifyRegion());
+						hist->push_back(HistoryChangePtr(new HistoryChangeItemLocal(
+							pDoc, pDoc->m_TreeCtrl.GetItemText(hSelected), pReg->m_Local, CPoint(m_pProp[PropertyItemLocalX]->GetValue().lVal, m_pProp[PropertyItemLocalY]->GetValue().lVal))));
+						pDoc->AddNewHistory(hist);
+						hist->Do();
+					}
 					break;
 
 				case PropertyItemSize:
 				case PropertyItemSizeW:
 				case PropertyItemSizeH:
-					pReg->m_Size.cx = m_pProp[PropertyItemSizeW]->GetValue().lVal;
-					pReg->m_Size.cy = m_pProp[PropertyItemSizeH]->GetValue().lVal;
+					{
+						HistoryModifyRegionPtr hist(new HistoryModifyRegion());
+						hist->push_back(HistoryChangePtr(new HistoryChangeItemSize(
+							pDoc, pDoc->m_TreeCtrl.GetItemText(hSelected), pReg->m_Size, CPoint(m_pProp[PropertyItemSizeW]->GetValue().lVal, m_pProp[PropertyItemSizeH]->GetValue().lVal))));
+						pDoc->AddNewHistory(hist);
+						hist->Do();
+					}
 					break;
 
 				case PropertyItemAlpha:
@@ -506,8 +522,13 @@ LRESULT CPropertiesWnd::OnPropertyChanged(WPARAM wParam, LPARAM lParam)
 				case PropertyItemTextOff:
 				case PropertyItemTextOffX:
 				case PropertyItemTextOffY:
-					pReg->m_TextOff.x = m_pProp[PropertyItemTextOffX]->GetValue().lVal;
-					pReg->m_TextOff.y = m_pProp[PropertyItemTextOffY]->GetValue().lVal;
+					{
+						HistoryModifyRegionPtr hist(new HistoryModifyRegion());
+						hist->push_back(HistoryChangePtr(new HistoryChangeItemTextOff(
+							pDoc, pDoc->m_TreeCtrl.GetItemText(hSelected), pReg->m_TextOff, CPoint(m_pProp[PropertyItemTextOffX]->GetValue().lVal, m_pProp[PropertyItemTextOffY]->GetValue().lVal))));
+						pDoc->AddNewHistory(hist);
+						hist->Do();
+					}
 					break;
 				}
 

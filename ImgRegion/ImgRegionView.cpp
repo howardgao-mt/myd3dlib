@@ -436,6 +436,10 @@ void CImgRegionView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 				if(!pReg->m_Locked)
 				{
+					m_DragRegLocal = pReg->m_Local;
+					m_DragRegSize = pReg->m_Size;
+					m_DragRegTextOff = pReg->m_TextOff;
+
 					CSize sizeDragLog(
 						nChar == VK_LEFT ? -1 : (nChar == VK_RIGHT ? 1 : 0), nChar == VK_UP ? -1 : (nChar == VK_DOWN ? 1 : 0));
 
@@ -479,6 +483,23 @@ void CImgRegionView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 						pReg->m_Local += sizeDragLog;
 						break;
 					}
+
+					CString strItem = pDoc->m_TreeCtrl.GetItemText(hSelected);
+
+					HistoryModifyRegionPtr hist(new HistoryModifyRegion());
+					if(pReg->m_Local != m_DragRegLocal)
+					{
+						hist->push_back(HistoryChangePtr(new HistoryChangeItemLocal(pDoc, strItem, m_DragRegLocal, pReg->m_Local)));
+					}
+					if(pReg->m_Size != m_DragRegSize)
+					{
+						hist->push_back(HistoryChangePtr(new HistoryChangeItemSize(pDoc, strItem, m_DragRegSize, pReg->m_Size)));
+					}
+					if(pReg->m_TextOff != m_DragRegTextOff)
+					{
+						hist->push_back(HistoryChangePtr(new HistoryChangeItemTextOff(pDoc, strItem, m_DragRegTextOff, pReg->m_TextOff)));
+					}
+					pDoc->AddNewHistory(hist);
 
 					Invalidate(TRUE);
 
@@ -664,6 +685,32 @@ void CImgRegionView::OnLButtonUp(UINT nFlags, CPoint point)
 			if (!pDoc)
 				return;
 
+			if(m_DragPos != point)
+			{
+				HTREEITEM hSelected = pDoc->m_TreeCtrl.GetSelectedItem();
+				ASSERT(hSelected);
+
+				CImgRegion * pReg = (CImgRegion *)pDoc->m_TreeCtrl.GetItemData(hSelected);
+				ASSERT(pReg);
+
+				CString strItem = pDoc->m_TreeCtrl.GetItemText(hSelected);
+
+				HistoryModifyRegionPtr hist(new HistoryModifyRegion());
+				if(pReg->m_Local != m_DragRegLocal)
+				{
+					hist->push_back(HistoryChangePtr(new HistoryChangeItemLocal(pDoc, strItem, m_DragRegLocal, pReg->m_Local)));
+				}
+				if(pReg->m_Size != m_DragRegSize)
+				{
+					hist->push_back(HistoryChangePtr(new HistoryChangeItemSize(pDoc, strItem, m_DragRegSize, pReg->m_Size)));
+				}
+				if(pReg->m_TextOff != m_DragRegTextOff)
+				{
+					hist->push_back(HistoryChangePtr(new HistoryChangeItemTextOff(pDoc, strItem, m_DragRegTextOff, pReg->m_TextOff)));
+				}
+				pDoc->AddNewHistory(hist);
+			}
+
 			pDoc->UpdateAllViews(this);
 
 			CMainFrame * pFrame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
@@ -707,6 +754,15 @@ void CImgRegionView::OnMouseMove(UINT nFlags, CPoint point)
 					CRect(CPoint(0, 0), pDoc->m_ImageSizeTable[m_nCurrImageSize]), CRect(CPoint(0,0), pDoc->m_Size));
 
 				CSize sizeDragLog((int)dragOff.x, (int)dragOff.y);
+				if(0 != HIBYTE(GetKeyState(VK_SHIFT)))
+				{
+					if(abs(sizeDragLog.cx) > abs(sizeDragLog.cy))
+					{
+						sizeDragLog.cy = 0;
+					}
+					else
+						sizeDragLog.cx = 0;
+				}
 
 				switch(m_nSelectedHandle)
 				{
@@ -745,17 +801,7 @@ void CImgRegionView::OnMouseMove(UINT nFlags, CPoint point)
 					pReg->m_TextOff = m_DragRegTextOff + sizeDragLog;
 					break;
 				default:
-					if(0 != HIBYTE(GetKeyState(VK_SHIFT)))
-					{
-						if(abs(sizeDragLog.cx) > abs(sizeDragLog.cy))
-						{
-							pReg->m_Local.SetPoint(m_DragRegLocal.x + sizeDragLog.cx, m_DragRegLocal.y);
-						}
-						else
-							pReg->m_Local.SetPoint(m_DragRegLocal.x, m_DragRegLocal.y + sizeDragLog.cy);
-					}
-					else
-						pReg->m_Local = m_DragRegLocal + sizeDragLog;
+					pReg->m_Local = m_DragRegLocal + sizeDragLog;
 					break;
 				}
 

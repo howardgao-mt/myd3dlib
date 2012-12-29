@@ -33,7 +33,6 @@ BEGIN_MESSAGE_MAP(CImgRegionTreeCtrl, CTreeCtrl)
 	ON_NOTIFY_REFLECT(TVN_BEGINDRAG, &CImgRegionTreeCtrl::OnTvnBegindrag)
 	ON_WM_MOUSEMOVE()
 	ON_WM_LBUTTONUP()
-	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 void CImgRegionTreeCtrl::OnTvnBegindrag(NMHDR *pNMHDR, LRESULT *pResult)
@@ -180,27 +179,37 @@ void CImgRegionTreeCtrl::OnLButtonUp(UINT nFlags, CPoint point)
 		{
 		case DropTypeFront:
 			ASSERT(hDropItem);
-			dragInfo.hDragTagParent = GetSafeParentItem(hDropItem);
-			dragInfo.hDragTagFront = GetSafePreSiblingItem(hDropItem);
+			dragInfo.hDragTagParent = GetParentItem(hDropItem);
+			dragInfo.hDragTagFront = GetPrevSiblingItem(hDropItem);
 			GetParent()->SendMessage(WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&dragInfo);
 			break;
 
 		case DropTypeChild:
 			ASSERT(hDropItem);
 			dragInfo.hDragTagParent = hDropItem;
-			dragInfo.hDragTagFront = TVI_LAST;
+			dragInfo.hDragTagFront = NULL;
 			GetParent()->SendMessage(WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&dragInfo);
 			break;
 
 		case DropTypeBack:
 			ASSERT(hDropItem);
-			dragInfo.hDragTagParent = GetSafeParentItem(hDropItem);
+			dragInfo.hDragTagParent = GetParentItem(hDropItem);
 			dragInfo.hDragTagFront = hDropItem;
 			GetParent()->SendMessage(WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&dragInfo);
 			break;
 		}
 	}
 	CTreeCtrl::OnLButtonUp(nFlags, point);
+}
+
+HTREEITEM CImgRegionTreeCtrl::InsertItem(LPCTSTR lpszItem, HTREEITEM hParent, HTREEITEM hInsertAfter)
+{
+	std::wstring key(lpszItem);
+	ASSERT(m_ItemMap.find(key) == m_ItemMap.end());
+
+	HTREEITEM hItem;
+	m_ItemMap[key] = hItem = CTreeCtrl::InsertItem(lpszItem, hParent, hInsertAfter);
+	return hItem;
 }
 
 BOOL CImgRegionTreeCtrl::FindTreeChildItem(HTREEITEM hParent, HTREEITEM hChild)
@@ -225,7 +234,8 @@ HTREEITEM CImgRegionTreeCtrl::MoveTreeItem(HTREEITEM hParent, HTREEITEM hInsertA
 		return hOtherItem;
 	}
 
-	HTREEITEM hItem = InsertItem(GetItemText(hOtherItem), 0, 0, hParent, hInsertAfter);
+	std::wstring key(GetItemText(hOtherItem));
+	HTREEITEM hItem = CTreeCtrl::InsertItem(key.c_str(), hParent, hInsertAfter);
 	SetItemData(hItem, GetItemData(hOtherItem));
 
 	HTREEITEM hNextOtherChild = NULL;
@@ -240,32 +250,9 @@ HTREEITEM CImgRegionTreeCtrl::MoveTreeItem(HTREEITEM hParent, HTREEITEM hInsertA
 	Expand(hItem, TVE_EXPAND);
 
 	DeleteItem(hOtherItem);
-	return hItem;
-}
 
-HTREEITEM CImgRegionTreeCtrl::GetSafeParentItem(HTREEITEM hItem)
-{
-	HTREEITEM hParent = GetParentItem(hItem);
-	if(!hParent)
-		return TVI_ROOT;
-
-	return hParent;
-}
-
-HTREEITEM CImgRegionTreeCtrl::GetSafePreSiblingItem(HTREEITEM hItem)
-{
-	HTREEITEM hSibling = GetPrevSiblingItem(hItem);
-	if(!hSibling)
-		return TVI_FIRST;
-
-	return hSibling;
-}
-
-void CImgRegionTreeCtrl::OnTimer(UINT_PTR nIDEvent)
-{
-	// TODO: Add your message handler code here and/or call default
-
-	CTreeCtrl::OnTimer(nIDEvent);
+	ASSERT(m_ItemMap.find(key) != m_ItemMap.end());
+	return m_ItemMap[key] = hItem;
 }
 
 BEGIN_MESSAGE_MAP(CFileView, CDockablePane)
@@ -394,18 +381,13 @@ afx_msg void CFileView::OnTvnDragchangedTree(UINT id, NMHDR *pNMHDR, LRESULT *pR
 		CImgRegionDoc * pDoc = DYNAMIC_DOWNCAST(CImgRegionDoc, pChildFrame->GetActiveDocument());
 		if(pDoc && &pDoc->m_TreeCtrl == pTreeCtrl)
 		{
-			CPoint ptOrg = pDoc->LocalToRoot(pDragInfo->hDragItem, CPoint(0,0));
+			CString newParentID = pDragInfo->hDragTagParent ? pDoc->m_TreeCtrl.GetItemText(pDragInfo->hDragTagParent) : _T("");
+			CString newBeforeID = pDragInfo->hDragTagFront ? pDoc->m_TreeCtrl.GetItemText(pDragInfo->hDragTagFront) : _T("");
+			HistoryPtr hist(new HistoryMovRegion(
+				pDoc, pDoc->m_TreeCtrl.GetItemText(pDragInfo->hDragItem), newParentID, newBeforeID));
 
-			HTREEITEM hItem = pTreeCtrl->MoveTreeItem(pDragInfo->hDragTagParent, pDragInfo->hDragTagFront, pDragInfo->hDragItem);
-			pTreeCtrl->SelectItem(hItem);
-
-			if(hItem != pDragInfo->hDragItem)
-			{
-				CImgRegion * pReg = (CImgRegion *)pTreeCtrl->GetItemData(hItem);
-				ASSERT(pReg);
-
-				pReg->m_Local = pDoc->RootToLocal(pDragInfo->hDragTagParent, ptOrg);
-			}
+			pDoc->AddNewHistory(hist);
+			hist->Do();
 
 			pDoc->UpdateAllViews(NULL);
 
