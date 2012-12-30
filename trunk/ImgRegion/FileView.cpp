@@ -242,7 +242,7 @@ HTREEITEM CImgRegionTreeCtrl::MoveTreeItem(HTREEITEM hParent, HTREEITEM hInsertA
 	HTREEITEM hChild = TVI_LAST;
 	for(HTREEITEM hOtherChild = GetChildItem(hOtherItem); hOtherChild; hOtherChild = hNextOtherChild)
 	{
-		HTREEITEM hNextOtherChild = GetNextSiblingItem(hOtherChild);
+		hNextOtherChild = GetNextSiblingItem(hOtherChild);
 
 		hChild = MoveTreeItem(hItem, hChild, hOtherChild);
 	}
@@ -396,4 +396,36 @@ afx_msg void CFileView::OnTvnDragchangedTree(UINT id, NMHDR *pNMHDR, LRESULT *pR
 			pFrame->m_wndProperties.InvalidProperties();
 		}
 	}
+}
+
+BOOL CFileView::PreTranslateMessage(MSG* pMsg)
+{
+	CMainFrame * pFrame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
+	ASSERT(pFrame);
+
+	CChildFrame * pChildFrame = DYNAMIC_DOWNCAST(CChildFrame, pFrame->MDIGetActive());
+	if(pChildFrame)
+	{
+		CImgRegionDoc * pDoc = DYNAMIC_DOWNCAST(CImgRegionDoc, pChildFrame->GetActiveDocument());
+		if(pDoc)
+		{
+			switch(pMsg->message)
+			{
+			case WM_KEYDOWN:
+				switch(pMsg->wParam)
+				{
+				case VK_INSERT:
+					pDoc->OnAddRegion();
+					return TRUE;
+
+				case VK_DELETE:
+					pDoc->OnDelRegion();
+					return TRUE;
+				}
+				break;
+			}
+		}
+	}
+
+	return CDockablePane::PreTranslateMessage(pMsg);
 }
