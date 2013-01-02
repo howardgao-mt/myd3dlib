@@ -3,10 +3,6 @@
 #include "myResource.h"
 #include "libc.h"
 
-#ifdef _DEBUG
-#define new new( _CLIENT_BLOCK, __FILE__, __LINE__ )
-#endif
-
 using namespace my;
 
 BOOL DxutWindow::ProcessWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT& lResult, DWORD dwMsgMapID)
@@ -118,12 +114,6 @@ DxutApp::DxutApp(void)
 	, m_llQPFTicksPerSec(0)
 	, m_llLastElapsedTime(0)
 {
-	FT_Error err = FT_Init_FreeType(&m_Library);
-	if(err)
-	{
-		THROW_CUSEXCEPTION("FT_Init_FreeType failed");
-	}
-
 	LARGE_INTEGER qwTicksPerSec;
 	QueryPerformanceFrequency(&qwTicksPerSec);
 	m_llQPFTicksPerSec = qwTicksPerSec.QuadPart;
@@ -135,7 +125,6 @@ DxutApp::DxutApp(void)
 
 DxutApp::~DxutApp(void)
 {
-	FT_Error err = FT_Done_FreeType(m_Library);
 }
 
 int DxutApp::Run(void)

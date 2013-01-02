@@ -4,10 +4,6 @@
 #include "myResource.h"
 #include "libc.h"
 
-#ifdef _DEBUG
-#define new new( _CLIENT_BLOCK, __FILE__, __LINE__ )
-#endif
-
 using namespace my;
 
 void Sprite::CreateSprite(LPDIRECT3DDEVICE9 pDevice)
@@ -118,10 +114,11 @@ bool RectAssignmentNode::AssignRect(const CSize & size, CRect & outRect)
 	return false;
 }
 
+Singleton<FontLibrary>::DrivedClassPtr Singleton<FontLibrary>::s_ptr;
+
 Font::Font(int font_pixel_gap)
 	: m_face(NULL)
 	, FONT_PIXEL_GAP(font_pixel_gap)
-	, m_texture(new Texture())
 {
 }
 
@@ -163,14 +160,13 @@ void Font::Create(FT_Face face, int height, LPDIRECT3DDEVICE9 pDevice)
 }
 
 void Font::CreateFontFromFile(
-	FT_Library Library,
 	LPDIRECT3DDEVICE9 pDevice,
 	LPCSTR pFilename,
 	int height,
 	FT_Long face_index)
 {
 	FT_Face face;
-	FT_Error err = FT_New_Face(Library, pFilename, face_index, &face);
+	FT_Error err = FT_New_Face(FontLibrary::getSingleton().m_Library, pFilename, face_index, &face);
 	if(err)
 	{
 		THROW_CUSEXCEPTION("FT_New_Face failed");
@@ -180,7 +176,6 @@ void Font::CreateFontFromFile(
 }
 
 void Font::CreateFontFromFileInMemory(
-	FT_Library Library,
 	LPDIRECT3DDEVICE9 pDevice,
 	const void * file_base,
 	long file_size,
@@ -190,18 +185,17 @@ void Font::CreateFontFromFileInMemory(
 	CachePtr cache(new Cache(file_size));
 	memcpy(&(*cache)[0], file_base, cache->size());
 
-	CreateFontFromFileInCache(Library, pDevice, cache, height, face_index);
+	CreateFontFromFileInCache(pDevice, cache, height, face_index);
 }
 
 void Font::CreateFontFromFileInCache(
-	FT_Library Library,
 	LPDIRECT3DDEVICE9 pDevice,
 	CachePtr cache_ptr,
 	int height,
 	FT_Long face_index)
 {
 	FT_Face face;
-	FT_Error err = FT_New_Memory_Face(Library, &(*cache_ptr)[0], cache_ptr->size(), face_index, &face);
+	FT_Error err = FT_New_Memory_Face(FontLibrary::getSingleton().m_Library, &(*cache_ptr)[0], cache_ptr->size(), face_index, &face);
 	if(err)
 	{
 		THROW_CUSEXCEPTION("FT_New_Memory_Face failed");
@@ -214,17 +208,17 @@ void Font::CreateFontFromFileInCache(
 
 void Font::OnResetDevice(void)
 {
-	m_texture->OnResetDevice();
+	m_Texture.OnResetDevice();
 }
 
 void Font::OnLostDevice(void)
 {
-	m_texture->OnLostDevice();
+	m_Texture.OnLostDevice();
 }
 
 void Font::OnDestroyDevice(void)
 {
-	m_texture->OnDestroyDevice();
+	m_Texture.OnDestroyDevice();
 
 	m_Device.Release();
 
@@ -237,11 +231,11 @@ void Font::OnDestroyDevice(void)
 
 void Font::CreateFontTexture(UINT Width, UINT Height)
 {
-	m_texture->OnDestroyDevice();
+	m_Texture.OnDestroyDevice();
 
-	m_texture->CreateTexture(m_Device, Width, Height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
+	m_Texture.CreateTexture(m_Device, Width, Height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED);
 
-	m_textureDesc = m_texture->GetLevelDesc();
+	m_textureDesc = m_Texture.GetLevelDesc();
 }
 
 void Font::ResetCharacterMap(void)
@@ -300,7 +294,7 @@ void Font::InsertCharacter(
 
 	if(!info.textureRect.IsRectEmpty())
 	{
-		D3DLOCKED_RECT lr = m_texture->LockRect(info.textureRect);
+		D3DLOCKED_RECT lr = m_Texture.LockRect(info.textureRect);
 		for(int y = 0; y < bmpHeight; y++)
 		{
 			for(int x = 0; x < bmpWidth; x++)
@@ -308,7 +302,7 @@ void Font::InsertCharacter(
 				*((DWORD *)((unsigned char *)lr.pBits + y * lr.Pitch) + x) = D3DCOLOR_ARGB(*(bmpBuffer + y * bmpPitch + x),255,255,255);
 			}
 		}
-		m_texture->UnlockRect();
+		m_Texture.UnlockRect();
 	}
 
 	m_characterMap.insert(std::make_pair(character, info));
@@ -433,7 +427,7 @@ void Font::DrawString(
 		pen.x += info.horiAdvance;
 	}
 
-	ui_render->SetTexture(m_texture);
+	ui_render->SetTexture(m_Texture.m_ptr);
 	ui_render->DrawVertexList();
 }
 
@@ -458,7 +452,7 @@ void Font::DrawString(
 		V(m_Device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE));
 
 		V(pSprite->Draw(
-			(IDirect3DTexture9 *)m_texture->m_ptr,
+			(IDirect3DTexture9 *)m_Texture.m_ptr,
 			&info.textureRect,
 			(D3DXVECTOR3 *)&Vector3(0, 0, 0),
 			(D3DXVECTOR3 *)&Vector3(pen.x + info.horiBearingX, pen.y - info.horiBearingY, 0),
