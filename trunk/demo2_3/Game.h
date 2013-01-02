@@ -331,11 +331,20 @@ class EffectUIRender
 public:
 	my::EffectPtr m_UIEffect;
 
+	UINT m_Passes;
+
 public:
-	EffectUIRender(IDirect3DDevice9 * pd3dDevice)
+	EffectUIRender(IDirect3DDevice9 * pd3dDevice, my::EffectPtr effect)
 		: UIRender(pd3dDevice)
+		, m_UIEffect(effect)
+		, m_Passes(0)
 	{
+		_ASSERT(m_UIEffect);
 	}
+
+	virtual void Begin(void);
+
+	virtual void End(void);
 
 	virtual void SetTexture(my::TexturePtr texture);
 
@@ -356,7 +365,7 @@ public:
 
 	my::FontPtr m_font;
 
-	my::UIRenderPtr m_uiRender;
+	my::UIRenderPtr m_UIRender;
 
 	my::TexturePtr m_whiteTexture;
 
