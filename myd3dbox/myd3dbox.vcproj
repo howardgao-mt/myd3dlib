@@ -2,10 +2,10 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="ImgRegion"
-	ProjectGUID="{1A350FC9-BBE6-454A-9D01-EE69ADB76F7C}"
-	RootNamespace="ImgRegion"
-	Keyword="Win32Proj"
+	Name="myd3dbox"
+	ProjectGUID="{0736F52B-D0C5-4075-8C60-F4838E7EDEC7}"
+	RootNamespace="myd3dbox"
+	Keyword="MFCProj"
 	TargetFrameworkVersion="196613"
 	>
 	<Platforms>
@@ -38,12 +38,15 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
+				PreprocessorDefinitions="_DEBUG"
+				MkTypLibCompatible="false"
+				ValidateParameters="true"
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="&quot;D:\Program Files (2)\boost_1_34_1&quot;;&quot;$(SolutionDir)myd3dlib\include&quot;;&quot;$(SolutionDir)zlib\include&quot;;&quot;$(SolutionDir)lua51\include&quot;;&quot;$(SolutionDir)luabind\include&quot;;&quot;$(SolutionDir)freetype\include&quot;;&quot;$(SolutionDir)bullet\include&quot;"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
+				PreprocessorDefinitions="WIN32;_WINDOWS;_DEBUG"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -56,6 +59,9 @@
 			/>
 			<Tool
 				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG"
+				Culture="1033"
+				AdditionalIncludeDirectories="$(IntDir)"
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"
@@ -112,13 +118,17 @@
 			/>
 			<Tool
 				Name="VCMIDLTool"
+				PreprocessorDefinitions="NDEBUG"
+				MkTypLibCompatible="false"
+				ValidateParameters="true"
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
 				AdditionalIncludeDirectories="&quot;D:\Program Files (2)\boost_1_34_1&quot;;&quot;$(SolutionDir)myd3dlib\include&quot;;&quot;$(SolutionDir)zlib\include&quot;;&quot;$(SolutionDir)lua51\include&quot;;&quot;$(SolutionDir)luabind\include&quot;;&quot;$(SolutionDir)freetype\include&quot;;&quot;$(SolutionDir)bullet\include&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
+				PreprocessorDefinitions="WIN32;_WINDOWS;NDEBUG"
+				MinimalRebuild="false"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="2"
@@ -130,6 +140,9 @@
 			/>
 			<Tool
 				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="NDEBUG"
+				Culture="1033"
+				AdditionalIncludeDirectories="$(IntDir)"
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"
@@ -175,31 +188,11 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\ChildFrm.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\FileView.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\ImageView.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\ImgRegionDoc.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\ImgRegionFilePropertyDlg.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\ImgRegionView.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\MainApp.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\MainDoc.cpp"
 				>
 			</File>
 			<File
@@ -207,7 +200,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\PropertiesWnd.cpp"
+				RelativePath=".\MainView.cpp"
 				>
 			</File>
 			<File
@@ -230,10 +223,6 @@
 					/>
 				</FileConfiguration>
 			</File>
-			<File
-				RelativePath=".\TGALoader.cpp"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -241,31 +230,11 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\ChildFrm.h"
-				>
-			</File>
-			<File
-				RelativePath=".\FileView.h"
-				>
-			</File>
-			<File
-				RelativePath=".\ImageView.h"
-				>
-			</File>
-			<File
-				RelativePath=".\ImgRegionDoc.h"
-				>
-			</File>
-			<File
-				RelativePath=".\ImgRegionFilePropertyDlg.h"
-				>
-			</File>
-			<File
-				RelativePath=".\ImgRegionView.h"
-				>
-			</File>
-			<File
 				RelativePath=".\MainApp.h"
+				>
+			</File>
+			<File
+				RelativePath=".\MainDoc.h"
 				>
 			</File>
 			<File
@@ -273,7 +242,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\PropertiesWnd.h"
+				RelativePath=".\MainView.h"
 				>
 			</File>
 			<File
@@ -284,10 +253,6 @@
 				RelativePath=".\stdafx.h"
 				>
 			</File>
-			<File
-				RelativePath=".\Tga.h"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
@@ -295,31 +260,11 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\Arrow.cur"
+				RelativePath=".\myd3dbox.rc"
 				>
 			</File>
 			<File
-				RelativePath=".\ImgRegion.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\ImgRegion.rc"
-				>
-			</File>
-			<File
-				RelativePath=".\ImgRegionDoc.ico"
-				>
-			</File>
-			<File
-				RelativePath=".\jyiczlza.bmp"
-				>
-			</File>
-			<File
-				RelativePath=".\Toolbar256.bmp"
-				>
-			</File>
-			<File
-				RelativePath=".\Ubuntu move.cur"
+				RelativePath=".\Toolbar.bmp"
 				>
 			</File>
 		</Filter>
@@ -327,7 +272,7 @@
 	<Globals>
 		<Global
 			Name="RESOURCE_FILE"
-			Value="ImgRegion.rc"
+			Value="myd3dbox.rc"
 		/>
 	</Globals>
 </VisualStudioProject>
