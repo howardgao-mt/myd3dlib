@@ -47,9 +47,13 @@ namespace my
 
 		virtual void End(void);
 
-		virtual void SetTexture(TexturePtr texture);
+		virtual void SetTexture(IDirect3DBaseTexture9 * pTexture);
 
-		virtual void SetTransform(const Matrix4 & world, const Matrix4 & view, const Matrix4 & proj);
+		virtual void SetWorld(const Matrix4 & world);
+
+		virtual void SetView(const Matrix4 & view);
+
+		virtual void SetProjection(const Matrix4 & proj);
 
 		virtual void ClearVertexList(void);
 
