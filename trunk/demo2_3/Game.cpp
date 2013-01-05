@@ -483,22 +483,15 @@ void EffectUIRender::SetTexture(IDirect3DBaseTexture9 * pTexture)
 		m_UIEffect->SetTexture("g_MeshTexture", pTexture ? pTexture : Game::getSingleton().m_WhiteTexture->m_ptr);
 }
 
-void EffectUIRender::SetWorld(const Matrix4 & world)
-{
-	m_World = world;
-}
-
-void EffectUIRender::SetView(const Matrix4 & view)
-{
-	m_View = view;
-}
-
-void EffectUIRender::SetProjection(const Matrix4 & proj)
+void EffectUIRender::SetTransform(const my::Matrix4 & World, const my::Matrix4 & View, const my::Matrix4 & Proj)
 {
 	if(m_UIEffect->m_ptr)
 	{
-		m_UIEffect->SetMatrix("g_mWorld", m_World);
-		m_UIEffect->SetMatrix("g_mWorldViewProjection", m_World * m_View * proj);
+		m_UIEffect->SetMatrix("g_mWorld", World);
+		m_UIEffect->SetMatrix("g_mWorldViewProjection", World * View * Proj);
+
+		const D3DSURFACE_DESC & desc = my::DxutApp::getSingleton().GetD3D9BackBufferSurfaceDesc();
+		m_UIEffect->SetVector("g_ScreenSize", Vector4((float)desc.Width, (float)desc.Height, 0, 0));
 	}
 }
 
@@ -545,22 +538,10 @@ void TimerMgr::OnFrameMove(
 	}
 }
 
-void DialogMgr::OnAlign(void)
+void DialogMgr::UpdateDlgViewProj(DialogPtr dlg, const my::Vector2 & vp)
 {
-	DialogPtrSet::iterator dlg_iter = m_dlgSet.begin();
-	for(; dlg_iter != m_dlgSet.end(); dlg_iter++)
-	{
-		UpdateDlgViewProj(*dlg_iter);
-	}
-}
-
-void DialogMgr::UpdateDlgViewProj(DialogPtr dlg)
-{
-	const D3DSURFACE_DESC & desc = my::DxutApp::getSingleton().GetD3D9BackBufferSurfaceDesc();
-
 	if(dlg->EventAlign)
-		dlg->EventAlign(EventArgsPtr(
-			new AlignEventArgs(Vector2((float)desc.Width, (float)desc.Height))));
+		dlg->EventAlign(EventArgsPtr(new AlignEventArgs(vp)));
 }
 
 void DialogMgr::Draw(
@@ -571,9 +552,8 @@ void DialogMgr::Draw(
 	DialogPtrSet::iterator dlg_iter = m_dlgSet.begin();
 	for(; dlg_iter != m_dlgSet.end(); dlg_iter++)
 	{
-		ui_render->SetWorld((*dlg_iter)->m_Transform);
-		ui_render->SetView((*dlg_iter)->m_View);
-		ui_render->SetProjection((*dlg_iter)->m_Proj);
+		ui_render->SetTransform((*dlg_iter)->m_Transform, (*dlg_iter)->m_View, (*dlg_iter)->m_Proj);
+
 		(*dlg_iter)->Draw(ui_render, fElapsedTime);
 	}
 }
@@ -688,7 +668,7 @@ HRESULT Game::OnCreateDevice(
 
 	m_console->SetVisible(false);
 
-	UpdateDlgViewProj(m_console);
+	UpdateDlgViewProj(m_console, Vector2((float)pBackBufferSurfaceDesc->Width, (float)pBackBufferSurfaceDesc->Height));
 
 	AddLine(L"Game::OnCreateDevice", D3DCOLOR_ARGB(255,255,255,0));
 
@@ -737,9 +717,15 @@ HRESULT Game::OnResetDevice(
 		return hres;
 	}
 
-	UpdateDlgViewProj(m_console);
+	Vector2 vp((float)pBackBufferSurfaceDesc->Width, (float)pBackBufferSurfaceDesc->Height);
 
-	OnAlign();
+	UpdateDlgViewProj(m_console, vp);
+
+	DialogPtrSet::iterator dlg_iter = m_dlgSet.begin();
+	for(; dlg_iter != m_dlgSet.end(); dlg_iter++)
+	{
+		UpdateDlgViewProj(*dlg_iter, vp);
+	}
 
 	SafeResetState(GetCurrentState());
 
@@ -810,9 +796,7 @@ void Game::OnFrameRender(
 
 		DialogMgr::Draw(m_UIRender.get(), fTime, fElapsedTime);
 
-		m_UIRender->SetWorld(m_console->m_Transform);
-		m_UIRender->SetView(m_console->m_View);
-		m_UIRender->SetProjection(m_console->m_Proj);
+		m_UIRender->SetTransform(m_console->m_Transform, m_console->m_View, m_console->m_Proj);
 
 		m_console->Draw(m_UIRender.get(), fElapsedTime);
 
