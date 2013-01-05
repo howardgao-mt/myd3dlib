@@ -218,9 +218,7 @@ public:
 	{
 	}
 
-	void OnAlign(void);
-
-	void UpdateDlgViewProj(my::DialogPtr dlg);
+	static void UpdateDlgViewProj(my::DialogPtr dlg, const my::Vector2 & vp);
 
 	void Draw(
 		my::UIRender * ui_render,
@@ -235,7 +233,9 @@ public:
 
 	void InsertDlg(my::DialogPtr dlg)
 	{
-		UpdateDlgViewProj(dlg);
+		const D3DSURFACE_DESC & desc = my::DxutApp::getSingleton().GetD3D9BackBufferSurfaceDesc();
+
+		UpdateDlgViewProj(dlg, my::Vector2((float)desc.Width, (float)desc.Height));
 
 		m_dlgSet.push_back(dlg);
 	}
@@ -335,6 +335,8 @@ public:
 
 	my::Matrix4 m_View;
 
+	my::Matrix4 m_Proj;
+
 public:
 	EffectUIRender(IDirect3DDevice9 * pd3dDevice, my::EffectPtr effect)
 		: UIRender(pd3dDevice)
@@ -350,11 +352,7 @@ public:
 
 	virtual void SetTexture(IDirect3DBaseTexture9 * pTexture);
 
-	virtual void SetWorld(const my::Matrix4 & world);
-
-	virtual void SetView(const my::Matrix4 & view);
-
-	virtual void SetProjection(const my::Matrix4 & proj);
+	virtual void SetTransform(const my::Matrix4 & World, const my::Matrix4 & View, const my::Matrix4 & Proj);
 
 	virtual void PushVertex(float x, float y, float u, float v, D3DCOLOR color);
 
