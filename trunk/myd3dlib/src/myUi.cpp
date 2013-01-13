@@ -95,7 +95,7 @@ void UIRender::SetTexture(IDirect3DBaseTexture9 * pTexture)
 	V(m_Device->SetTexture(0, pTexture));
 }
 
-void UIRender::SetTransform(const my::Matrix4 & World, const my::Matrix4 & View, const my::Matrix4 & Proj)
+void UIRender::SetTransform(const Matrix4 & World, const Matrix4 & View, const Matrix4 & Proj)
 {
 	V(m_Device->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&World));
 	V(m_Device->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&View));
@@ -212,9 +212,9 @@ void UIRender::DrawWindow(const my::Rectangle & rect, DWORD color, const CSize &
 
 void ControlSkin::DrawImage(UIRender * ui_render, ControlImagePtr Image, const my::Rectangle & rect, DWORD color)
 {
-	if(Image)
+	if(Image && Image->m_Texture)
 	{
-		ui_render->SetTexture(Image->m_Texture ? Image->m_Texture->m_ptr : NULL);
+		ui_render->SetTexture(Image->m_Texture->m_ptr);
 		ui_render->DrawWindow(rect, color, CSize(Image->m_Texture->GetLevelDesc().Width, Image->m_Texture->GetLevelDesc().Height), Image->m_Border);
 	}
 	else

@@ -309,6 +309,10 @@ bool DialogMgr::MsgProc(
 
 void EffectUIRender::Begin(void)
 {
+	const D3DSURFACE_DESC & desc = my::DxutApp::getSingleton().GetD3D9BackBufferSurfaceDesc();
+	if(m_UIEffect->m_ptr)
+		m_UIEffect->SetVector("g_ScreenDim", Vector4((float)desc.Width, (float)desc.Height, 0, 0));
+
 	if(m_UIEffect->m_ptr)
 		m_Passes = m_UIEffect->Begin();
 }
@@ -326,16 +330,10 @@ void EffectUIRender::SetTexture(IDirect3DBaseTexture9 * pTexture)
 		m_UIEffect->SetTexture("g_MeshTexture", pTexture ? pTexture : Game::getSingleton().m_WhiteTexture->m_ptr);
 }
 
-void EffectUIRender::SetTransform(const my::Matrix4 & World, const my::Matrix4 & View, const my::Matrix4 & Proj)
+void EffectUIRender::SetTransform(const Matrix4 & World, const Matrix4 & View, const Matrix4 & Proj)
 {
 	if(m_UIEffect->m_ptr)
-	{
-		m_UIEffect->SetMatrix("g_mWorld", World);
 		m_UIEffect->SetMatrix("g_mWorldViewProjection", World * View * Proj);
-
-		const D3DSURFACE_DESC & desc = my::DxutApp::getSingleton().GetD3D9BackBufferSurfaceDesc();
-		m_UIEffect->SetVector("g_ScreenDim", Vector4((float)desc.Width, (float)desc.Height, 0, 0));
-	}
 }
 
 void EffectUIRender::PushVertex(float x, float y, float u, float v, D3DCOLOR color)
@@ -604,7 +602,9 @@ void Game::OnFrameRender(
 
 		_ASSERT(m_Font);
 
-		// ! Use the same world, view, proj as m_Console
+		// ! Use the same view, proj as m_Console
+		m_UIRender->SetTransform(my::Matrix4::Identity(), m_Console->m_View, m_Console->m_Proj);
+
 		m_Font->DrawString(m_UIRender.get(), m_strFPS, Rectangle::LeftTop(5,5,500,10), D3DCOLOR_ARGB(255,255,255,0));
 
 		m_UIRender->End();
