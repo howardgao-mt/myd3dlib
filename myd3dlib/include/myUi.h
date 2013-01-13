@@ -54,7 +54,7 @@ namespace my
 
 		virtual void SetTexture(IDirect3DBaseTexture9 * pTexture);
 
-		virtual void SetTransform(const my::Matrix4 & World, const my::Matrix4 & View, const my::Matrix4 & Proj);
+		virtual void SetTransform(const Matrix4 & World, const Matrix4 & View, const Matrix4 & Proj);
 
 		virtual void ClearVertexList(void);
 
