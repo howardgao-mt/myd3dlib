@@ -34,6 +34,7 @@ Matrix4 UIRender::PerspectiveProj(float Fovy, float Width, float Height)
 
 void UIRender::Begin(void)
 {
+	// ! Default UIRender rendering ui elements under Fixed Pipeline
 	V(m_Device->GetRenderState(D3DRS_CULLMODE, &State[0]));
 	V(m_Device->GetRenderState(D3DRS_LIGHTING, &State[1]));
 	V(m_Device->GetRenderState(D3DRS_ALPHABLENDENABLE, &State[2]));
@@ -106,6 +107,15 @@ void UIRender::ClearVertexList(void)
 	vertex_count = 0;
 }
 
+void UIRender::DrawVertexList(void)
+{
+	if(vertex_count > 0)
+	{
+		V(m_Device->SetFVF(D3DFVF_CUSTOMVERTEX));
+		V(m_Device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertex_count / 3, vertex_list, sizeof(vertex_list[0])));
+	}
+}
+
 // ! Floor UI unit & subtract 0.5 units to correctly align texels with pixels
 #define ALIGN_UI_UNIT(v) (floor((v) + 0.3333333f) - 0.5f)
 
@@ -120,15 +130,6 @@ void UIRender::PushVertex(float x, float y, float u, float v, D3DCOLOR color)
 		vertex_list[vertex_count].v = v;
 		vertex_list[vertex_count].color = color;
 		vertex_count++;
-	}
-}
-
-void UIRender::DrawVertexList(void)
-{
-	if(vertex_count > 0)
-	{
-		V(m_Device->SetFVF(D3DFVF_CUSTOMVERTEX));
-		V(m_Device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertex_count / 3, vertex_list, sizeof(vertex_list[0])));
 	}
 }
 
@@ -1921,7 +1922,7 @@ void Dialog::Draw(UIRender * ui_render, float fElapsedTime, const Vector2 & Offs
 {
 	if(m_bVisible)
 	{
-		ui_render->SetTransform(m_Transform, m_View, m_Proj);
+		ui_render->SetTransform(m_World, m_View, m_Proj);
 
 		Control::Draw(ui_render, fElapsedTime, Vector2(0,0));
 
@@ -2005,14 +2006,14 @@ bool Dialog::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			Vector2 ptProj(Lerp(-1.0f, 1.0f, ptScreen.x / ClientRect.right) / m_Proj._11, Lerp(1.0f, -1.0f, ptScreen.y / ClientRect.bottom) / m_Proj._22);
 			Vector3 dir = (viewX * ptProj.x + viewY * ptProj.y + viewZ).normalize();
 
-			Vector3 dialogNormal = Vector3(0, 0, 1).transformNormal(m_Transform);
-			float dialogDistance = ((Vector3 &)m_Transform[3]).dot(dialogNormal);
+			Vector3 dialogNormal = Vector3(0, 0, 1).transformNormal(m_World);
+			float dialogDistance = ((Vector3 &)m_World[3]).dot(dialogNormal);
 			IntersectionTests::TestResult result = IntersectionTests::rayAndHalfSpace(ptEye, dir, dialogNormal, dialogDistance);
 
 			if(result.first)
 			{
 				Vector3 ptInt(ptEye + dir * result.second);
-				Vector3 pt = ptInt.transformCoord(m_Transform.inverse());
+				Vector3 pt = ptInt.transformCoord(m_World.inverse());
 				Vector2 ptLocal = Vector2(pt.x - m_Location.x, pt.y - m_Location.y);
 				if(ControlFocus
 					&& ContainsControl(ControlFocus) // ! 补丁，只处理自己的 FocusControl
