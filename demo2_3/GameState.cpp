@@ -314,7 +314,7 @@ HRESULT GameStateMain::OnResetDevice(
 		pd3dDevice, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, D3DFMT_D24X8);
 
 	if(m_Camera && m_Camera->EventAlign)
-		m_Camera->EventAlign(EventArgsPtr(new AlignEventArgs(Vector2((float)pBackBufferSurfaceDesc->Width, (float)pBackBufferSurfaceDesc->Height))));
+		m_Camera->EventAlign(EventArgsPtr(new EventArgs()));
 
 	return S_OK;
 }
@@ -341,7 +341,7 @@ void GameStateMain::OnFrameMove(
 	double fTime,
 	float fElapsedTime)
 {
-	m_dynamicsWorld->stepSimulation(fElapsedTime, 0);
+	m_dynamicsWorld->stepSimulation(fElapsedTime, 4);
 
 	m_Camera->OnFrameMove(fTime, fElapsedTime);
 
