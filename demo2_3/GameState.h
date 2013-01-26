@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Game.h"
-#include "Camera.h"
 #include "EffectMesh.h"
 #include "Character.h"
 //
@@ -91,6 +90,13 @@ public:
 		IDirect3DDevice9 * pd3dDevice,
 		double fTime,
 		float fElapsedTime);
+
+	virtual LRESULT MsgProc(
+		HWND hWnd,
+		UINT uMsg,
+		WPARAM wParam,
+		LPARAM lParam,
+		bool * pbNoFurtherProcessing);
 };
 
 class GameStateMain
@@ -112,7 +118,7 @@ public:
 
 	my::SurfacePtr m_ShadowTextureDS;
 
-	boost::shared_ptr<Camera> m_Camera;
+	boost::shared_ptr<my::Camera> m_Camera;
 
 	typedef std::vector<EffectMeshPtr> EffectMeshPtrList;
 
@@ -147,6 +153,13 @@ public:
 		IDirect3DDevice9 * pd3dDevice,
 		double fTime,
 		float fElapsedTime);
+
+	virtual LRESULT MsgProc(
+		HWND hWnd,
+		UINT uMsg,
+		WPARAM wParam,
+		LPARAM lParam,
+		bool * pbNoFurtherProcessing);
 
 	void InsertStaticMesh(EffectMeshPtr effect_mesh)
 	{

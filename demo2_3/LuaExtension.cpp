@@ -1,4 +1,4 @@
-ï»¿#include "stdafx.h"
+#include "stdafx.h"
 #include "LuaExtension.h"
 #include "Game.h"
 #include "GameState.h"
@@ -236,7 +236,7 @@ namespace luabind
 					}
 					catch(const luabind::error & e)
 					{
-						// ! ControlEventäº‹ä»¶å¤„ç†æ˜¯å®¹é”™çš„ï¼Œå½“äº‹ä»¶å¤„ç†å¤±è´¥åï¼Œç¨‹åºç»§ç»­è¿è¡Œ
+						// ! ControlEventÊÂ¼ş´¦ÀíÊÇÈİ´íµÄ£¬µ±ÊÂ¼ş´¦ÀíÊ§°Üºó£¬³ÌĞò¼ÌĞøÔËĞĞ
 						Game::getSingleton().AddLine(ms2ws(lua_tostring(e.state(), -1)));
 					}
 				}
@@ -350,10 +350,10 @@ void Export2Lua(lua_State * L)
 
 	open(L);
 
-	// ! ä¼šå¯¼è‡´å†…å­˜æ³„æ¼ï¼Œä½†å¯ä»¥é‡å†™ handle_exception_auxï¼ŒåŠ å…¥ my::Exceptionçš„æ”¯æŒ
+	// ! »áµ¼ÖÂÄÚ´æĞ¹Â©£¬µ«¿ÉÒÔÖØĞ´ handle_exception_aux£¬¼ÓÈë my::ExceptionµÄÖ§³Ö
 	register_exception_handler<my::Exception>(&translate_my_exception);
 
-	//// ! ä¸ºä»€ä¹ˆä¸èµ·ä½œç”¨
+	//// ! ÎªÊ²Ã´²»Æğ×÷ÓÃ
 	//set_pcall_callback(add_file_and_line);
 
 	module(L)
@@ -955,6 +955,30 @@ void Export2Lua(lua_State * L)
 			.def("RemoveDlg", &my::DialogMgr::RemoveDlg)
 			.def("RemoveAllDlg", &my::DialogMgr::RemoveAllDlg)
 
+		, class_<my::BaseCamera, boost::shared_ptr<my::BaseCamera> >("BaseCamera")
+			.def_readwrite("Fovy", &my::BaseCamera::m_Fovy)
+			.def_readwrite("Aspect", &my::BaseCamera::m_Aspect)
+			.def_readwrite("Nz", &my::BaseCamera::m_Nz)
+			.def_readwrite("Fz", &my::BaseCamera::m_Fz)
+			.def_readwrite("View", &my::BaseCamera::m_View)
+			.def_readwrite("Proj", &my::BaseCamera::m_Proj)
+			.def_readwrite("EventAlign", &my::BaseCamera::EventAlign)
+
+		, class_<my::Camera, my::BaseCamera, boost::shared_ptr<my::Camera> >("Camera")
+			.def(constructor<float, float, float, float>())
+			.def_readwrite("Position", &my::Camera::m_Position)
+			.def_readwrite("Orientation", &my::Camera::m_Orientation)
+
+		, class_<my::ModelViewerCamera, my::Camera, boost::shared_ptr<my::Camera> >("ModelViewerCamera")
+			.def(constructor<float, float, float, float>())
+			.def_readwrite("LookAt", &my::ModelViewerCamera::m_LookAt)
+			.def_readwrite("Rotation", &my::ModelViewerCamera::m_Rotation)
+			.def_readwrite("Distance", &my::ModelViewerCamera::m_Distance)
+
+		, class_<my::FirstPersonCamera, my::Camera, boost::shared_ptr<my::Camera> >("FirstPersonCamera")
+			.def(constructor<float, float, float, float>())
+			.def_readwrite("Rotation", &my::FirstPersonCamera::m_Rotation)
+
 		, class_<Game, bases<my::DxutApp, my::LoaderMgr, my::DialogMgr, my::TimerMgr> >("Game")
 			.def_readwrite("Font", &Game::m_Font)
 			.def_readwrite("Console", &Game::m_Console)
@@ -973,30 +997,6 @@ void Export2Lua(lua_State * L)
 			.def_readwrite("Camera", &GameStateMain::m_Camera)
 			.def("InsertStaticMesh", &GameStateMain::InsertStaticMesh)
 			.def("InsertCharacter", &GameStateMain::InsertCharacter)
-
-		, class_<BaseCamera, boost::shared_ptr<BaseCamera> >("BaseCamera")
-			.def_readwrite("Fovy", &BaseCamera::m_Fovy)
-			.def_readwrite("Aspect", &BaseCamera::m_Aspect)
-			.def_readwrite("Nz", &BaseCamera::m_Nz)
-			.def_readwrite("Fz", &BaseCamera::m_Fz)
-			.def_readwrite("View", &BaseCamera::m_View)
-			.def_readwrite("Proj", &BaseCamera::m_Proj)
-			.def_readwrite("EventAlign", &BaseCamera::EventAlign)
-
-		, class_<Camera, BaseCamera, boost::shared_ptr<Camera> >("Camera")
-			.def(constructor<float, float, float, float>())
-			.def_readwrite("Position", &Camera::m_Position)
-			.def_readwrite("Orientation", &Camera::m_Orientation)
-
-		, class_<ModelViewerCamera, Camera, boost::shared_ptr<Camera> >("ModelViewerCamera")
-			.def(constructor<float, float, float, float>())
-			.def_readwrite("LookAt", &ModelViewerCamera::m_LookAt)
-			.def_readwrite("Rotation", &ModelViewerCamera::m_Rotation)
-			.def_readwrite("Distance", &ModelViewerCamera::m_Distance)
-
-		, class_<FirstPersonCamera, Camera, boost::shared_ptr<Camera> >("FirstPersonCamera")
-			.def(constructor<float, float, float, float>())
-			.def_readwrite("Rotation", &FirstPersonCamera::m_Rotation)
 
 		, class_<ParameterMap>("ParameterMap")
 			.def("SetBool", &ParameterMap::SetBool)
