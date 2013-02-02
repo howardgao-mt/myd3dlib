@@ -279,10 +279,9 @@ namespace my
 			double fTime,
 			float fElapsedTime)
 		{
-			// ! 通过 Position，Orientation逆向计算 View非常费时，派生类应当跳过这一步直接获得 View
-			m_View = (Matrix4::RotationQuaternion(m_Orientation) * Matrix4::Translation(m_Position)).inverse();
+			m_View = Matrix4::Translation(-m_Position) * Matrix4::RotationQuaternion(m_Orientation.inverse());
 
-			m_Proj = Matrix4::PerspectiveFovLH(m_Fovy, m_Aspect, m_Nz, m_Fz);
+			m_Proj = Matrix4::PerspectiveFovRH(m_Fovy, m_Aspect, m_Nz, m_Fz);
 		}
 
 		virtual LRESULT MsgProc(
@@ -363,5 +362,63 @@ namespace my
 			WPARAM wParam,
 			LPARAM lParam,
 			bool * pbNoFurtherProcessing);
+	};
+
+	class DrawHelper
+	{
+	protected:
+		HRESULT hr;
+
+	public:
+		static void DrawLine(
+			IDirect3DDevice9 * pd3dDevice,
+			const my::Vector3 & v0,
+			const my::Vector3 & v1,
+			D3DCOLOR Color,
+			const my::Matrix4 & world = my::Matrix4::identity);
+
+		static void DrawSphere(
+			IDirect3DDevice9 * pd3dDevice,
+			float radius,
+			D3DCOLOR Color,
+			const my::Matrix4 & world = my::Matrix4::identity);
+
+		static void DrawBox(
+			IDirect3DDevice9 * pd3dDevice,
+			const my::Vector3 & halfSize,
+			D3DCOLOR Color,
+			const my::Matrix4 & world = my::Matrix4::identity);
+
+		static void DrawTriangle(
+			IDirect3DDevice9 * pd3dDevice,
+			const my::Vector3 & v0,
+			const my::Vector3 & v1,
+			const my::Vector3 & v2,
+			D3DCOLOR Color,
+			const my::Matrix4 & world = my::Matrix4::identity);
+
+		static void DrawSpereStage(
+			IDirect3DDevice9 * pd3dDevice,
+			float radius,
+			int VSTAGE_BEGIN,
+			int VSTAGE_END,
+			float offsetY,
+			D3DCOLOR Color,
+			const my::Matrix4 & world = my::Matrix4::identity);
+
+		static void DrawCylinderStage(
+			IDirect3DDevice9 * pd3dDevice,
+			float radius,
+			float y0,
+			float y1,
+			D3DCOLOR Color,
+			const my::Matrix4 & world = my::Matrix4::identity);
+
+		static void DrawCapsule(
+			IDirect3DDevice9 * pd3dDevice,
+			float radius,
+			float height,
+			D3DCOLOR Color,
+			const my::Matrix4 & world = my::Matrix4::identity);
 	};
 }
