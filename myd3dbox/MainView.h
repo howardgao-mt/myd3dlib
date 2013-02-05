@@ -67,8 +67,17 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+public:
+	HRESULT OnDeviceReset(void);
 
-	virtual HRESULT OnDeviceReset(void);
+	void OnDeviceLost(void);
 
-	virtual void OnDeviceLost(void);
+	void OnFrameMove(
+		double fTime,
+		float fElapsedTime);
+
+	void OnFrameRender(
+		IDirect3DDevice9 * pd3dDevice,
+		double fTime,
+		float fElapsedTime);
 };
