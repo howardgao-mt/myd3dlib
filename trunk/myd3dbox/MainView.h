@@ -86,12 +86,18 @@ public:
 
 	void OnDeviceLost(void);
 
+	void OnFrameMove(
+		double fTime,
+		float fElapsedTime);
+
 	void OnFrameRender(
 		IDirect3DDevice9 * pd3dDevice,
 		double fTime,
 		float fElapsedTime);
 
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
+
+	afx_msg void OnKillFocus(CWnd* pNewWnd);
 
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 
