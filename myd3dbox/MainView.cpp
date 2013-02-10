@@ -73,6 +73,7 @@ BEGIN_MESSAGE_MAP(CMainView, CView)
 	ON_WM_PAINT()
 	ON_WM_SIZE()
 	ON_WM_ERASEBKGND()
+	ON_WM_KILLFOCUS()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
 	ON_WM_MBUTTONDOWN()
@@ -174,6 +175,12 @@ void CMainView::OnDeviceLost(void)
 	m_d3dSwapChain.Release();
 }
 
+void CMainView::OnFrameMove(
+	double fTime,
+	float fElapsedTime)
+{
+}
+
 void CMainView::OnFrameRender(
 	IDirect3DDevice9 * pd3dDevice,
 	double fTime,
@@ -263,6 +270,13 @@ BOOL CMainView::PreTranslateMessage(MSG* pMsg)
 	return CView::PreTranslateMessage(pMsg);
 }
 
+void CMainView::OnKillFocus(CWnd* pNewWnd)
+{
+	CView::OnKillFocus(pNewWnd);
+
+	m_bAltDown = FALSE;
+}
+
 void CMainView::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	if(m_bAltDown && DragCameraNone == m_DragCameraMode)
@@ -335,7 +349,9 @@ void CMainView::OnMouseMove(UINT nFlags, CPoint point)
 
 	case DragCameraTrack:
 		{
-			Vector3 mov((m_Camera.m_DragPos.x - point.x) * 0.02f, (point.y - m_Camera.m_DragPos.y) * 0.02f, 0);
+			Vector3 mov(
+				(m_Camera.m_DragPos.x - point.x) * m_Camera.m_Proj._11 * m_Camera.m_Distance * 0.001f,
+				(point.y - m_Camera.m_DragPos.y) * m_Camera.m_Proj._11 * m_Camera.m_Distance * 0.001f, 0);
 			m_Camera.m_LookAt += mov.transform(m_Camera.m_Orientation);
 			m_Camera.m_DragPos = point;
 		}
