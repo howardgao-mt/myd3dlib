@@ -58,10 +58,6 @@ public:
 	{
 	}
 
-	~Material(void)
-	{
-	}
-
 	void ApplyParameterBlock(void);
 };
 
