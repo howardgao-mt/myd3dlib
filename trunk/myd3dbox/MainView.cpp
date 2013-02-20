@@ -111,15 +111,13 @@ int CMainView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	m_Seek.character = m_Character.get();
 	m_Seek.target = Vector3(5,0,5);
-	m_Seek.maxAcceleration = 1.0f;
+	m_Seek.maxAcceleration = 2.0f;
 
 	m_Arrive.character = m_Character.get();
 	m_Arrive.target = Vector3(5,0,5);
-	m_Arrive.maxAcceleration = 1.0f;
-	m_Arrive.maxSpeed = 2.0f;
-	m_Arrive.targetRadius = 0.2f;
-	m_Arrive.slowRadius = 0.5f;
-	m_Arrive.timeToTarget = 5.0f;
+	m_Arrive.maxAcceleration = 2.0f;
+	m_Arrive.radius = 0.2f;
+	m_Arrive.timeToTarget = 2.0f;
 
 	return 0;
 }
@@ -204,9 +202,9 @@ void CMainView::OnFrameMove(
 	float fElapsedTime)
 {
 	SteeringOutput steer;
-	m_Seek.getSteering(&steer);
-	//m_Arrive.getSteering(&steer);
-	m_Character->integrate(steer, 0.01f);
+	//m_Seek.getSteering(&steer);
+	m_Arrive.getSteering(&steer);
+	m_Character->integrate(steer, 0.35f, 0.01f);
 	m_Character->setOrientationFromVelocity(m_Character->velocity);
 	m_Character->trimMaxSpeed(2.0f);
 	m_Character->position.x = Round(m_Character->position.x, -10.0f, 10.0f);
@@ -248,6 +246,7 @@ void CMainView::OnFrameRender(
 		Matrix4 CharaTransform = Matrix4::RotationY(m_Character->orientation) * Matrix4::Translation(m_Character->position);
 		DrawSphere(pd3dDevice, 0.05f, D3DCOLOR_ARGB(255,255,0,0), CharaTransform);
 		DrawLine(pd3dDevice, Vector3(0,0,0), Vector3(0,0,0.3f), D3DCOLOR_ARGB(255,255,255,0), CharaTransform);
+		DrawLine(pd3dDevice, m_Character->position, m_Seek.target, D3DCOLOR_ARGB(255,0,255,0));
 
 		D3DSURFACE_DESC desc = BackBuffer.GetDesc();
 		m_UIRender->SetTransform(Matrix4::Identity(),

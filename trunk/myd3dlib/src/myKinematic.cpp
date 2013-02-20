@@ -139,31 +139,20 @@ void Wander::getSteering(SteeringOutput * output)
 
 void Arrive::getSteering(SteeringOutput * output)
 {
-	Vector3 direction = target - character->position;
-	float distance = direction.magnitude();
+	output->linear = target - character->position;
 
-	if(distance < targetRadius)
+	if(output->linear.magnitudeSq() < radius * radius)
 	{
 		output->clear();
-		return;
-	}
-
-	float targetSpeed;
-	if(distance < slowRadius)
-	{
-		targetSpeed = maxSpeed * distance / slowRadius;
 	}
 	else
 	{
-		targetSpeed = maxSpeed;
-	}
+		output->linear *= 1 / timeToTarget;
 
-	Vector3 targetVelocity = direction.normalize() * targetSpeed;
-	output->linear = (targetVelocity - character->velocity) / timeToTarget;
-
-	if(output->linear.magnitudeSq() > maxAcceleration)
-	{
-		output->linear = output->linear.normalize() * maxAcceleration;
+		if(output->linear.magnitudeSq() > maxAcceleration * maxAcceleration)
+		{
+			output->linear = output->linear.normalize() * maxAcceleration;
+		}
 	}
 
 	output->angular = 0;
