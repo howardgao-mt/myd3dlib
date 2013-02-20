@@ -259,11 +259,7 @@ namespace my
 	class Arrive : public Seek
 	{
 	public:
-		float maxSpeed;
-
-		float targetRadius;
-
-		float slowRadius;
+		float radius;
 
 		float timeToTarget;
 
