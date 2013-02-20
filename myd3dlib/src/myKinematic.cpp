@@ -86,7 +86,7 @@ void Kinematic::trimMaxSpeed(float maxSpeed)
 
 void Seek::getSteering(SteeringOutput * output)
 {
-	output->linear = *target - character->position;
+	output->linear = target - character->position;
 
 	if(output->linear.magnitudeSq() > EPSILON_E12)
 	{
@@ -98,7 +98,7 @@ void Seek::getSteering(SteeringOutput * output)
 
 void Flee::getSteering(SteeringOutput * output)
 {
-	output->linear = character->position - *target;
+	output->linear = character->position - target;
 
 	if(output->linear.magnitudeSq() > EPSILON_E12)
 	{
@@ -110,13 +110,13 @@ void Flee::getSteering(SteeringOutput * output)
 
 void Wander::getSteering(SteeringOutput * output)
 {
-	if(target->magnitudeSq() < EPSILON_E12)
+	if(target.magnitudeSq() < EPSILON_E12)
 	{
-		internal_target = character->position;
-		internal_target.x += volatility;
+		target = character->position;
+		target.x += volatility;
 	}
 
-	Vector3 offset = *target - character->position;
+	Vector3 offset = target - character->position;
 	float angle;
 	if(offset.x * offset.x + offset.z * offset.z > EPSILON_E12)
 	{
@@ -127,19 +127,19 @@ void Wander::getSteering(SteeringOutput * output)
 		angle = 0;
 	}
 
-	internal_target = character->position;
-	internal_target.x += volatility * cos(angle);
-	internal_target.z += volatility * sin(angle);
+	target = character->position;
+	target.x += volatility * cos(angle);
+	target.z += volatility * sin(angle);
 
-	internal_target.x += Random(turnSpeed) - Random(turnSpeed);
-	internal_target.z += Random(turnSpeed) - Random(turnSpeed);
+	target.x += Random(turnSpeed) - Random(turnSpeed);
+	target.z += Random(turnSpeed) - Random(turnSpeed);
 
 	Seek::getSteering(output);
 }
 
 void Arrive::getSteering(SteeringOutput * output)
 {
-	Vector3 direction = *target - character->position;
+	Vector3 direction = target - character->position;
 	float distance = direction.magnitude();
 
 	if(distance < targetRadius)
