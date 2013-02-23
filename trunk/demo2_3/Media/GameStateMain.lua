@@ -26,7 +26,7 @@ state.Camera=camera
 
 -- 读取材质
 local function LoadMaterial(name)
-	dofile("material/"..name..".lua")
+	dofile(name)
 	local mat = Material()
 	SetupMaterial(mat)
 	return mat
@@ -37,21 +37,21 @@ local function LoadEffectMesh(name)
 	local effectMesh = EffectMesh()
 	effectMesh.Mesh = game:LoadMesh(name)
 	for i = 0,effectMesh.Mesh:GetMaterialNum()-1 do
-		effectMesh:InsertMaterial(LoadMaterial(effectMesh.Mesh:GetMaterialName(i)))
+		effectMesh:InsertMaterial(LoadMaterial("material/"..effectMesh.Mesh:GetMaterialName(i)..".lua"))
 	end
 	return effectMesh
 end
 
 -- 创建场景
 local function CreateScene(n)
-	state:InsertStaticMesh(LoadEffectMesh(n..".mesh.xml"))
+	state:InsertStaticMesh(LoadEffectMesh("mesh/"..n..".mesh.xml"))
 end
 
 -- 创建角色
 local function CreateRole(n,p,t,s)
 	local character=Character()
-	character:InsertMeshLOD(LoadEffectMesh(n..".mesh.xml"))
-	character:InsertSkeletonLOD(game:LoadSkeleton(n..".skeleton.xml"))
+	character:InsertMeshLOD(LoadEffectMesh("mesh/"..n..".mesh.xml"))
+	character:InsertSkeletonLOD(game:LoadSkeleton("mesh/"..n..".skeleton.xml"))
 	character.Scale=Vector3(s,s,s)
 	character.Position=p
 	character.StateTime=t
