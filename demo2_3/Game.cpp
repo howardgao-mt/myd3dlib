@@ -70,7 +70,10 @@ Game::Game(void)
 
 Game::~Game(void)
 {
-	RemoveAllDlg();
+	// ! All delegated object must have been destroyed before destruct m_lua
+	GameStateMachine::terminate();
+
+	m_dlgSetMap.clear();
 
 	RemoveAllTimer();
 
@@ -138,9 +141,9 @@ HRESULT Game::OnCreateDevice(
 		return hr;
 	}
 
-	m_UIRender.reset(new EffectUIRender(pd3dDevice, LoadEffect("UIEffect.fx")));
+	m_UIRender.reset(new EffectUIRender(pd3dDevice, LoadEffect("shader/UIEffect.fx")));
 
-	m_WhiteTex = LoadTexture("white.bmp");
+	m_WhiteTex = LoadTexture("texture/white.bmp");
 
 	ExecuteCode("dofile \"Console.lua\"");
 
