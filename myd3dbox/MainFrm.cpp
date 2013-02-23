@@ -44,7 +44,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
     m_d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
     m_d3dpp.BackBufferFormat = D3DFMT_UNKNOWN;
 	m_d3dpp.hDeviceWindow = m_hWnd;
-	m_d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+	m_d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
 
 	HRESULT hr = theApp.m_d3d9->CreateDevice(
 		D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, m_hWnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &m_d3dpp, &m_d3dDevice);
@@ -54,6 +54,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		return -1;
 	}
 	m_DeviceObjectsCreated = true;
+
+	ResourceMgr::OnCreateDevice(m_d3dDevice, NULL);
 
 	if (CFrameWndEx::OnCreate(lpCreateStruct) == -1)
 		return -1;
@@ -67,12 +69,16 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	OnApplicationLook(theApp.GetInt(_T("ApplicationLook"), ID_VIEW_APPLOOK_WIN_2000));
 
+	EnableDocking(CBRS_ALIGN_ANY);
+
 	if (!m_wndMenuBar.Create(this))
 	{
 		TRACE0("Failed to create menubar\n");
 		return -1;
 	}
 	m_wndMenuBar.SetPaneStyle(m_wndMenuBar.GetPaneStyle() | CBRS_SIZE_DYNAMIC | CBRS_TOOLTIPS | CBRS_FLYBY);
+	m_wndMenuBar.EnableDocking(CBRS_ALIGN_ANY);
+	DockPane(&m_wndMenuBar);
 	CMFCPopupMenu::SetForceMenuFocus(FALSE);
 
 	if (!m_wndToolBar.CreateEx(this, TBSTYLE_FLAT, WS_CHILD | WS_VISIBLE | CBRS_TOP | CBRS_GRIPPER | CBRS_TOOLTIPS | CBRS_FLYBY | CBRS_SIZE_DYNAMIC) ||
@@ -81,13 +87,10 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		TRACE0("Failed to create toolbar\n");
 		return -1;
 	}
-	CString strToolBarName;
-	strToolBarName.LoadString(IDS_TOOLBAR_STANDARD);
-	m_wndToolBar.SetWindowText(strToolBarName);
-
-	CString strCustomize;
-	strCustomize.LoadString(IDS_TOOLBAR_CUSTOMIZE);
-	m_wndToolBar.EnableCustomizeButton(TRUE, ID_VIEW_CUSTOMIZE, strCustomize);
+	m_wndToolBar.SetWindowText(_T("标准"));
+	m_wndToolBar.EnableDocking(CBRS_ALIGN_ANY);
+	m_wndToolBar.EnableCustomizeButton(TRUE, ID_VIEW_CUSTOMIZE, _T("自定义..."));
+	DockPane(&m_wndToolBar);
 
 	if (!m_wndStatusBar.Create(this))
 	{
@@ -96,15 +99,18 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	}
 	m_wndStatusBar.SetIndicators(indicators, sizeof(indicators)/sizeof(UINT));
 
-	m_wndMenuBar.EnableDocking(CBRS_ALIGN_ANY);
-	m_wndToolBar.EnableDocking(CBRS_ALIGN_ANY);
-	EnableDocking(CBRS_ALIGN_ANY);
-	DockPane(&m_wndMenuBar);
-	DockPane(&m_wndToolBar);
+	if (!m_wndOutliner.Create(_T("Outliner"), this, CRect(0,0,200,200), TRUE,
+		ID_VIEW_OUTLINER, WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | CBRS_LEFT| CBRS_FLOAT_MULTI))
+	{
+		TRACE0("Failed to create outliner\n");
+		return -1;
+	}
+	m_wndOutliner.EnableDocking(CBRS_ALIGN_ANY);
+	DockPane(&m_wndOutliner);
 
 	CDockingManager::SetDockingMode(DT_SMART);
 	EnableAutoHidePanes(CBRS_ALIGN_ANY);
-	EnablePaneMenu(TRUE, ID_VIEW_CUSTOMIZE, strCustomize, ID_VIEW_TOOLBAR);
+	EnablePaneMenu(TRUE, ID_VIEW_CUSTOMIZE, _T("自定义..."), ID_VIEW_TOOLBAR);
 	CMFCToolBar::EnableQuickCustomization();
 
 	return 0;
@@ -236,17 +242,8 @@ HRESULT CMainFrame::OnDeviceReset(void)
 {
 	TRACE0("CMainFrame::OnDeviceReset \n");
 
-	my::Surface BackBuffer;
 	HRESULT hr;
-	if(FAILED(hr = m_d3dDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &BackBuffer.m_ptr)))
-	{
-		TRACE(my::D3DException(hr, __FILE__, __LINE__).GetFullDescription().c_str());
-		return hr;
-	}
-
-	D3DSURFACE_DESC desc = BackBuffer.GetDesc();
-
-	if(FAILED(hr = ResourceMgr::OnResetDevice(m_d3dDevice, &desc)))
+	if(FAILED(hr = ResourceMgr::OnResetDevice(m_d3dDevice, NULL)))
 	{
 		TRACE(my::D3DException(hr, __FILE__, __LINE__).GetFullDescription().c_str());
 		return hr;
@@ -267,18 +264,4 @@ void CMainFrame::OnDeviceLost(void)
 	ResourceMgr::OnLostDevice();
 
 	CMainView::getSingleton().OnDeviceLost();
-}
-
-void CMainFrame::OnFrameMove(
-	double fTime,
-	float fElapsedTime)
-{
-	CMainView::getSingleton().OnFrameMove(fTime, fElapsedTime);
-}
-
-void CMainFrame::OnFrameRender(
-	double fTime,
-	float fElapsedTime)
-{
-	CMainView::getSingleton().OnFrameRender(m_d3dDevice, fTime, fElapsedTime);
 }
