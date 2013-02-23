@@ -1,5 +1,7 @@
 #pragma once
 
+#include "OutlinerView.h"
+
 class CMainFrame
 	: public CFrameWndEx
 	, public my::SingleInstance<CMainFrame>
@@ -17,6 +19,8 @@ public:
 	CMFCToolBar m_wndToolBar;
 
 	CMFCStatusBar m_wndStatusBar;
+
+	COutlinerView m_wndOutliner;
 
 	D3DPRESENT_PARAMETERS m_d3dpp;
 
@@ -48,12 +52,4 @@ public:
 	HRESULT OnDeviceReset(void);
 
 	void OnDeviceLost(void);
-
-	void OnFrameMove(
-		double fTime,
-		float fElapsedTime);
-
-	void OnFrameRender(
-		double fTime,
-		float fElapsedTime);
 };

@@ -59,14 +59,6 @@ CMainView::SingleInstance * SingleInstance<CMainView>::s_ptr(NULL);
 
 IMPLEMENT_DYNCREATE(CMainView, CView)
 
-CMainView::CMainView(void)
-	: m_Camera()
-	, m_bAltDown(FALSE)
-	, m_bEatAltUp(FALSE)
-	, m_DragCameraMode(DragCameraNone)
-{
-}
-
 BEGIN_MESSAGE_MAP(CMainView, CView)
 	ON_WM_CREATE()
 	ON_WM_DESTROY()
@@ -104,7 +96,7 @@ int CMainView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_SimpleSample = CMainFrame::getSingleton().LoadEffect("SimpleSample.fx");
 
 	m_Camera.m_Rotation = Vector3(D3DXToRadian(-30),D3DXToRadian(0),D3DXToRadian(0));
-	m_Camera.m_LookAt = Vector3(0,-2,0);
+	m_Camera.m_LookAt = Vector3(0,0,0);
 	m_Camera.m_Distance = 20;
 
 	m_Character.reset(new my::Kinematic(Vector3(0,0,0),D3DXToRadian(0),Vector3(0,0,2),0));
@@ -171,7 +163,7 @@ HRESULT CMainView::OnDeviceReset(void)
 	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
 	d3dpp.BackBufferFormat = D3DFMT_UNKNOWN;
 	d3dpp.hDeviceWindow = m_hWnd;
-	d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+	d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
 
 	HRESULT hr = CMainFrame::getSingleton().m_d3dDevice->CreateAdditionalSwapChain(&d3dpp, &m_d3dSwapChain);
 	if(FAILED(hr))
@@ -383,6 +375,7 @@ void CMainView::OnMouseMove(UINT nFlags, CPoint point)
 		m_Camera.m_Rotation.x -= D3DXToRadian((point.y - m_Camera.m_DragPos.y) * 0.5f);
 		m_Camera.m_Rotation.y -= D3DXToRadian((point.x - m_Camera.m_DragPos.x) * 0.5f);
 		m_Camera.m_DragPos = point;
+		Invalidate();
 		break;
 
 	case DragCameraTrack:
@@ -390,11 +383,13 @@ void CMainView::OnMouseMove(UINT nFlags, CPoint point)
 			(m_Camera.m_DragPos.x - point.x) * m_Camera.m_Proj._11 * m_Camera.m_Distance * 0.001f,
 			(point.y - m_Camera.m_DragPos.y) * m_Camera.m_Proj._11 * m_Camera.m_Distance * 0.001f, 0).transform(m_Camera.m_Orientation);
 		m_Camera.m_DragPos = point;
+		Invalidate();
 		break;
 
 	case DragCameraZoom:
 		m_Camera.m_Distance -= (point.x - m_Camera.m_DragPos.x) * 0.02f;
 		m_Camera.m_DragPos = point;
+		Invalidate();
 		break;
 	}
 }
