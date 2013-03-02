@@ -117,7 +117,11 @@ protected:
 class CPropertiesWnd : public CDockablePane
 {
 public:
-	CPropertiesWnd();
+	CPropertiesWnd()
+		: m_bIsPropInvalid(FALSE)
+		, m_hSelectedNode(NULL)
+	{
+	}
 
 	void AdjustLayout();
 
@@ -132,9 +136,9 @@ public:
 		PropertyGroupFont,
 		PropertyGroupText,
 		PropertyItemLocked,
-		PropertyItemLocal,
-		PropertyItemLocalX,
-		PropertyItemLocalY,
+		PropertyItemLocation,
+		PropertyItemLocationX,
+		PropertyItemLocationY,
 		PropertyItemSize,
 		PropertyItemSizeW,
 		PropertyItemSizeH,
@@ -162,6 +166,8 @@ public:
 	CMFCPropertyGridProperty * m_pProp[PropertyCount];
 
 	BOOL m_bIsPropInvalid;
+
+	HTREEITEM m_hSelectedNode;
 
 protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);

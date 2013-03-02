@@ -32,12 +32,14 @@ enum TextAlign
 	TextAlignCount
 };
 
+extern const TCHAR * TextAlignDesc[TextAlignCount];
+
 class CImgRegion
 {
 public:
 	BOOL m_Locked;
 
-	CPoint m_Local;
+	CPoint m_Location;
 
 	CSize m_Size;
 
@@ -61,19 +63,27 @@ public:
 
 	CPoint m_TextOff;
 
-	CImgRegion(const CPoint & Local, const CSize & Size, const Gdiplus::Color & Color = Gdiplus::Color::White, const Vector4i & Border = Vector4i(0,0,0,0))
+	CImgRegion(void)
 		: m_Locked(FALSE)
-		, m_Local(Local)
-		, m_Size(Size)
-		, m_Color(Color)
-		, m_Border(Border)
-		, m_FontColor(255,0,0,0)
+		, m_Location(100,100)
+		, m_Size(100,100)
+		, m_Color(255,255,255,255)
+		, m_Border(0,0,0,0)
+		, m_FontColor(255,255,255,255)
 		, m_Text(_T("x:%d y:%d w:%d h:%d"))
 		, m_TextAlign(TextAlignLeftTop)
 		, m_TextWrap(FALSE)
 		, m_TextOff(0,0)
 	{
 	}
+
+	virtual void CreateProperties(CPropertiesWnd * pPropertiesWnd);
+
+	virtual void UpdateProperties(CPropertiesWnd * pPropertiesWnd);
+
+	virtual void Draw(Gdiplus::Graphics & grap);
+
+	virtual void Serialize(CArchive& archive);
 };
 
 class CImgRegionDoc;
@@ -117,11 +127,11 @@ public:
 	}
 };
 
-class HistoryChangeItemLocal
+class HistoryChangeItemLocation
 	: public HistoryChangeItemValue<CPoint>
 {
 public:
-	HistoryChangeItemLocal(CImgRegionDoc * pDoc, LPCTSTR itemID, const CPoint & oldValue, const CPoint & newValue)
+	HistoryChangeItemLocation(CImgRegionDoc * pDoc, LPCTSTR itemID, const CPoint & oldValue, const CPoint & newValue)
 		: HistoryChangeItemValue(pDoc, itemID, oldValue, newValue)
 	{
 	}
@@ -322,8 +332,6 @@ public:
 	int GetChildCount(HTREEITEM hItem);
 
 public:
-	void SerializeRegionNode(CArchive & ar, CImgRegion * pReg);
-
 	void SerializeRegionNodeSubTree(CArchive & ar, HTREEITEM hParent = TVI_ROOT, BOOL bOverideName = FALSE);
 
 	void UpdateImageSizeTable(const CSize & sizeRoot);
@@ -357,4 +365,6 @@ public:
 	afx_msg void OnEditRedo();
 
 	afx_msg void OnUpdateEditRedo(CCmdUI *pCmdUI);
+
+	afx_msg void OnExportLua();
 };
