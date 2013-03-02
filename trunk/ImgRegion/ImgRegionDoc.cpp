@@ -5,6 +5,7 @@
 #include "resource.h"
 #include "ImgRegionFilePropertyDlg.h"
 #include "ImgRegionView.h"
+#include "LuaExporterDlg.h"
 
 //#pragma comment(lib, "UxTheme.lib")
 
@@ -12,19 +13,288 @@
 #define new DEBUG_NEW
 #endif
 
-void HistoryChangeItemLocal::Do(void)
+const TCHAR * TextAlignDesc[TextAlignCount] = {
+	_T("LeftTop"),
+	_T("CenterTop"),
+	_T("RightTop"),
+	_T("LeftMiddle"),
+	_T("CenterMiddle"),
+	_T("RightMiddle"),
+	_T("LeftBottom"),
+	_T("CenterBottom"),
+	_T("RightBottom"),
+};
+
+void CImgRegion::CreateProperties(CPropertiesWnd * pPropertiesWnd)
 {
-	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+	CMFCPropertyGridProperty * pGroup = new CSimpleProp(_T("外观"));
 
-	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+	CMFCPropertyGridProperty * pProp = new CCheckBoxProp(_T("锁住"), FALSE, _T("锁住移动属性"), CPropertiesWnd::PropertyItemLocked);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemLocked] = pProp);
 
-	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
-	ASSERT(pReg);
+	CMFCPropertyGridProperty * pLocal = new CSimpleProp(_T("Local"), CPropertiesWnd::PropertyItemLocation, TRUE);
+	pProp = new CSimpleProp(_T("x"), (_variant_t)m_Location.x, _T("x坐标"), CPropertiesWnd::PropertyItemLocationX);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemLocationX] = pProp);
+	pProp = new CSimpleProp(_T("y"), (_variant_t)m_Location.y, _T("y坐标"), CPropertiesWnd::PropertyItemLocationY);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemLocationY] = pProp);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemLocation] = pLocal);
 
-	pReg->m_Local = m_newValue;
+	pLocal = new CSimpleProp(_T("Size"), CPropertiesWnd::PropertyItemSize, TRUE);
+	pProp = new CSimpleProp(_T("w"), (_variant_t)m_Size.cx, _T("宽度"), CPropertiesWnd::PropertyItemSizeW);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemSizeW] = pProp);
+	pProp = new CSimpleProp(_T("h"), (_variant_t)m_Size.cy, _T("高度"), CPropertiesWnd::PropertyItemSizeH);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemSizeH] = pProp);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemSize] = pLocal);
+
+	pPropertiesWnd->m_wndPropList.AddProperty(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyGroupCoord] = pGroup);
+
+	pGroup = new CSimpleProp(_T("颜色"));
+
+	pProp = new CSliderProp(_T("Alpha"), (_variant_t)(long)m_Color.GetAlpha(), _T("透明值"), CPropertiesWnd::PropertyItemAlpha);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemAlpha] = pProp);
+
+	CColorProp * pColorProp = new CColorProp(_T("颜色"), m_Color.ToCOLORREF(), NULL, _T("颜色"), CPropertiesWnd::PropertyItemRGB);
+	pColorProp->EnableOtherButton(_T("其他..."));
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemRGB] = pColorProp);
+
+	CMFCPropertyGridFileProperty * pFileProp = new CFileProp(_T("图片"), TRUE, m_ImageStr, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		_T("图片文件(*.bmp; *.jpg; *.png; *.tga)|*.bmp;*.jpg;*.png;*.tga|All Files(*.*)|*.*||"), _T("图片文件"), CPropertiesWnd::PropertyItemImage);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemImage] = pFileProp);
+
+	pLocal = new CSimpleProp(_T("Border"), CPropertiesWnd::PropertyItemBorder, TRUE);
+	pProp = new CSimpleProp(_T("x"), (_variant_t)m_Border.x, _T("左边距"), CPropertiesWnd::PropertyItemBorderX);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorderX] = pProp);
+	pProp = new CSimpleProp(_T("y"), (_variant_t)m_Border.y, _T("上边距"), CPropertiesWnd::PropertyItemBorderY);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorderY] = pProp);
+	pProp = new CSimpleProp(_T("z"), (_variant_t)m_Border.z, _T("右边距"), CPropertiesWnd::PropertyItemBorderZ);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorderZ] = pProp);
+	pProp = new CSimpleProp(_T("w"), (_variant_t)m_Border.w, _T("下边距"), CPropertiesWnd::PropertyItemBorderW);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorderW] = pProp);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorder] = pLocal);
+
+	pPropertiesWnd->m_wndPropList.AddProperty(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyGroupImage] = pGroup);
+
+	pGroup = new CSimpleProp(_T("字体"));
+
+	CString strFamily;
+	if(m_Font)
+	{
+		Gdiplus::FontFamily family; m_Font->GetFamily(&family); family.GetFamilyName(strFamily.GetBufferSetLength(LF_FACESIZE)); strFamily.ReleaseBuffer();
+	}
+	pProp = new CSimpleProp(_T("字体"), strFamily, _T("选择字体"), CPropertiesWnd::PropertyItemFont);
+	pProp->AllowEdit(FALSE);
+	for(int i = 0; i < theApp.fontFamilies.GetSize(); i++)
+	{
+		CString strFamily;
+		theApp.fontFamilies[i].GetFamilyName(strFamily.GetBufferSetLength(LF_FACESIZE));
+		pProp->AddOption(strFamily, FALSE);
+	}
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemFont] = pProp);
+
+	pProp = new CSimpleProp(_T("字号"), (_variant_t)m_Font ? (long)m_Font->GetSize() : 16, _T("字体大小"), CPropertiesWnd::PropertyItemFontSize);
+	pProp->AddOption(_T("6"));
+	pProp->AddOption(_T("8"));
+	pProp->AddOption(_T("9"));
+	pProp->AddOption(_T("10"));
+	pProp->AddOption(_T("11"));
+	pProp->AddOption(_T("12"));
+	pProp->AddOption(_T("14"));
+	pProp->AddOption(_T("16"));
+	pProp->AddOption(_T("18"));
+	pProp->AddOption(_T("24"));
+	pProp->AddOption(_T("36"));
+	pProp->AddOption(_T("48"));
+	pProp->AddOption(_T("60"));
+	pProp->AddOption(_T("72"));
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemFontSize] = pProp);
+	pProp = new CSliderProp(_T("Alpha"), (_variant_t)(long)m_FontColor.GetAlpha(), _T("透明值"), CPropertiesWnd::PropertyItemFontAlpha);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemFontAlpha] = pProp);
+	pColorProp = new CColorProp(_T("颜色"), m_FontColor.ToCOLORREF(), NULL, _T("颜色"), CPropertiesWnd::PropertyItemFontRGB);
+	pColorProp->EnableOtherButton(_T("其他..."));
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemFontRGB] = pColorProp);
+
+	pPropertiesWnd->m_wndPropList.AddProperty(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyGroupFont] = pGroup);
+
+	pGroup = new CSimpleProp(_T("文本"));
+
+	pProp = new CSimpleProp(_T("文本"), m_Text, _T("矩形框内的文字描述"), CPropertiesWnd::PropertyItemText);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemText] = pProp);
+
+	pProp = new CComboProp(_T("对齐"), TextAlignDesc[m_TextAlign], _T("文本在矩形框内的对其方式"), CPropertiesWnd::PropertyItemTextAlign);
+	pProp->AllowEdit(FALSE);
+	for(int i = 0; i < TextAlignCount; i++)
+	{
+		pProp->AddOption(TextAlignDesc[i], FALSE);
+	}
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextAlign] = pProp);
+
+	pProp = new CCheckBoxProp(_T("自动换行"), (long)m_TextWrap, _T("文本在矩形框内自动换行"), CPropertiesWnd::PropertyItemTextWrap);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextWrap] = pProp);
+
+	pLocal = new CSimpleProp(_T("偏移"), CPropertiesWnd::PropertyItemTextOff, TRUE);
+	pProp = new CSimpleProp(_T("x"), (_variant_t)m_TextOff.x, _T("x坐标"), CPropertiesWnd::PropertyItemTextOffX);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextOffX] = pProp);
+	pProp = new CSimpleProp(_T("y"), (_variant_t)m_TextOff.y, _T("y坐标"), CPropertiesWnd::PropertyItemTextOffY);
+	pLocal->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextOffY] = pProp);
+	pGroup->AddSubItem(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextOff] = pLocal);
+
+	pPropertiesWnd->m_wndPropList.AddProperty(pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyGroupText] = pGroup);
 }
 
-void HistoryChangeItemLocal::Undo(void)
+void CImgRegion::UpdateProperties(CPropertiesWnd * pPropertiesWnd)
+{
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemLocked]->SetValue((_variant_t)(long)m_Locked);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemLocationX]->SetValue((_variant_t)m_Location.x);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemLocationY]->SetValue((_variant_t)m_Location.y);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemSizeW]->SetValue((_variant_t)m_Size.cx);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemSizeH]->SetValue((_variant_t)m_Size.cy);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemAlpha]->SetValue((_variant_t)(long)m_Color.GetAlpha());
+	((CColorProp *)pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemRGB])->SetColor(m_Color.ToCOLORREF());
+
+	((CFileProp *)pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemImage])->SetValue((_variant_t)m_ImageStr);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorderX]->SetValue((_variant_t)m_Border.x);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorderY]->SetValue((_variant_t)m_Border.y);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorderZ]->SetValue((_variant_t)m_Border.z);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemBorderW]->SetValue((_variant_t)m_Border.w);
+
+	CString strFamily;
+	if(m_Font)
+	{
+		Gdiplus::FontFamily family; m_Font->GetFamily(&family); family.GetFamilyName(strFamily.GetBufferSetLength(LF_FACESIZE)); strFamily.ReleaseBuffer();
+	}
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemFont]->SetValue((_variant_t)strFamily);
+	long fntSize = 16;
+	if(m_Font)
+	{
+		fntSize = (long)m_Font->GetSize();
+	}
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemFontSize]->SetValue(fntSize);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemFontAlpha]->SetValue((_variant_t)(long)m_FontColor.GetAlpha());
+	((CColorProp *)pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemFontRGB])->SetColor(m_FontColor.ToCOLORREF());
+
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemText]->SetValue((_variant_t)m_Text);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextAlign]->SetValue((_variant_t)TextAlignDesc[m_TextAlign]);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextWrap]->SetValue((_variant_t)(long)m_TextWrap);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextOffX]->SetValue((_variant_t)m_TextOff.x);
+	pPropertiesWnd->m_pProp[CPropertiesWnd::PropertyItemTextOffY]->SetValue((_variant_t)m_TextOff.y);
+}
+
+void CImgRegion::Draw(Gdiplus::Graphics & grap)
+{
+	if(m_Image && Gdiplus::ImageTypeUnknown != m_Image->GetType())
+	{
+		CImgRegionView::DrawRegionDocImage(grap, m_Image.get(), CRect(m_Location, m_Size), m_Border, m_Color);
+	}
+	else
+	{
+		Gdiplus::SolidBrush brush(m_Color);
+		grap.FillRectangle(&brush, m_Location.x, m_Location.y, m_Size.cx, m_Size.cy);
+	}
+
+	if(m_Font)
+	{
+		CString strInfo;
+		strInfo.Format(m_Text, m_Location.x, m_Location.y, m_Size.cx, m_Size.cy);
+
+		Gdiplus::RectF rectF(
+			(float)m_Location.x + m_TextOff.x, (float)m_Location.y + m_TextOff.y, (float)m_Size.cx, (float)m_Size.cy);
+
+		Gdiplus::StringFormat format((m_TextWrap ? 0 : Gdiplus::StringFormatFlagsNoWrap) | Gdiplus::StringFormatFlagsNoClip);
+		format.SetTrimming(Gdiplus::StringTrimmingNone);
+		switch(m_TextAlign)
+		{
+		case TextAlignLeftTop:
+			format.SetAlignment(Gdiplus::StringAlignmentNear);
+			format.SetLineAlignment(Gdiplus::StringAlignmentNear);
+			break;
+		case TextAlignCenterTop:
+			format.SetAlignment(Gdiplus::StringAlignmentCenter);
+			format.SetLineAlignment(Gdiplus::StringAlignmentNear);
+			break;
+		case TextAlignRightTop:
+			format.SetAlignment(Gdiplus::StringAlignmentFar);
+			format.SetLineAlignment(Gdiplus::StringAlignmentNear);
+			break;
+		case TextAlignLeftMiddle:
+			format.SetAlignment(Gdiplus::StringAlignmentNear);
+			format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+			break;
+		case TextAlignCenterMiddle:
+			format.SetAlignment(Gdiplus::StringAlignmentCenter);
+			format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+			break;
+		case TextAlignRightMiddle:
+			format.SetAlignment(Gdiplus::StringAlignmentFar);
+			format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+			break;
+		case TextAlignLeftBottom:
+			format.SetAlignment(Gdiplus::StringAlignmentNear);
+			format.SetLineAlignment(Gdiplus::StringAlignmentFar);
+			break;
+		case TextAlignCenterBottom:
+			format.SetAlignment(Gdiplus::StringAlignmentCenter);
+			format.SetLineAlignment(Gdiplus::StringAlignmentFar);
+			break;
+		case TextAlignRightBottom:
+			format.SetAlignment(Gdiplus::StringAlignmentFar);
+			format.SetLineAlignment(Gdiplus::StringAlignmentFar);
+			break;
+		}
+
+		Gdiplus::SolidBrush brush(m_FontColor);
+		grap.DrawString(strInfo, strInfo.GetLength(), m_Font.get(), rectF, &format, &brush);
+
+		//Gdiplus::GraphicsPath path;
+		//Gdiplus::FontFamily family;
+		//m_Font->GetFamily(&family);
+		//path.AddString(strInfo, strInfo.GetLength(), &family, m_Font->GetStyle(), m_Font->GetSize(), rectF, &format);
+		//Gdiplus::Pen pen(m_FontColor, 2.0f);
+		//Gdiplus::SolidBrush brush(m_Color);
+		//Gdiplus::SmoothingMode sm = grap.GetSmoothingMode();
+		//grap.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+		//grap.DrawPath(&pen, &path);
+		//grap.FillPath(&brush, &path);
+		//grap.SetSmoothingMode(sm);
+	}
+}
+
+void CImgRegion::Serialize(CArchive& ar)
+{
+	if (ar.IsStoring())
+	{
+		ar << m_Locked;
+		ar << m_Location;
+		ar << m_Size;
+		DWORD argb = m_Color.GetValue(); ar << argb;
+		ar << m_ImageStr;
+		ar << m_Border.x << m_Border.y << m_Border.z << m_Border.w;
+		Gdiplus::FontFamily family; m_Font->GetFamily(&family); CString strFamily; family.GetFamilyName(strFamily.GetBufferSetLength(LF_FACESIZE)); strFamily.ReleaseBuffer(); ar << strFamily;
+		ar << m_Font->GetSize();
+		argb = m_FontColor.GetValue(); ar << argb;
+		ar << m_Text;
+		ar << m_TextAlign;
+		ar << m_TextWrap;
+		ar << m_TextOff;
+	}
+	else
+	{
+		ar >> m_Locked;
+		ar >> m_Location;
+		ar >> m_Size;
+		DWORD argb; ar >> argb; m_Color.SetValue(argb);
+		ar >> m_ImageStr; m_Image = theApp.GetImage(m_ImageStr);
+		ar >> m_Border.x >> m_Border.y >> m_Border.z >> m_Border.w;
+		CString strFamily; float fSize; ar >> strFamily;
+		ar >> fSize; m_Font = theApp.GetFont(strFamily, fSize);
+		ar >> argb; m_FontColor.SetValue(argb);
+		ar >> m_Text;
+		ar >> m_TextAlign;
+		ar >> m_TextWrap;
+		ar >> m_TextOff;
+	}
+}
+
+void HistoryChangeItemLocation::Do(void)
 {
 	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
 
@@ -33,7 +303,19 @@ void HistoryChangeItemLocal::Undo(void)
 	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
 	ASSERT(pReg);
 
-	pReg->m_Local = m_oldValue;
+	pReg->m_Location = m_newValue;
+}
+
+void HistoryChangeItemLocation::Undo(void)
+{
+	ASSERT(m_pDoc->m_TreeCtrl.m_ItemMap.find(m_itemID) != m_pDoc->m_TreeCtrl.m_ItemMap.end());
+
+	HTREEITEM hItem = m_pDoc->m_TreeCtrl.m_ItemMap[m_itemID];
+
+	CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hItem);
+	ASSERT(pReg);
+
+	pReg->m_Location = m_oldValue;
 }
 
 void HistoryChangeItemSize::Do(void)
@@ -99,7 +381,7 @@ void HistoryAddRegion::Do(void)
 	HTREEITEM hBefore = m_beforeID.empty() ? TVI_LAST : m_pDoc->m_TreeCtrl.m_ItemMap[m_beforeID];
 	HTREEITEM hItem = m_pDoc->m_TreeCtrl.InsertItem(m_itemID.c_str(), hParent, hBefore);
 
-	CImgRegion * pReg = new CImgRegion(CPoint(10,10), CSize(100,100));
+	CImgRegion * pReg = new CImgRegion;
 	ASSERT(pReg);
 
 	m_pDoc->m_TreeCtrl.SetItemData(hItem, (DWORD_PTR)pReg);
@@ -116,7 +398,7 @@ void HistoryAddRegion::Do(void)
 		ASSERT(m_NodeCache.GetLength() > 0);
 		m_NodeCache.SeekToBegin();
 		CArchive ar(&m_NodeCache, CArchive::load);
-		m_pDoc->SerializeRegionNode(ar, pReg);
+		pReg->Serialize(ar);
 		m_pDoc->SerializeRegionNodeSubTree(ar, hItem, TRUE);
 		ar.Close();
 	}
@@ -149,7 +431,7 @@ void HistoryDelRegion::Do(void)
 
 	m_NodeCache.SetLength(0);
 	CArchive ar(&m_NodeCache, CArchive::store);
-	m_pDoc->SerializeRegionNode(ar, pReg);
+	pReg->Serialize(ar);
 	m_pDoc->SerializeRegionNodeSubTree(ar, hItem);
 	ar.Close();
 
@@ -168,7 +450,7 @@ void HistoryDelRegion::Undo(void)
 	HTREEITEM hBefore = m_beforeID.empty() ? TVI_LAST : m_pDoc->m_TreeCtrl.m_ItemMap[m_beforeID];
 	HTREEITEM hItem = m_pDoc->m_TreeCtrl.InsertItem(m_itemID.c_str(), hParent, hBefore);
 
-	CImgRegion * pReg = new CImgRegion(CPoint(10,10), CSize(100,100));
+	CImgRegion * pReg = new CImgRegion;
 	ASSERT(pReg);
 
 	m_pDoc->m_TreeCtrl.SetItemData(hItem, (DWORD_PTR)pReg);
@@ -176,7 +458,7 @@ void HistoryDelRegion::Undo(void)
 	ASSERT(m_NodeCache.GetLength() > 0);
 	m_NodeCache.SeekToBegin();
 	CArchive ar(&m_NodeCache, CArchive::load);
-	m_pDoc->SerializeRegionNode(ar, pReg);
+	pReg->Serialize(ar);
 	m_pDoc->SerializeRegionNodeSubTree(ar, hItem);
 	ar.Close();
 
@@ -209,7 +491,7 @@ void HistoryMovRegion::Do(void)
 		CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hNewItem);
 		ASSERT(pReg);
 
-		pReg->m_Local = m_pDoc->RootToLocal(hNewParent, ptOrg);
+		pReg->m_Location = m_pDoc->RootToLocal(hNewParent, ptOrg);
 	}
 }
 
@@ -230,7 +512,7 @@ void HistoryMovRegion::Undo(void)
 		CImgRegion * pReg = (CImgRegion *)m_pDoc->m_TreeCtrl.GetItemData(hOldItem);
 		ASSERT(pReg);
 
-		pReg->m_Local = m_pDoc->RootToLocal(hOldParent, ptOrg);
+		pReg->m_Location = m_pDoc->RootToLocal(hOldParent, ptOrg);
 	}
 }
 
@@ -269,6 +551,7 @@ BEGIN_MESSAGE_MAP(CImgRegionDoc, CDocument)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_UNDO, &CImgRegionDoc::OnUpdateEditUndo)
 	ON_COMMAND(ID_EDIT_REDO, &CImgRegionDoc::OnEditRedo)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_REDO, &CImgRegionDoc::OnUpdateEditRedo)
+	ON_COMMAND(ID_EXPORT_LUA, &CImgRegionDoc::OnExportLua)
 END_MESSAGE_MAP()
 
 CImgRegionDoc::CImgRegionDoc(void)
@@ -285,7 +568,7 @@ CPoint CImgRegionDoc::LocalToRoot(HTREEITEM hItem, const CPoint & ptLocal)
 	CImgRegion * pReg = (CImgRegion *)m_TreeCtrl.GetItemData(hItem);
 	ASSERT(pReg);
 
-	return LocalToRoot(m_TreeCtrl.GetParentItem(hItem), ptLocal + pReg->m_Local);
+	return LocalToRoot(m_TreeCtrl.GetParentItem(hItem), ptLocal + pReg->m_Location);
 }
 
 CPoint CImgRegionDoc::RootToLocal(HTREEITEM hItem, const CPoint & ptRoot)
@@ -296,7 +579,7 @@ CPoint CImgRegionDoc::RootToLocal(HTREEITEM hItem, const CPoint & ptRoot)
 	CImgRegion * pReg = (CImgRegion *)m_TreeCtrl.GetItemData(hItem);
 	ASSERT(pReg);
 
-	return RootToLocal(m_TreeCtrl.GetParentItem(hItem), ptRoot - pReg->m_Local);
+	return RootToLocal(m_TreeCtrl.GetParentItem(hItem), ptRoot - pReg->m_Location);
 }
 
 BOOL CImgRegionDoc::CreateTreeCtrl(void)
@@ -306,12 +589,12 @@ BOOL CImgRegionDoc::CreateTreeCtrl(void)
 
 	static DWORD dwCtrlID = 4;
 
-	if (!m_TreeCtrl.CreateEx(WS_EX_CLIENTEDGE,
-		WS_CHILD | WS_VISIBLE | TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS | TVS_SHOWSELALWAYS, CRect(), &pFrame->m_wndFileView, dwCtrlID++))
+	if (!m_TreeCtrl.Create(WS_CHILD | WS_VISIBLE | TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS | TVS_SHOWSELALWAYS, CRect(), &pFrame->m_wndFileView, dwCtrlID++))
 	{
 		TRACE0("CImgRegionDoc::CreateTreeCtrl failed \n");
 		return FALSE;
 	}
+
 	//SetWindowTheme(m_TreeCtrl.m_hWnd, L"Explorer", NULL);
 
 	CBitmap bmp;
@@ -358,10 +641,10 @@ HTREEITEM CImgRegionDoc::GetPointedRegionNode(HTREEITEM hItem, const CPoint & pt
 		CImgRegion * pReg = (CImgRegion *)m_TreeCtrl.GetItemData(hItem);
 		ASSERT(pReg);
 
-		if(hRet = GetPointedRegionNode(m_TreeCtrl.GetChildItem(hItem), ptLocal - pReg->m_Local))
+		if(hRet = GetPointedRegionNode(m_TreeCtrl.GetChildItem(hItem), ptLocal - pReg->m_Location))
 			return hRet;
 
-		if(CRect(pReg->m_Local, pReg->m_Size).PtInRect(ptLocal))
+		if(CRect(pReg->m_Location, pReg->m_Size).PtInRect(ptLocal))
 			return hItem;
 	}
 	return NULL;
@@ -488,42 +771,6 @@ int CImgRegionDoc::GetChildCount(HTREEITEM hItem)
 	return nChilds;
 }
 
-void CImgRegionDoc::SerializeRegionNode(CArchive & ar, CImgRegion * pReg)
-{
-	if (ar.IsStoring())
-	{
-		ar << pReg->m_Locked;
-		ar << pReg->m_Local;
-		ar << pReg->m_Size;
-		DWORD argb = pReg->m_Color.GetValue(); ar << argb;
-		ar << pReg->m_ImageStr;
-		ar << pReg->m_Border.x << pReg->m_Border.y << pReg->m_Border.z << pReg->m_Border.w;
-		Gdiplus::FontFamily family; pReg->m_Font->GetFamily(&family); CString strFamily; family.GetFamilyName(strFamily.GetBufferSetLength(LF_FACESIZE)); strFamily.ReleaseBuffer(); ar << strFamily;
-		ar << pReg->m_Font->GetSize();
-		argb = pReg->m_FontColor.GetValue(); ar << argb;
-		ar << pReg->m_Text;
-		ar << pReg->m_TextAlign;
-		ar << pReg->m_TextWrap;
-		ar << pReg->m_TextOff;
-	}
-	else
-	{
-		ar >> pReg->m_Locked;
-		ar >> pReg->m_Local;
-		ar >> pReg->m_Size;
-		DWORD argb; ar >> argb; pReg->m_Color.SetValue(argb);
-		ar >> pReg->m_ImageStr; pReg->m_Image = theApp.GetImage(pReg->m_ImageStr);
-		ar >> pReg->m_Border.x >> pReg->m_Border.y >> pReg->m_Border.z >> pReg->m_Border.w;
-		CString strFamily; float fSize; ar >> strFamily;
-		ar >> fSize; pReg->m_Font = theApp.GetFont(strFamily, fSize);
-		ar >> argb; pReg->m_FontColor.SetValue(argb);
-		ar >> pReg->m_Text;
-		ar >> pReg->m_TextAlign;
-		ar >> pReg->m_TextWrap;
-		ar >> pReg->m_TextOff;
-	}
-}
-
 void CImgRegionDoc::SerializeRegionNodeSubTree(CArchive & ar, HTREEITEM hParent, BOOL bOverideName)
 {
 	if (ar.IsStoring())
@@ -538,9 +785,7 @@ void CImgRegionDoc::SerializeRegionNodeSubTree(CArchive & ar, HTREEITEM hParent,
 
 			CImgRegion * pReg = (CImgRegion *)m_TreeCtrl.GetItemData(hItem);
 			ASSERT(pReg);
-
-			SerializeRegionNode(ar, pReg);
-
+			pReg->Serialize(ar);
 			SerializeRegionNodeSubTree(ar, hItem, bOverideName);
 		}
 	}
@@ -557,13 +802,11 @@ void CImgRegionDoc::SerializeRegionNodeSubTree(CArchive & ar, HTREEITEM hParent,
 
 			HTREEITEM hItem = m_TreeCtrl.InsertItem(strName, hParent, TVI_LAST); ASSERT(hItem);
 
-			CImgRegion * pReg = new CImgRegion(CPoint(10,10), CSize(100,100));
+			CImgRegion * pReg = new CImgRegion;
 			ASSERT(pReg);
 
 			m_TreeCtrl.SetItemData(hItem, (DWORD_PTR)pReg);
-
-			SerializeRegionNode(ar, pReg);
-
+			pReg->Serialize(ar);
 			SerializeRegionNodeSubTree(ar, hItem, bOverideName);
 
 			if(pReg->m_Locked)
@@ -602,7 +845,7 @@ void CImgRegionDoc::OnAddRegion()
 	{
 		hParent = m_TreeCtrl.GetParentItem(hSelected);
 		CImgRegion * pReg = (CImgRegion *)m_TreeCtrl.GetItemData(hSelected);
-		ptOrg += pReg->m_Local;
+		ptOrg += pReg->m_Location;
 	}
 
 	CString strName;
@@ -610,12 +853,14 @@ void CImgRegionDoc::OnAddRegion()
 	HistoryAddRegionPtr hist(new HistoryAddRegion(
 		this, strName, hParent ? m_TreeCtrl.GetItemText(hParent) : _T(""), hSelected ? m_TreeCtrl.GetItemText(hSelected) : _T("")));
 
-	CImgRegion reg(ptOrg, CSize(100,100));
+	CImgRegion reg;
+	reg.m_Location = ptOrg;
+	reg.m_Size = CSize(100,100);
 	reg.m_Color = Gdiplus::Color(255,my::Random<int>(0,255),my::Random<int>(0,255),my::Random<int>(0,255));
 	reg.m_Font = theApp.GetFont(_T("微软雅黑"), 16);
 	reg.m_FontColor = Gdiplus::Color(255,my::Random<int>(0,255),my::Random<int>(0,255),my::Random<int>(0,255));
 	CArchive ar(&hist->m_NodeCache, CArchive::store);
-	SerializeRegionNode(ar, &reg);
+	reg.Serialize(ar);
 	ar << 0;
 	ar.Close();
 
@@ -728,8 +973,9 @@ void CImgRegionDoc::OnExportImg()
 
 		Gdiplus::Bitmap bmp(m_Size.cx, m_Size.cy, PixelFormat24bppRGB);
 		Gdiplus::Graphics grap(&bmp);
+		Gdiplus::Matrix world;
 
-		CImgRegionView::DrawRegionDoc(grap, this);
+		CImgRegionView::DrawRegionDoc(grap, world, this);
 
 		bmp.Save(dlg.GetPathName(), &encoderClsid, NULL);
 	}
@@ -764,7 +1010,7 @@ void CImgRegionDoc::OnEditCopy()
 
 		theApp.m_ClipboardFile.SetLength(0);
 		CArchive ar(&theApp.m_ClipboardFile, CArchive::store);
-		SerializeRegionNode(ar, pReg);
+		pReg->Serialize(ar);
 		SerializeRegionNodeSubTree(ar, hSelected);
 		ar.Close();
 	}
@@ -868,4 +1114,10 @@ void CImgRegionDoc::OnEditRedo()
 void CImgRegionDoc::OnUpdateEditRedo(CCmdUI *pCmdUI)
 {
 	pCmdUI->Enable(m_HistoryStep < m_HistoryList.size());
+}
+
+void CImgRegionDoc::OnExportLua()
+{
+	CLuaExporterDlg dlg;
+	dlg.DoModal();
 }

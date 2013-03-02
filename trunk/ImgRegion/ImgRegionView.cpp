@@ -93,16 +93,13 @@ void CImgRegionView::Draw(Gdiplus::Graphics & grap)
 	Gdiplus::SolidBrush bkBrush(Gdiplus::Color(255,192,192,192));
 	grap.FillRectangle(&bkBrush, rectClient.left, rectClient.top, rectClient.Width(), rectClient.Height());
 
-	Gdiplus::GraphicsContainer container = grap.BeginContainer();
-	{
-		grap.TranslateTransform(-(float)GetScrollPos(SB_HORZ), -(float)GetScrollPos(SB_VERT));
-		grap.ScaleTransform(
-			(float)m_ImageSize.cx / pDoc->m_Size.cx,
-			(float)m_ImageSize.cy / pDoc->m_Size.cy);
+	Gdiplus::Matrix world;
+	world.Translate(-(float)GetScrollPos(SB_HORZ), -(float)GetScrollPos(SB_VERT));
+	world.Scale((float)m_ImageSize.cx / pDoc->m_Size.cx, (float)m_ImageSize.cy / pDoc->m_Size.cy);
 
-		DrawRegionDoc(grap, pDoc);
-	}
-	grap.EndContainer(container);
+	DrawRegionDoc(grap, world, pDoc);
+
+	grap.ResetTransform();
 
 	HTREEITEM hSelected = pDoc->m_TreeCtrl.GetSelectedItem();
 	if(hSelected)
@@ -146,8 +143,10 @@ void CImgRegionView::Draw(Gdiplus::Graphics & grap)
 	}
 }
 
-void CImgRegionView::DrawRegionDoc(Gdiplus::Graphics & grap, CImgRegionDoc * pDoc)
+void CImgRegionView::DrawRegionDoc(Gdiplus::Graphics & grap, Gdiplus::Matrix & world, CImgRegionDoc * pDoc)
 {
+	grap.SetTransform(&world);
+
 	if(pDoc->m_Image && Gdiplus::ImageTypeUnknown != pDoc->m_Image->GetType())
 	{
 		DrawRegionDocImage(grap, pDoc->m_Image.get(), CRect(CPoint(0,0), pDoc->m_Size), Vector4i(0,0,0,0), pDoc->m_Color);
@@ -160,97 +159,26 @@ void CImgRegionView::DrawRegionDoc(Gdiplus::Graphics & grap, CImgRegionDoc * pDo
 
 	ASSERT(pDoc->m_TreeCtrl.m_hWnd);
 
-	DrawRegionDocNode(grap, &pDoc->m_TreeCtrl, pDoc->m_TreeCtrl.GetRootItem());
+	DrawRegionDocNode(grap, world, &pDoc->m_TreeCtrl, pDoc->m_TreeCtrl.GetRootItem());
 }
 
-void CImgRegionView::DrawRegionDocNode(Gdiplus::Graphics & grap, CTreeCtrl * pTreeCtrl, HTREEITEM hItem, const CPoint & ptOff)
+void CImgRegionView::DrawRegionDocNode(Gdiplus::Graphics & grap, Gdiplus::Matrix & world, CTreeCtrl * pTreeCtrl, HTREEITEM hItem)
 {
 	if(hItem)
 	{
+		grap.SetTransform(&world);
+
 		CImgRegion * pReg = (CImgRegion *)pTreeCtrl->GetItemData(hItem);
 		ASSERT(pReg);
 
-		CPoint ptNode = pReg->m_Local + ptOff;
+		pReg->Draw(grap);
 
-		if(pReg->m_Image && Gdiplus::ImageTypeUnknown != pReg->m_Image->GetType())
-		{
-			DrawRegionDocImage(grap, pReg->m_Image.get(), CRect(ptNode, pReg->m_Size), pReg->m_Border, pReg->m_Color);
-		}
-		else
-		{
-			Gdiplus::SolidBrush brush(pReg->m_Color);
-			grap.FillRectangle(&brush, ptNode.x, ptNode.y, pReg->m_Size.cx, pReg->m_Size.cy);
-		}
+		Gdiplus::Matrix * childWorld = world.Clone();
+		childWorld->Translate((float)pReg->m_Location.x, (float)pReg->m_Location.y);
+		DrawRegionDocNode(grap, *childWorld, pTreeCtrl, pTreeCtrl->GetChildItem(hItem));
+		delete childWorld;
 
-		if(pReg->m_Font)
-		{
-			CString strInfo;
-			strInfo.Format(pReg->m_Text, pReg->m_Local.x, pReg->m_Local.y, pReg->m_Size.cx, pReg->m_Size.cy);
-
-			Gdiplus::RectF rectF(
-				(float)ptNode.x + pReg->m_TextOff.x, (float)ptNode.y + pReg->m_TextOff.y, (float)pReg->m_Size.cx, (float)pReg->m_Size.cy);
-
-			Gdiplus::StringFormat format((pReg->m_TextWrap ? 0 : Gdiplus::StringFormatFlagsNoWrap) | Gdiplus::StringFormatFlagsNoClip);
-			format.SetTrimming(Gdiplus::StringTrimmingNone);
-			switch(pReg->m_TextAlign)
-			{
-			case TextAlignLeftTop:
-				format.SetAlignment(Gdiplus::StringAlignmentNear);
-				format.SetLineAlignment(Gdiplus::StringAlignmentNear);
-				break;
-			case TextAlignCenterTop:
-				format.SetAlignment(Gdiplus::StringAlignmentCenter);
-				format.SetLineAlignment(Gdiplus::StringAlignmentNear);
-				break;
-			case TextAlignRightTop:
-				format.SetAlignment(Gdiplus::StringAlignmentFar);
-				format.SetLineAlignment(Gdiplus::StringAlignmentNear);
-				break;
-			case TextAlignLeftMiddle:
-				format.SetAlignment(Gdiplus::StringAlignmentNear);
-				format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-				break;
-			case TextAlignCenterMiddle:
-				format.SetAlignment(Gdiplus::StringAlignmentCenter);
-				format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-				break;
-			case TextAlignRightMiddle:
-				format.SetAlignment(Gdiplus::StringAlignmentFar);
-				format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-				break;
-			case TextAlignLeftBottom:
-				format.SetAlignment(Gdiplus::StringAlignmentNear);
-				format.SetLineAlignment(Gdiplus::StringAlignmentFar);
-				break;
-			case TextAlignCenterBottom:
-				format.SetAlignment(Gdiplus::StringAlignmentCenter);
-				format.SetLineAlignment(Gdiplus::StringAlignmentFar);
-				break;
-			case TextAlignRightBottom:
-				format.SetAlignment(Gdiplus::StringAlignmentFar);
-				format.SetLineAlignment(Gdiplus::StringAlignmentFar);
-				break;
-			}
-
-			Gdiplus::SolidBrush brush(pReg->m_FontColor);
-			grap.DrawString(strInfo, strInfo.GetLength(), pReg->m_Font.get(), rectF, &format, &brush);
-
-			//Gdiplus::GraphicsPath path;
-			//Gdiplus::FontFamily family;
-			//pReg->m_Font->GetFamily(&family);
-			//path.AddString(strInfo, strInfo.GetLength(), &family, pReg->m_Font->GetStyle(), pReg->m_Font->GetSize(), rectF, &format);
-			//Gdiplus::Pen pen(pReg->m_FontColor, 2.0f);
-			//Gdiplus::SolidBrush brush(pReg->m_Color);
-			//Gdiplus::SmoothingMode sm = grap.GetSmoothingMode();
-			//grap.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-			//grap.DrawPath(&pen, &path);
-			//grap.FillPath(&brush, &path);
-			//grap.SetSmoothingMode(sm);
-		}
-
-		DrawRegionDocNode(grap, pTreeCtrl, pTreeCtrl->GetChildItem(hItem), CPoint(ptOff.x + pReg->m_Local.x, ptOff.y + pReg->m_Local.y));
-
-		DrawRegionDocNode(grap, pTreeCtrl, pTreeCtrl->GetNextSiblingItem(hItem), ptOff);
+		DrawRegionDocNode(grap, world, pTreeCtrl, pTreeCtrl->GetNextSiblingItem(hItem));
 	}
 }
 
@@ -491,7 +419,7 @@ void CImgRegionView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 				if(!pReg->m_Locked)
 				{
-					m_DragRegLocal = pReg->m_Local;
+					m_DragRegLocal = pReg->m_Location;
 					m_DragRegSize = pReg->m_Size;
 					m_DragRegTextOff = pReg->m_TextOff;
 
@@ -501,27 +429,27 @@ void CImgRegionView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 					switch(m_nSelectedHandle)
 					{
 					case HandleTypeLeftTop:
-						pReg->m_Local += sizeDragLog;
+						pReg->m_Location += sizeDragLog;
 						pReg->m_Size -= sizeDragLog;
 						break;
 					case HandleTypeCenterTop:
-						pReg->m_Local.y += sizeDragLog.cy;
+						pReg->m_Location.y += sizeDragLog.cy;
 						pReg->m_Size.cy -= sizeDragLog.cy;
 						break;
 					case HandleTypeRightTop:
-						pReg->m_Local.y += sizeDragLog.cy;
+						pReg->m_Location.y += sizeDragLog.cy;
 						pReg->m_Size.cx += sizeDragLog.cx;
 						pReg->m_Size.cy -= sizeDragLog.cy;
 						break;
 					case HandleTypeLeftMiddle:
-						pReg->m_Local.x += sizeDragLog.cx;
+						pReg->m_Location.x += sizeDragLog.cx;
 						pReg->m_Size.cx -= sizeDragLog.cx;
 						break;
 					case HandleTypeRightMiddle:
 						pReg->m_Size.cx += sizeDragLog.cx;
 						break;
 					case HandleTypeLeftBottom:
-						pReg->m_Local.x += sizeDragLog.cx;
+						pReg->m_Location.x += sizeDragLog.cx;
 						pReg->m_Size.cx -= sizeDragLog.cx;
 						pReg->m_Size.cy += sizeDragLog.cy;
 						break;
@@ -535,16 +463,16 @@ void CImgRegionView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 						pReg->m_TextOff += sizeDragLog;
 						break;
 					default:
-						pReg->m_Local += sizeDragLog;
+						pReg->m_Location += sizeDragLog;
 						break;
 					}
 
 					CString strItem = pDoc->m_TreeCtrl.GetItemText(hSelected);
 
 					HistoryModifyRegionPtr hist(new HistoryModifyRegion());
-					if(pReg->m_Local != m_DragRegLocal)
+					if(pReg->m_Location != m_DragRegLocal)
 					{
-						hist->push_back(HistoryChangePtr(new HistoryChangeItemLocal(pDoc, strItem, m_DragRegLocal, pReg->m_Local)));
+						hist->push_back(HistoryChangePtr(new HistoryChangeItemLocation(pDoc, strItem, m_DragRegLocal, pReg->m_Location)));
 					}
 					if(pReg->m_Size != m_DragRegSize)
 					{
@@ -685,7 +613,7 @@ void CImgRegionView::OnLButtonDown(UINT nFlags, CPoint point)
 				pDoc->m_TreeCtrl.SelectItem(hSelected);
 				m_DragState = DragStateControl;
 				m_DragPos = point;
-				m_DragRegLocal = pReg->m_Local;
+				m_DragRegLocal = pReg->m_Location;
 				m_DragRegSize = pReg->m_Size;
 				m_DragRegTextOff = pReg->m_TextOff;
 				SetCapture();
@@ -694,6 +622,10 @@ void CImgRegionView::OnLButtonDown(UINT nFlags, CPoint point)
 			{
 				pDoc->m_TreeCtrl.SelectItem(NULL);
 				m_DragState = DragStateNone;
+
+				CMainFrame * pFrame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
+				ASSERT(pFrame);
+				pFrame->m_wndProperties.InvalidProperties();
 			}
 
 			Invalidate(TRUE);
@@ -743,9 +675,9 @@ void CImgRegionView::OnLButtonUp(UINT nFlags, CPoint point)
 				CString strItem = pDoc->m_TreeCtrl.GetItemText(hSelected);
 
 				HistoryModifyRegionPtr hist(new HistoryModifyRegion());
-				if(pReg->m_Local != m_DragRegLocal)
+				if(pReg->m_Location != m_DragRegLocal)
 				{
-					hist->push_back(HistoryChangePtr(new HistoryChangeItemLocal(pDoc, strItem, m_DragRegLocal, pReg->m_Local)));
+					hist->push_back(HistoryChangePtr(new HistoryChangeItemLocation(pDoc, strItem, m_DragRegLocal, pReg->m_Location)));
 				}
 				if(pReg->m_Size != m_DragRegSize)
 				{
@@ -817,27 +749,27 @@ void CImgRegionView::OnMouseMove(UINT nFlags, CPoint point)
 				switch(m_nSelectedHandle)
 				{
 				case HandleTypeLeftTop:
-					pReg->m_Local = m_DragRegLocal + sizeDragLog;
+					pReg->m_Location = m_DragRegLocal + sizeDragLog;
 					pReg->m_Size = m_DragRegSize - sizeDragLog;
 					break;
 				case HandleTypeCenterTop:
-					pReg->m_Local.y = m_DragRegLocal.y + sizeDragLog.cy;
+					pReg->m_Location.y = m_DragRegLocal.y + sizeDragLog.cy;
 					pReg->m_Size.cy = m_DragRegSize.cy - sizeDragLog.cy;
 					break;
 				case HandleTypeRightTop:
-					pReg->m_Local.y = m_DragRegLocal.y + sizeDragLog.cy;
+					pReg->m_Location.y = m_DragRegLocal.y + sizeDragLog.cy;
 					pReg->m_Size.cx = m_DragRegSize.cx + sizeDragLog.cx;
 					pReg->m_Size.cy = m_DragRegSize.cy - sizeDragLog.cy;
 					break;
 				case HandleTypeLeftMiddle:
-					pReg->m_Local.x = m_DragRegLocal.x + sizeDragLog.cx;
+					pReg->m_Location.x = m_DragRegLocal.x + sizeDragLog.cx;
 					pReg->m_Size.cx = m_DragRegSize.cx - sizeDragLog.cx;
 					break;
 				case HandleTypeRightMiddle:
 					pReg->m_Size.cx = m_DragRegSize.cx + sizeDragLog.cx;
 					break;
 				case HandleTypeLeftBottom:
-					pReg->m_Local.x = m_DragRegLocal.x + sizeDragLog.cx;
+					pReg->m_Location.x = m_DragRegLocal.x + sizeDragLog.cx;
 					pReg->m_Size.cx = m_DragRegSize.cx - sizeDragLog.cx;
 					pReg->m_Size.cy = m_DragRegSize.cy + sizeDragLog.cy;
 					break;
@@ -851,7 +783,7 @@ void CImgRegionView::OnMouseMove(UINT nFlags, CPoint point)
 					pReg->m_TextOff = m_DragRegTextOff + sizeDragLog;
 					break;
 				default:
-					pReg->m_Local = m_DragRegLocal + sizeDragLog;
+					pReg->m_Location = m_DragRegLocal + sizeDragLog;
 					break;
 				}
 
@@ -896,7 +828,7 @@ void CImgRegionView::OnActivateView(BOOL bActivate, CView* pActivateView, CView*
 	{
 		CMainFrame * pFrame = DYNAMIC_DOWNCAST(CMainFrame, AfxGetMainWnd());
 		ASSERT(pFrame);
-		pFrame->m_wndProperties.UpdateProperties();
+		pFrame->m_wndProperties.InvalidProperties();
 
 		pFrame->m_wndFileView.AdjustLayout();
 	}
@@ -989,7 +921,7 @@ void CImgRegionView::InsertPointedRegionNodeToMenuItem(CMenu * pMenu, CTreeCtrl 
 		CImgRegion * pReg = (CImgRegion *)pTreeCtrl->GetItemData(hItem);
 		ASSERT(pReg);
 
-		if(CRect(pReg->m_Local, pReg->m_Size).PtInRect(ptLocal))
+		if(CRect(pReg->m_Location, pReg->m_Size).PtInRect(ptLocal))
 		{
 			MENUITEMINFO mii = {0};
 			mii.cbSize = sizeof(mii);
@@ -1002,7 +934,7 @@ void CImgRegionView::InsertPointedRegionNodeToMenuItem(CMenu * pMenu, CTreeCtrl 
 			strItem.ReleaseBuffer();
 		}
 
-		InsertPointedRegionNodeToMenuItem(pMenu, pTreeCtrl, pTreeCtrl->GetChildItem(hItem), ptLocal - pReg->m_Local);
+		InsertPointedRegionNodeToMenuItem(pMenu, pTreeCtrl, pTreeCtrl->GetChildItem(hItem), ptLocal - pReg->m_Location);
 
 		InsertPointedRegionNodeToMenuItem(pMenu, pTreeCtrl, pTreeCtrl->GetNextSiblingItem(hItem), ptLocal);
 	}
