@@ -83,7 +83,9 @@ public:
 
 	virtual void Draw(Gdiplus::Graphics & grap);
 
-	virtual void Serialize(CArchive& archive);
+	virtual void Serialize(CArchive& archive, int version);
+
+	virtual void ExportToLua(std::ofstream & ofs, int indent);
 };
 
 class CImgRegionDoc;
@@ -302,6 +304,10 @@ public:
 
 	ImagePtr m_Image;
 
+	CString m_strProjectDir;
+
+	CString m_strLuaPath;
+
 public:
 	DECLARE_DYNCREATE(CImgRegionDoc)
 
@@ -329,10 +335,8 @@ public:
 
 	virtual void Serialize(CArchive& ar);
 
-	int GetChildCount(HTREEITEM hItem);
-
 public:
-	void SerializeRegionNodeSubTree(CArchive & ar, HTREEITEM hParent = TVI_ROOT, BOOL bOverideName = FALSE);
+	void SerializeSubTreeNode(CArchive & ar, int version, HTREEITEM hParent = TVI_ROOT, BOOL bOverideName = FALSE);
 
 	void UpdateImageSizeTable(const CSize & sizeRoot);
 

@@ -51,6 +51,8 @@ public:
 
 	BOOL FindTreeChildItem(HTREEITEM hParent, HTREEITEM hChild);
 
+	BOOL CanItemMove(HTREEITEM hParent, HTREEITEM hInsertAfter, HTREEITEM hOtherItem);
+
 	HTREEITEM MoveTreeItem(HTREEITEM hParent, HTREEITEM hInsertAfter, HTREEITEM hOtherItem);
 
 	template <class DataType>
@@ -74,6 +76,8 @@ public:
 		DeleteItem(hItem);
 		m_ItemMap.erase(key);
 	}
+
+	int GetChildCount(HTREEITEM hItem);
 
 	afx_msg void OnNMCustomdraw(NMHDR *pNMHDR, LRESULT *pResult);
 };
