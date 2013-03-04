@@ -96,7 +96,7 @@ void CLuaExporterDlg::OnOK()
 	LPCTSTR szName, szExtent, szBuff = m_strLuaPath.GetBuffer();
 	szName = PathFindFileName(szBuff);
 	szExtent = PathFindExtension(szBuff);
-	std::basic_string<TCHAR> strName(szBuff, szExtent - szName);
+	std::basic_string<TCHAR> strName(szName, szExtent - szName);
 
 	ofs << "module(\"" << ts2ms(strName.c_str()) << "\", package.seeall)" << std::endl;
 	ofs << std::endl;
