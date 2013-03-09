@@ -22,7 +22,6 @@ BEGIN_MESSAGE_MAP(COutlinerTreeCtrl, CTreeCtrl)
 	ON_WM_MOUSEMOVE()
 	ON_WM_LBUTTONUP()
 	ON_NOTIFY_REFLECT(NM_CUSTOMDRAW, &COutlinerTreeCtrl::OnNMCustomdraw)
-	ON_WM_LBUTTONDBLCLK()
 	ON_WM_KEYDOWN()
 END_MESSAGE_MAP()
 
@@ -234,17 +233,6 @@ void COutlinerTreeCtrl::OnNMCustomdraw(NMHDR *pNMHDR, LRESULT *pResult)
     }
 }
 
-void COutlinerTreeCtrl::OnLButtonDblClk(UINT nFlags, CPoint point)
-{
-	HTREEITEM hSelected = GetSelectedItem();
-	if(hSelected)
-	{
-		SetFocus();
-		CEdit * pEdit = EditLabel(hSelected);
-		ASSERT(pEdit);
-	}
-}
-
 void COutlinerTreeCtrl::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	switch(nChar)
@@ -272,6 +260,7 @@ BEGIN_MESSAGE_MAP(COutlinerView, CDockablePane)
 	ON_NOTIFY(TVN_BEGINLABELEDIT, 4, &COutlinerView::OnTvnBeginlabeledit)
 	ON_NOTIFY(TVN_ENDLABELEDIT, 4, &COutlinerView::OnTvnEndlabeledit)
 	ON_NOTIFY(TVN_USERDELETING, 4, &COutlinerView::OnTvnUserDeleting)
+	ON_COMMAND(ID_OUTLINER_CREATEMESH, &COutlinerView::OnOutlinerCreatemesh)
 END_MESSAGE_MAP()
 
 int COutlinerView::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -279,7 +268,7 @@ int COutlinerView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	if (CDockablePane::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
-	if (!m_wndTreeCtrl.Create(WS_CHILD | WS_VISIBLE | TVS_EDITLABELS | TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS | TVS_SHOWSELALWAYS, CRect(0,0,0,0), this, 4))
+	if (!m_TreeCtrl.Create(WS_CHILD | WS_VISIBLE | TVS_EDITLABELS | TVS_HASLINES | TVS_LINESATROOT | TVS_HASBUTTONS | TVS_SHOWSELALWAYS, CRect(0,0,0,0), this, 4))
 		return -1;
 
 	if (!m_wndToolBar.Create(this, WS_CHILD | WS_VISIBLE | CBRS_TOP | CBRS_HIDE_INPLACE | CBRS_TOOLTIPS | CBRS_FLYBY, IDR_TOOLBAR1)
@@ -289,10 +278,16 @@ int COutlinerView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndToolBar.SetOwner(this);
 	m_wndToolBar.SetRouteCommandsViaFrame(FALSE);
 
-	HTREEITEM hItem = m_wndTreeCtrl.InsertItem(_T("aaa"));
-	hItem = m_wndTreeCtrl.InsertItem(_T("bbb"), hItem);
-	hItem = m_wndTreeCtrl.InsertItem(_T("ccc"), hItem);
-	m_wndTreeCtrl.SelectItem(hItem);
+	CMenu menu;
+	menu.LoadMenu(IDR_MENU1);
+	CMFCToolBarMenuButton menuBtn(-1, menu.GetSubMenu(0)->GetSafeHmenu(), GetCmdMgr()->GetCmdImage(ID_FILE_NEW, FALSE));
+	menuBtn.SetMessageWnd(this);
+	m_wndToolBar.ReplaceButton(ID_BUTTON40013, menuBtn);
+
+	HTREEITEM hItem = m_TreeCtrl.InsertItem(_T("aaa"));
+	hItem = m_TreeCtrl.InsertItem(_T("bbb"), hItem);
+	hItem = m_TreeCtrl.InsertItem(_T("ccc"), hItem);
+	m_TreeCtrl.SelectItem(hItem);
 
 	return 0;
 }
@@ -306,7 +301,7 @@ void COutlinerView::AdjustLayout(void)
 		int cyTlb = m_wndToolBar.CalcFixedLayout(FALSE, TRUE).cy;
 		m_wndToolBar.SetWindowPos(NULL,
 			rectClient.left, rectClient.top, rectClient.Width(), cyTlb, SWP_NOACTIVATE | SWP_NOZORDER);
-		m_wndTreeCtrl.SetWindowPos(NULL,
+		m_TreeCtrl.SetWindowPos(NULL,
 			rectClient.left, rectClient.top + cyTlb, rectClient.Width(), rectClient.Height() - cyTlb, SWP_NOACTIVATE | SWP_NOZORDER);
 	}
 }
@@ -356,4 +351,30 @@ void COutlinerView::OnTvnEndlabeledit(NMHDR *pNMHDR, LRESULT *pResult)
 void COutlinerView::OnTvnUserDeleting(NMHDR *pNMHDR, LRESULT *pResult)
 {
 	*pResult = 0;
+}
+
+BOOL COutlinerView::PreTranslateMessage(MSG* pMsg)
+{
+	// http://support.microsoft.com/kb/167960/en-us
+	if (pMsg->message == WM_KEYDOWN &&  
+		pMsg->wParam == VK_RETURN || pMsg->wParam == VK_ESCAPE)  
+	{  
+		CEdit * pEdit = m_TreeCtrl.GetEditControl();  
+		if (pEdit)  
+		{  
+			pEdit->SendMessage(WM_KEYDOWN, pMsg->wParam, pMsg->lParam);  
+			return TRUE;  
+		}  
+	}  
+
+	return CDockablePane::PreTranslateMessage(pMsg);
+}
+
+void COutlinerView::OnOutlinerCreatemesh()
+{
+	// TODO: Add your command handler code here
+	CFileDialog dlg(TRUE);
+	if(IDOK == dlg.DoModal())
+	{
+	}
 }
