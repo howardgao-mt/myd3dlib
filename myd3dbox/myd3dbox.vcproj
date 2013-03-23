@@ -192,6 +192,14 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\DocHistoryMgr.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\DocVersionMgr.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\MainApp.cpp"
 				>
 			</File>
@@ -209,6 +217,10 @@
 			</File>
 			<File
 				RelativePath=".\OutlinerView.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\PropertiesWnd.cpp"
 				>
 			</File>
 			<File
@@ -238,6 +250,14 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
+				RelativePath=".\DocHistoryMgr.h"
+				>
+			</File>
+			<File
+				RelativePath=".\DocVersionMgr.h"
+				>
+			</File>
+			<File
 				RelativePath=".\MainApp.h"
 				>
 			</File>
@@ -255,6 +275,10 @@
 			</File>
 			<File
 				RelativePath=".\OutlinerView.h"
+				>
+			</File>
+			<File
+				RelativePath=".\PropertiesWnd.h"
 				>
 			</File>
 			<File
@@ -285,6 +309,10 @@
 			</File>
 			<File
 				RelativePath=".\toolbar1.bmp"
+				>
+			</File>
+			<File
+				RelativePath=".\toolbar2.bmp"
 				>
 			</File>
 		</Filter>
