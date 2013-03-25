@@ -1,7 +1,10 @@
 #pragma once
 
+#include "DocHistoryMgr.h"
+
 class CMainDoc
 	: public CDocument
+	, public CDocHistoryMgr
 	, public my::SingleInstance<CMainDoc>
 {
 public:

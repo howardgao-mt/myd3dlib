@@ -69,6 +69,13 @@ void CMainDoc::OnCreateStaticmesh()
 		try
 		{
 			my::OgreMeshPtr mesh = CMainFrame::getSingleton().LoadMesh(ws2ms(dlg.GetPathName()));
+
+			static unsigned int i = 0;
+			CString strItem;
+			strItem.Format(_T("mesh_%03d"), i++);
+			AddTreeStaticMeshNode(strItem, mesh);
+
+			UpdateAllViews(NULL);
 		}
 		catch (const my::Exception & e)
 		{
