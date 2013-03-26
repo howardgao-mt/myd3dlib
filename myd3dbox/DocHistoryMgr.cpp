@@ -7,10 +7,12 @@ void StaticMeshTreeNode::Draw(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 	UINT cPasses = CMainFrame::getSingleton().m_SimpleSample->Begin();
 	for(UINT p = 0; p < cPasses; p++)
 	{
+		CMainFrame::getSingleton().m_SimpleSample->BeginPass(p);
 		for(DWORD i = 0; i < m_mesh->GetMaterialNum(); i++)
 		{
 			m_mesh->DrawSubset(i);
 		}
+		CMainFrame::getSingleton().m_SimpleSample->EndPass();
 	}
 	CMainFrame::getSingleton().m_SimpleSample->End();
 }
