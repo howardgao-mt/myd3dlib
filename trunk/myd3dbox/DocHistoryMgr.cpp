@@ -52,19 +52,13 @@ void CDeleteStaticMeshTreeNodeStep::Do(void)
 	COutlinerView * pOutliner = COutlinerView::getSingletonPtr();
 	ASSERT(pOutliner);
 
-	ASSERT(!m_strItem.empty() && pOutliner->m_ItemMap.end() == pOutliner->m_ItemMap.find(m_strItem));
-
+	ASSERT(!m_strItem.empty() && pOutliner->m_ItemMap.end() != pOutliner->m_ItemMap.find(m_strItem));
 	HTREEITEM hItem = pOutliner->m_ItemMap[m_strItem];
-	HTREEITEM hParent = pOutliner->m_TreeCtrl.GetParentItem(hItem);
-	HTREEITEM hBefore = pOutliner->m_TreeCtrl.GetPrevSiblingItem(hItem);
 
 	m_node = boost::dynamic_pointer_cast<StaticMeshTreeNode>(pOutliner->GetItemNode(hItem));
 	ASSERT(m_node);
-	m_strParent = hParent ? pOutliner->m_TreeCtrl.GetItemText(hParent) : _T("");
-	m_strBefore = hBefore ? pOutliner->m_TreeCtrl.GetItemText(hBefore) : _T("");
 
-	ASSERT(m_strParent.empty() || pOutliner->m_ItemMap.end() == pOutliner->m_ItemMap.find(m_strParent));
-	ASSERT(m_strBefore.empty() || pOutliner->m_ItemMap.end() == pOutliner->m_ItemMap.find(m_strBefore));
+	pOutliner->m_TreeCtrl.DeleteItem(hItem);
 }
 
 void CDocHistoryMgr::AddTreeStaticMeshNode(LPCTSTR lpszItem, my::OgreMeshPtr mesh)
