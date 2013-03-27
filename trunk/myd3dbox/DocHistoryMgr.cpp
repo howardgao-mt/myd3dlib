@@ -2,8 +2,13 @@
 #include "DocHistoryMgr.h"
 #include "MainFrm.h"
 
+using namespace my;
+
 void StaticMeshTreeNode::Draw(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
 {
+	CMainFrame::getSingleton().m_SimpleSample->SetVector("g_MaterialAmbientColor", Vector4(0,0,0,1));
+	CMainFrame::getSingleton().m_SimpleSample->SetVector("g_MaterialDiffuseColor", Vector4(1,1,1,1));
+	CMainFrame::getSingleton().m_SimpleSample->SetTexture("g_MeshTexture", CMainFrame::getSingleton().m_WhiteTex->m_ptr);
 	UINT cPasses = CMainFrame::getSingleton().m_SimpleSample->Begin();
 	for(UINT p = 0; p < cPasses; p++)
 	{
