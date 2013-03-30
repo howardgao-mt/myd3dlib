@@ -45,20 +45,20 @@ public:
 
 typedef boost::shared_ptr<CDocStepBase> CDocStepBasePtr;
 
-class CAddStaticMeshTreeNodeStep : public CDocStepBase
+class CAddTreeNodeStep : public CDocStepBase
 {
 public:
 	std::basic_string<TCHAR> m_strItem;
 
-	StaticMeshTreeNodePtr m_node;
+	TreeNodeBasePtr m_node;
 
 	std::basic_string<TCHAR> m_strParent;
 
 	std::basic_string<TCHAR> m_strBefore;
 
-	CAddStaticMeshTreeNodeStep(
+	CAddTreeNodeStep(
 		LPCTSTR lpszItem,
-		StaticMeshTreeNodePtr node,
+		TreeNodeBasePtr node,
 		LPCTSTR lpszParent = _T(""),
 		LPCTSTR lpszBefore = _T(""))
 		: m_strItem(lpszItem)
@@ -71,14 +71,14 @@ public:
 	virtual void Do(void);
 };
 
-class CDeleteStaticMeshTreeNodeStep : public CDocStepBase
+class CDeleteTreeNodeStep : public CDocStepBase
 {
 public:
 	std::basic_string<TCHAR> m_strItem;
 
-	StaticMeshTreeNodePtr m_node;
+	TreeNodeBasePtr m_node;
 
-	CDeleteStaticMeshTreeNodeStep(LPCTSTR lpszItem)
+	CDeleteTreeNodeStep(LPCTSTR lpszItem)
 		: m_strItem(lpszItem)
 	{
 	}
@@ -116,9 +116,16 @@ public:
 
 	virtual ~CDocHistoryMgr(void)
 	{
+		ASSERT(empty());
 	}
 
 	int m_nStep;
+
+	void Do(void);
+
+	void Undo(void);
+
+	void ClearAllHistory(void);
 
 	void AddTreeStaticMeshNode(LPCTSTR lpszItem, my::OgreMeshPtr mesh);
 };

@@ -20,23 +20,32 @@ CMainDoc::CMainDoc(void)
 {
 }
 
+void CMainDoc::Clear(void)
+{
+	CDocHistoryMgr::ClearAllHistory();
+
+	COutlinerView::getSingleton().m_TreeCtrl.DeleteAllItems();
+}
+
 BOOL CMainDoc::OnNewDocument()
 {
 	// TODO: Add your specialized code here and/or call the base class
-	const my::Vector3 boxHalfExtents(10.0f, 10.0f, 10.0f);
-	m_groundShape.reset(new btBoxShape(btVector3(boxHalfExtents.x, boxHalfExtents.y, boxHalfExtents.z)));
+	Clear();
 
-	btTransform transform;
-	transform.setIdentity();
-	transform.setOrigin(btVector3(0, -boxHalfExtents.y, 0));
-	m_groundMotionState.reset(new btDefaultMotionState(transform));
+	//const my::Vector3 boxHalfExtents(10.0f, 10.0f, 10.0f);
+	//m_groundShape.reset(new btBoxShape(btVector3(boxHalfExtents.x, boxHalfExtents.y, boxHalfExtents.z)));
 
-	btVector3 localInertia(0, 0, 0);
-	m_groundBody.reset(new btRigidBody(
-		btRigidBody::btRigidBodyConstructionInfo(0.0f, m_groundMotionState.get(), m_groundShape.get(), localInertia)));
-	m_groundBody->setRestitution(1.0f);
+	//btTransform transform;
+	//transform.setIdentity();
+	//transform.setOrigin(btVector3(0, -boxHalfExtents.y, 0));
+	//m_groundMotionState.reset(new btDefaultMotionState(transform));
 
-	CMainFrame::getSingleton().m_dynamicsWorld->addRigidBody(m_groundBody.get());
+	//btVector3 localInertia(0, 0, 0);
+	//m_groundBody.reset(new btRigidBody(
+	//	btRigidBody::btRigidBodyConstructionInfo(0.0f, m_groundMotionState.get(), m_groundShape.get(), localInertia)));
+	//m_groundBody->setRestitution(1.0f);
+
+	//CMainFrame::getSingleton().m_dynamicsWorld->addRigidBody(m_groundBody.get());
 
 	return CDocument::OnNewDocument();
 }
@@ -47,6 +56,7 @@ BOOL CMainDoc::OnOpenDocument(LPCTSTR lpszPathName)
 		return FALSE;
 
 	// TODO:  Add your specialized creation code here
+	Clear();
 
 	return TRUE;
 }
@@ -54,6 +64,7 @@ BOOL CMainDoc::OnOpenDocument(LPCTSTR lpszPathName)
 BOOL CMainDoc::OnSaveDocument(LPCTSTR lpszPathName)
 {
 	// TODO: Add your specialized code here and/or call the base class
+	Clear();
 
 	return CDocument::OnSaveDocument(lpszPathName);
 }
@@ -61,13 +72,16 @@ BOOL CMainDoc::OnSaveDocument(LPCTSTR lpszPathName)
 void CMainDoc::OnCloseDocument()
 {
 	// TODO: Add your specialized code here and/or call the base class
+	Clear();
 
 	CDocument::OnCloseDocument();
 }
 
 void CMainDoc::OnEditUndo()
 {
-	operator[](m_nStep--)->Undo();
+	CDocHistoryMgr::Undo();
+
+	SetModifiedFlag();
 
 	UpdateAllViews(NULL);
 }
@@ -79,7 +93,9 @@ void CMainDoc::OnUpdateEditUndo(CCmdUI *pCmdUI)
 
 void CMainDoc::OnEditRedo()
 {
-	operator[](++m_nStep)->Do();
+	CDocHistoryMgr::Do();
+
+	SetModifiedFlag();
 
 	UpdateAllViews(NULL);
 }
@@ -102,6 +118,8 @@ void CMainDoc::OnCreateStaticmesh()
 			CString strItem;
 			strItem.Format(_T("mesh_%03d"), i++);
 			AddTreeStaticMeshNode(strItem, mesh);
+
+			SetModifiedFlag();
 
 			UpdateAllViews(NULL);
 		}
