@@ -2,10 +2,11 @@
 #include "resource.h"
 #include "OutlinerView.h"
 #include "MainFrm.h"
-
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
+#include "MainDoc.h"
+//
+//#ifdef _DEBUG
+//#define new DEBUG_NEW
+//#endif
 
 #define TVN_DRAGCHANGED		(TVN_LAST + 1)
 #define TVN_USERDELETING	(TVN_LAST + 2)
@@ -240,8 +241,16 @@ void COutlinerTreeCtrl::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	{
 	case VK_DELETE:
 		{
-			NMHDR hdr = {GetSafeHwnd(), GetDlgCtrlID(), TVN_USERDELETING};
-			GetParent()->SendMessage(WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&hdr);
+			HTREEITEM hSelected = GetSelectedItem();
+			if(hSelected)
+			{
+				NMTREEVIEW NMTreeView = {0};
+				NMTreeView.hdr.hwndFrom = GetSafeHwnd();
+				NMTreeView.hdr.idFrom = GetDlgCtrlID();
+				NMTreeView.hdr.code = TVN_USERDELETING;
+				NMTreeView.itemOld.hItem = hSelected;
+				GetParent()->SendMessage(WM_NOTIFY, GetDlgCtrlID(), (LPARAM)&NMTreeView);
+			}
 		}
 		break;
 
@@ -280,6 +289,17 @@ int COutlinerView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	menu.LoadMenu(IDR_MAINFRAME);
 	m_wndToolBar.ReplaceButton(ID_BUTTON40013, CMFCToolBarMenuButton(
 		-1, menu.GetSubMenu(2)->GetSafeHmenu(), GetCmdMgr()->GetCmdImage(ID_FILE_NEW, FALSE)));
+
+	m_collisionConfiguration.reset(new btDefaultCollisionConfiguration());
+
+	m_dispatcher.reset(new btCollisionDispatcher(m_collisionConfiguration.get()));
+
+	m_overlappingPairCache.reset(new btAxisSweep3(btVector3(-1000,-1000,-1000), btVector3(1000,1000,1000)));
+
+	m_constraintSolver.reset(new btSequentialImpulseConstraintSolver());
+
+	m_dynamicsWorld.reset(new btDiscreteDynamicsWorld(
+		m_dispatcher.get(), m_overlappingPairCache.get(), m_constraintSolver.get(), m_collisionConfiguration.get()));
 
 	return 0;
 }
@@ -344,11 +364,15 @@ void COutlinerView::OnTvnDeleteitem(NMHDR *pNMHDR, LRESULT *pResult)
 	LPNMTREEVIEW pNMTreeView = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
 	TreeNodeBasePtr * ptr = (TreeNodeBasePtr *)m_TreeCtrl.GetItemData(pNMTreeView->itemOld.hItem);
 	ASSERT(ptr);
-	delete ptr;
+	btRigidBody * body = (*ptr)->GetRigidBody();
+	if(body)
+		m_dynamicsWorld->removeRigidBody(body);
 
 	std::basic_string<TCHAR> strItem(m_TreeCtrl.GetItemText(pNMTreeView->itemOld.hItem));
 	ASSERT(!strItem.empty() && m_ItemMap.end() != m_ItemMap.find(strItem));
 	m_ItemMap.erase(strItem);
+
+	delete ptr;
 	*pResult = 0;
 }
 
@@ -368,7 +392,15 @@ void COutlinerView::OnTvnEndlabeledit(NMHDR *pNMHDR, LRESULT *pResult)
 
 void COutlinerView::OnTvnUserDeleting(NMHDR *pNMHDR, LRESULT *pResult)
 {
+	LPNMTREEVIEW pNMTreeView = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
+	// TODO: Add your control notification handler code here
 	*pResult = 0;
+
+	ASSERT(pNMTreeView->itemOld.hItem);
+	CMainDoc * pDoc = CMainDoc::getSingletonPtr();
+	ASSERT(pDoc);
+	pDoc->DeleteTreeNode(pNMTreeView->itemOld.hItem);
+	pDoc->UpdateAllViews(NULL);
 }
 
 void COutlinerView::InsertItem(const std::basic_string<TCHAR> & strItem, TreeNodeBasePtr node, HTREEITEM hParent, HTREEITEM hInsertAfter)
@@ -378,6 +410,10 @@ void COutlinerView::InsertItem(const std::basic_string<TCHAR> & strItem, TreeNod
 	HTREEITEM hItem = m_TreeCtrl.InsertItem(strItem.c_str(), hParent, hInsertAfter);
 	m_TreeCtrl.SetItemData(hItem, (DWORD_PTR) new TreeNodeBasePtr(node));
 	m_ItemMap[strItem] = hItem;
+
+	btRigidBody * body = node->GetRigidBody();
+	if(body)
+		m_dynamicsWorld->addRigidBody(body);
 }
 
 TreeNodeBasePtr COutlinerView::GetItemNode(HTREEITEM hItem)
