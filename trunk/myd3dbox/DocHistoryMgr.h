@@ -11,9 +11,9 @@ protected:
 
 	boost::shared_ptr<btBvhTriangleMeshShape> m_meshShape;
 
-	boost::shared_ptr<btRigidBody> m_rigidBody;
-
 	boost::shared_ptr<btDefaultMotionState> m_motionState;
+
+	boost::shared_ptr<btRigidBody> m_rigidBody;
 
 public:
 	StaticMeshTreeNode(void)
@@ -23,6 +23,8 @@ public:
 	virtual ~StaticMeshTreeNode(void);
 
 	void SetMesh(my::OgreMeshPtr mesh);
+
+	virtual btRigidBody * GetRigidBody(void) { return m_rigidBody.get(); }
 
 	virtual void Draw(IDirect3DDevice9 * pd3dDevice, float fElapsedTime);
 };
@@ -127,5 +129,11 @@ public:
 
 	void ClearAllHistory(void);
 
-	void AddTreeStaticMeshNode(LPCTSTR lpszItem, my::OgreMeshPtr mesh);
+	void AddHistory(CDocHistoryPtr hist);
+
+	void AddTreeNode(LPCTSTR lpszItem, TreeNodeBasePtr node);
+
+	void DeleteTreeNode(HTREEITEM hItem);
+
+	void AddStaticMeshTreeNode(LPCTSTR lpszItem, my::OgreMeshPtr mesh);
 };

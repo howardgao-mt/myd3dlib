@@ -7,10 +7,6 @@ using namespace my;
 
 StaticMeshTreeNode::~StaticMeshTreeNode(void)
 {
-	//CMainFrame * pFrame = CMainFrame::getSingletonPtr();
-	//ASSERT(pFrame);
-
-	//pFrame->m_dynamicsWorld->removeRigidBody(m_rigidBody.get());
 }
 
 void StaticMeshTreeNode::SetMesh(my::OgreMeshPtr mesh)
@@ -43,11 +39,6 @@ void StaticMeshTreeNode::SetMesh(my::OgreMeshPtr mesh)
 	m_rigidBody.reset(new btRigidBody(0, m_motionState.get(), m_meshShape.get(), btVector3(0,0,0)));
 
 	m_rigidBody->setContactProcessingThreshold(1e18f);
-
-	//CMainFrame * pFrame = CMainFrame::getSingletonPtr();
-	//ASSERT(pFrame);
-
-	//pFrame->m_dynamicsWorld->addRigidBody(m_rigidBody.get());
 }
 
 void StaticMeshTreeNode::Draw(IDirect3DDevice9 * pd3dDevice, float fElapsedTime)
@@ -119,11 +110,15 @@ void CDeleteTreeNodeStep::Do(void)
 
 void CDocHistoryMgr::Do(void)
 {
+	ASSERT(m_nStep < (int)size() - 1);
+
 	operator[](++m_nStep)->Do();
 }
 
 void CDocHistoryMgr::Undo(void)
 {
+	ASSERT(m_nStep >= 0);
+
 	operator[](m_nStep--)->Undo();
 }
 
@@ -134,20 +129,49 @@ void CDocHistoryMgr::ClearAllHistory(void)
 	m_nStep = -1;
 }
 
-void CDocHistoryMgr::AddTreeStaticMeshNode(LPCTSTR lpszItem, my::OgreMeshPtr mesh)
+void CDocHistoryMgr::AddHistory(CDocHistoryPtr hist)
 {
-	COutlinerView * pOutliner = COutlinerView::getSingletonPtr();
-	ASSERT(pOutliner);
+	if(!empty())
+		erase(begin() + (m_nStep + 1), end());
 
-	StaticMeshTreeNodePtr node(new StaticMeshTreeNode);
-	node->SetMesh(mesh);
+	push_back(hist);
+}
 
+void CDocHistoryMgr::AddTreeNode(LPCTSTR lpszItem, TreeNodeBasePtr node)
+{
 	CDocHistoryPtr hist(new CDocHistory());
 	hist->push_back(std::make_pair(
 		CDocStepBasePtr(new CAddTreeNodeStep(lpszItem, node)),
 		CDocStepBasePtr(new CDeleteTreeNodeStep(lpszItem))));
 
-	push_back(hist);
+	AddHistory(hist);
 
-	operator[](++m_nStep)->Do();
+	Do();
+}
+
+void CDocHistoryMgr::DeleteTreeNode(HTREEITEM hItem)
+{
+	COutlinerView * pOutliner = COutlinerView::getSingletonPtr();
+	ASSERT(pOutliner);
+
+	CString strItem = pOutliner->m_TreeCtrl.GetItemText(hItem);
+	boost::shared_ptr<CDeleteTreeNodeStep> del_step(new CDeleteTreeNodeStep(strItem));
+	del_step->Do();
+
+	CDocHistoryPtr hist(new CDocHistory());
+	hist->push_back(std::make_pair(
+		del_step,
+		CDocStepBasePtr(new CAddTreeNodeStep(strItem, del_step->m_node))));
+
+	AddHistory(hist);
+
+	m_nStep++;
+}
+
+void CDocHistoryMgr::AddStaticMeshTreeNode(LPCTSTR lpszItem, my::OgreMeshPtr mesh)
+{
+	StaticMeshTreeNodePtr node(new StaticMeshTreeNode);
+	node->SetMesh(mesh);
+
+	AddTreeNode(lpszItem, node);
 }
