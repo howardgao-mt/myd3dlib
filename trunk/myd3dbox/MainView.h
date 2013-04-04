@@ -5,6 +5,7 @@
 class CMainView
 	: public CView
 	, public my::SingleInstance<CMainView>
+	, public my::DialogMgr
 	, public my::DrawHelper
 	, public btIDebugDraw
 {
@@ -14,6 +15,7 @@ public:
 		, m_bEatAltUp(FALSE)
 		, m_DragCameraMode(DragCameraNone)
 		, m_Camera()
+		, m_RenderMode(RenderModeDefault)
 	{
 	}
 
@@ -59,11 +61,20 @@ public:
 
 	my::ModelViewerCamera m_Camera;
 
-	my::KinematicPtr m_Character;
+	//my::KinematicPtr m_Character;
 
-	my::Seek m_Seek;
+	//my::Seek m_Seek;
 
-	my::Arrive m_Arrive;
+	//my::Arrive m_Arrive;
+
+	enum RenderMode
+	{
+		RenderModeDefault = 0,
+		RenderModeWire,
+		RenderModePhysics,
+	};
+
+	RenderMode m_RenderMode;
 
 	DECLARE_MESSAGE_MAP()
 
@@ -107,4 +118,6 @@ public:
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+
+	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 };

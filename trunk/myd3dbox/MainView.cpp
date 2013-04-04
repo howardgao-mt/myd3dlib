@@ -27,6 +27,7 @@ BEGIN_MESSAGE_MAP(CMainView, CView)
 	ON_WM_RBUTTONDOWN()
 	ON_WM_RBUTTONUP()
 	ON_WM_MOUSEMOVE()
+	ON_WM_KEYDOWN()
 END_MESSAGE_MAP()
 
 void CMainView::drawLine(const btVector3 & from,const btVector3 & to,const btVector3 & color)
@@ -44,23 +45,23 @@ void CMainView::reportErrorWarning(const char * warningString)
 
 void CMainView::draw3dText(const btVector3 & location,const char * textString)
 {
-	// ! Unoptimized implementation
 	Surface BackBuffer;
 	V(m_d3dSwapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &BackBuffer.m_ptr));
 	D3DSURFACE_DESC desc = BackBuffer.GetDesc();
-	CMainFrame::getSingleton().m_UIRender->SetTransform(Matrix4::Identity(),
-		UIRender::PerspectiveView(D3DXToRadian(75.0f), (float)desc.Width, (float)desc.Height),
-		UIRender::PerspectiveProj(D3DXToRadian(75.0f), (float)desc.Width, (float)desc.Height));
-	CMainFrame::getSingleton().m_UIRender->Begin();
 
-	Vector3 pos = ((Vector3 &)location).transformCoord(m_Camera.m_View * m_Camera.m_Proj);
+	CMainFrame * pFrame = CMainFrame::getSingletonPtr();
+	ASSERT(pFrame);
+
+	pFrame->m_UIRender->SetTransform(Matrix4::Identity(), DialogMgr::m_Camera.m_View, DialogMgr::m_Camera.m_Proj);
+	pFrame->m_UIRender->Begin();
+
+	Vector3 pos = ((Vector3 &)location).transformCoord(m_Camera.m_ViewProj);
 	pos.x = Lerp(0.0f, (float)desc.Width, (pos.x + 1) / 2);
 	pos.y = Lerp(0.0f, (float)desc.Height, (1 - pos.y) / 2);
 
-	CMainFrame::getSingleton().m_Font->DrawString(
-		CMainFrame::getSingleton().m_UIRender.get(), ms2ws(textString).c_str(), my::Rectangle(pos.xy, pos.xy), D3DCOLOR_ARGB(255,255,255,0));
-
-	CMainFrame::getSingleton().m_UIRender->End();
+	pFrame->m_Font->DrawString(
+		pFrame->m_UIRender.get(), ms2ws(textString).c_str(), my::Rectangle(pos.xy, pos.xy), D3DCOLOR_ARGB(255,255,255,0));
+	pFrame->m_UIRender->End();
 }
 
 void CMainView::setDebugMode(int debugMode)
@@ -88,17 +89,17 @@ int CMainView::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_Camera.m_LookAt = Vector3(0,0,0);
 	m_Camera.m_Distance = 20;
 
-	m_Character.reset(new my::Kinematic(Vector3(0,0,0),D3DXToRadian(0),Vector3(0,0,2),0));
+	//m_Character.reset(new my::Kinematic(Vector3(0,0,0),D3DXToRadian(0),Vector3(0,0,2),0));
 
-	m_Seek.character = m_Character.get();
-	m_Seek.target = Vector3(5,0,5);
-	m_Seek.maxAcceleration = 2.0f;
+	//m_Seek.character = m_Character.get();
+	//m_Seek.target = Vector3(5,0,5);
+	//m_Seek.maxAcceleration = 2.0f;
 
-	m_Arrive.character = m_Character.get();
-	m_Arrive.target = Vector3(5,0,5);
-	m_Arrive.maxAcceleration = 2.0f;
-	m_Arrive.radius = 0.2f;
-	m_Arrive.timeToTarget = 2.0f;
+	//m_Arrive.character = m_Character.get();
+	//m_Arrive.target = Vector3(5,0,5);
+	//m_Arrive.maxAcceleration = 2.0f;
+	//m_Arrive.radius = 0.2f;
+	//m_Arrive.timeToTarget = 2.0f;
 
 	return 0;
 }
@@ -162,6 +163,9 @@ HRESULT CMainView::OnDeviceReset(void)
 	Surface BackBuffer;
 	V(m_d3dSwapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &BackBuffer.m_ptr));
 	D3DSURFACE_DESC desc = BackBuffer.GetDesc();
+
+	DialogMgr::SetDlgViewport(Vector2((float)desc.Width, (float)desc.Height));
+
 	m_DepthStencil.CreateDepthStencilSurface(
 		CMainFrame::getSingleton().m_d3dDevice, desc.Width, desc.Height, D3DFMT_D24X8, d3dpp.MultiSampleType, d3dpp.MultiSampleQuality);
 
@@ -182,14 +186,14 @@ void CMainView::OnFrameMove(
 {
 	//m_dynamicsWorld->stepSimulation(fElapsedTime);
 
-	SteeringOutput steer;
-	//m_Seek.getSteering(&steer);
-	m_Arrive.getSteering(&steer);
-	m_Character->integrate(steer, 0.35f, 0.01f);
-	m_Character->setOrientationFromVelocity(m_Character->velocity);
-	m_Character->trimMaxSpeed(2.0f);
-	m_Character->position.x = Round(m_Character->position.x, -10.0f, 10.0f);
-	m_Character->position.y = Round(m_Character->position.y, -10.0f, 10.0f);
+	//SteeringOutput steer;
+	////m_Seek.getSteering(&steer);
+	//m_Arrive.getSteering(&steer);
+	//m_Character->integrate(steer, 0.35f, 0.01f);
+	//m_Character->setOrientationFromVelocity(m_Character->velocity);
+	//m_Character->trimMaxSpeed(2.0f);
+	//m_Character->position.x = Round(m_Character->position.x, -10.0f, 10.0f);
+	//m_Character->position.y = Round(m_Character->position.y, -10.0f, 10.0f);
 }
 
 void CMainView::OnFrameRender(
@@ -227,7 +231,7 @@ void CMainView::OnFrameRender(
 			DrawLine(pd3dDevice, Vector3(-(float)i,0,-10), Vector3(-(float)i,0,10), D3DCOLOR_ARGB(255,127,127,127));
 		}
 
-		pFrame->m_SimpleSample->SetFloat("g_fTime", fTime);
+		pFrame->m_SimpleSample->SetFloat("g_fTime", (float)fTime);
 		pFrame->m_SimpleSample->SetMatrix("g_mWorld", Matrix4::identity);
 		pFrame->m_SimpleSample->SetMatrix("g_mWorldViewProjection", m_Camera.m_View * m_Camera.m_Proj);
 		pFrame->m_SimpleSample->SetFloatArray("g_LightDir", &(Vector3(0,0,-1).transform(m_Camera.m_Orientation).x), 3);
@@ -235,31 +239,39 @@ void CMainView::OnFrameRender(
 
 		COutlinerView * pOutliner = COutlinerView::getSingletonPtr();
 		ASSERT(pOutliner);
-		pOutliner->DrawItemNode(pd3dDevice, fElapsedTime, pOutliner->m_TreeCtrl.GetRootItem());
+		switch(m_RenderMode)
+		{
+		case RenderModeDefault:
+			pOutliner->DrawItemNode(pd3dDevice, fElapsedTime, pOutliner->m_TreeCtrl.GetRootItem(), m_RenderMode);
+			break;
 
-		pOutliner->m_dynamicsWorld->setDebugDrawer(this);
-		pOutliner->m_dynamicsWorld->getDebugDrawer()->setDebugMode(0xff & ~DBG_DrawAabb);
-		pOutliner->m_dynamicsWorld->debugDrawWorld();
+		case RenderModeWire:
+			pOutliner->DrawItemNode(pd3dDevice, fElapsedTime, pOutliner->m_TreeCtrl.GetRootItem(), m_RenderMode);
+			break;
 
-		Matrix4 CharaTransform = Matrix4::RotationY(m_Character->orientation) * Matrix4::Translation(m_Character->position);
-		DrawSphere(pd3dDevice, 0.05f, D3DCOLOR_ARGB(255,255,0,0), CharaTransform);
-		DrawLine(pd3dDevice, Vector3(0,0,0), Vector3(0,0,0.3f), D3DCOLOR_ARGB(255,255,255,0), CharaTransform);
-		DrawLine(pd3dDevice, m_Character->position, m_Seek.target, D3DCOLOR_ARGB(255,0,255,0));
+		case RenderModePhysics:
+			pOutliner->m_dynamicsWorld->setDebugDrawer(this);
+			pOutliner->m_dynamicsWorld->getDebugDrawer()->setDebugMode(0xff & ~DBG_DrawAabb);
+			pOutliner->m_dynamicsWorld->debugDrawWorld();
+			break;
+		}
 
-		draw3dText(btVector3(1,1,1), "aaa");
+		//Matrix4 CharaTransform = Matrix4::RotationY(m_Character->orientation) * Matrix4::Translation(m_Character->position);
+		//DrawSphere(pd3dDevice, 0.05f, D3DCOLOR_ARGB(255,255,0,0), CharaTransform);
+		//DrawLine(pd3dDevice, Vector3(0,0,0), Vector3(0,0,0.3f), D3DCOLOR_ARGB(255,255,255,0), CharaTransform);
+		//DrawLine(pd3dDevice, m_Character->position, m_Seek.target, D3DCOLOR_ARGB(255,0,255,0));
 
-		D3DSURFACE_DESC desc = BackBuffer.GetDesc();
-		pFrame->m_UIRender->SetTransform(Matrix4::Identity(),
-			UIRender::PerspectiveView(D3DXToRadian(75.0f), (float)desc.Width, (float)desc.Height),
-			UIRender::PerspectiveProj(D3DXToRadian(75.0f), (float)desc.Width, (float)desc.Height));
+		//draw3dText(btVector3(1,1,1), "aaa");
+
+		pFrame->m_UIRender->SetTransform(Matrix4::Identity(), DialogMgr::m_Camera.m_View, DialogMgr::m_Camera.m_Proj);
 		pFrame->m_UIRender->Begin();
-
 		CString strText;
+		D3DSURFACE_DESC desc = BackBuffer.GetDesc();
 		strText.Format(_T("%d x %d"), desc.Width, desc.Height);
 		pFrame->m_Font->DrawString(
 			pFrame->m_UIRender.get(), strText, my::Rectangle(10,10,200,200), D3DCOLOR_ARGB(255,255,255,0));
-
 		pFrame->m_UIRender->End();
+
 		V(pd3dDevice->EndScene());
 	}
 
@@ -324,7 +336,31 @@ void CMainView::OnLButtonDown(UINT nFlags, CPoint point)
 		SetCapture();
 	}
 	else
-		m_Tracker.TrackRubberBand(this, point);
+		//m_Tracker.TrackRubberBand(this, point);
+	{
+		CRect ClientRect;
+		GetClientRect(&ClientRect);
+		Vector2 ptScreen(point.x + 0.5f, point.y + 0.5f);
+		Vector3 ptProj(Lerp(-1.0f, 1.0f, ptScreen.x / ClientRect.right), Lerp(1.0f, -1.0f, ptScreen.y / ClientRect.bottom), 1.0f);
+		Vector3 dir = (ptProj.transformCoord(m_Camera.m_InverseViewProj) - m_Camera.m_Position).normalize();
+
+		btCollisionWorld::ClosestRayResultCallback CB(
+			btVector3(m_Camera.m_Position.x, m_Camera.m_Position.y, m_Camera.m_Position.z), btVector3(m_Camera.m_Position.x + dir.x * 1000, m_Camera.m_Position.y + dir.y * 1000, m_Camera.m_Position.z + dir.z * 1000));
+
+		COutlinerView * pOutliner = COutlinerView::getSingletonPtr();
+		ASSERT(pOutliner);
+		pOutliner->m_dynamicsWorld->rayTest(CB.m_rayFromWorld, CB.m_rayToWorld, CB);
+
+		if(CB.hasHit())
+		{
+			COutlinerView::RigidBodyMap::const_iterator body_iter = pOutliner->m_BodyMap.find(dynamic_cast<btRigidBody *>(CB.m_collisionObject));
+			ASSERT(body_iter != pOutliner->m_BodyMap.end());
+			ASSERT(body_iter->second);
+			pOutliner->m_TreeCtrl.SelectItem(body_iter->second);
+		}
+		else
+			pOutliner->m_TreeCtrl.SelectItem(NULL);
+	}
 }
 
 void CMainView::OnLButtonUp(UINT nFlags, CPoint point)
@@ -401,4 +437,28 @@ void CMainView::OnMouseMove(UINT nFlags, CPoint point)
 		Invalidate();
 		break;
 	}
+}
+
+void CMainView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	switch(nChar)
+	{
+	case VK_DELETE:
+		{
+			COutlinerView * pOutliner = COutlinerView::getSingletonPtr();
+			ASSERT(pOutliner);
+
+			HTREEITEM hSelected = pOutliner->m_TreeCtrl.GetSelectedItem();
+			if(hSelected)
+			{
+				CMainDoc * pDoc = CMainDoc::getSingletonPtr();
+				ASSERT(pDoc);
+				pDoc->DeleteTreeNode(hSelected);
+				pDoc->UpdateAllViews(NULL);
+			}
+		}
+		return;
+	}
+
+	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
