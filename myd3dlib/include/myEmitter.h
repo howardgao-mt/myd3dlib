@@ -6,6 +6,8 @@
 
 namespace my
 {
+	class EmitterInstance;
+
 	class Emitter
 	{
 	public:
@@ -31,6 +33,12 @@ namespace my
 		void Spawn(void);
 
 		void Update(double fTime, float fElapsedTime);
+
+		DWORD BuildInstance(EmitterInstance * pEmitterInstance);
+
+		void Draw(IDirect3DDevice9 * pd3dDevice,
+			double fTime,
+			float fElapsedTime);
 	};
 
 	typedef boost::shared_ptr<Emitter> EmitterPtr;
@@ -43,7 +51,15 @@ namespace my
 
 		VertexBuffer m_VertexBuffer;
 
+		IndexBuffer m_IndexData;
+
 		VertexBuffer m_InstanceData;
+
+		DWORD m_VertexStride;
+
+		DWORD m_InstanceStride;
+
+		CComPtr<IDirect3DVertexDeclaration9> m_Decl;
 
 	public:
 		EmitterInstance(void)
@@ -54,6 +70,9 @@ namespace my
 			offset += sizeof(D3DVERTEXELEMENT9Set::PositionType);
 			m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateColorElement(1, offset, 0));
 			offset += sizeof(D3DVERTEXELEMENT9Set::ColorType);
+
+			m_VertexStride = m_VertexElemSet.CalculateVertexStride(0);
+			m_InstanceStride = m_VertexElemSet.CalculateVertexStride(1);
 		}
 
 		virtual ~EmitterInstance(void)
