@@ -32,10 +32,10 @@ void EffectUIRender::SetTexture(IDirect3DBaseTexture9 * pTexture)
 		m_UIEffect->SetTexture("g_MeshTexture", pTexture ? pTexture : CMainFrame::getSingleton().m_WhiteTex->m_ptr);
 }
 
-void EffectUIRender::SetTransform(const Matrix4 & World, const Matrix4 & View, const Matrix4 & Proj)
+void EffectUIRender::SetWorldViewProj(const Matrix4 & WorldViewProj)
 {
 	if(m_UIEffect->m_ptr)
-		m_UIEffect->SetMatrix("g_mWorldViewProjection", World * View * Proj);
+		m_UIEffect->SetMatrix("g_mWorldViewProjection", WorldViewProj);
 }
 
 void EffectUIRender::DrawVertexList(void)
@@ -52,6 +52,21 @@ void EffectUIRender::DrawVertexList(void)
 				m_UIEffect->EndPass();
 			}
 		}
+	}
+}
+
+void EffectEmitterInstance::DrawInstance(IDirect3DDevice9 * pd3dDevice, DWORD NumInstances)
+{
+	if(m_ParticleEffect->m_ptr)
+	{
+		UINT uPasses = m_ParticleEffect->Begin();
+		for(UINT p = 0; p < uPasses; p++)
+		{
+			m_ParticleEffect->BeginPass(p);
+			EmitterInstance::DrawInstance(pd3dDevice, NumInstances);
+			m_ParticleEffect->EndPass();
+		}
+		m_ParticleEffect->End();
 	}
 }
 
@@ -178,14 +193,15 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	EnablePaneMenu(TRUE, ID_VIEW_CUSTOMIZE, _T("Customize..."), ID_VIEW_TOOLBAR);
 	CMFCToolBar::EnableQuickCustomization();
 
-	m_UIRender.reset(new EffectUIRender(
-		CMainFrame::getSingleton().m_d3dDevice, CMainFrame::getSingleton().LoadEffect("shader/UIEffect.fx")));
+	m_ParticleEffect = LoadEffect("shader/Particle.fx");
 
-	m_WhiteTex = CMainFrame::getSingleton().LoadTexture("texture/white.bmp");
+	m_UIRender.reset(new EffectUIRender(m_d3dDevice, LoadEffect("shader/UIEffect.fx")));
 
-	m_Font = CMainFrame::getSingleton().LoadFont("font/wqy-microhei.ttc", 13);
+	m_WhiteTex = LoadTexture("texture/white.bmp");
 
-	m_SimpleSample = CMainFrame::getSingleton().LoadEffect("shader/SimpleSample.fx");
+	m_Font = LoadFont("font/wqy-microhei.ttc", 13);
+
+	m_SimpleSample = LoadEffect("shader/SimpleSample.fx");
 
 	return 0;
 }

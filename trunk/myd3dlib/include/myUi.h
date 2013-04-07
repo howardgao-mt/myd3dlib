@@ -46,7 +46,7 @@ namespace my
 
 		virtual void SetTexture(IDirect3DBaseTexture9 * pTexture);
 
-		virtual void SetTransform(const Matrix4 & World, const Matrix4 & View, const Matrix4 & Proj);
+		virtual void SetWorldViewProj(const Matrix4 & WorldViewProj);
 
 		virtual void ClearVertexList(void);
 
@@ -200,6 +200,8 @@ namespace my
 
 		UINT GetHotkey(void);
 	};
+
+	typedef boost::shared_ptr<Control> ControlPtr;
 
 	class Static : public Control
 	{
@@ -655,10 +657,6 @@ namespace my
 
 	typedef boost::shared_ptr<ComboBox> ComboBoxPtr;
 
-	typedef boost::shared_ptr<Control> ControlPtr;
-
-	typedef std::vector<ControlPtr> ControlPtrSet;
-
 	class Dialog : public Control
 	{
 	public:
@@ -666,7 +664,9 @@ namespace my
 
 		boost::weak_ptr<Control> m_ControlMouseOver;
 
-		ControlPtrSet m_Controls;
+		typedef std::vector<ControlPtr> ControlPtrList;
+
+		ControlPtrList m_Controls;
 
 		Matrix4 m_World;
 
@@ -717,7 +717,7 @@ namespace my
 
 		void RemoveControl(ControlPtr control)
 		{
-			ControlPtrSet::iterator ctrl_iter = std::find(m_Controls.begin(), m_Controls.end(), control);
+			ControlPtrList::iterator ctrl_iter = std::find(m_Controls.begin(), m_Controls.end(), control);
 			if(ctrl_iter != m_Controls.end())
 			{
 				m_Controls.erase(ctrl_iter);
