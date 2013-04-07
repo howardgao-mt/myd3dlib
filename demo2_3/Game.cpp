@@ -33,26 +33,38 @@ void EffectUIRender::SetTexture(IDirect3DBaseTexture9 * pTexture)
 		m_UIEffect->SetTexture("g_MeshTexture", pTexture ? pTexture : Game::getSingleton().m_WhiteTex->m_ptr);
 }
 
-void EffectUIRender::SetTransform(const Matrix4 & World, const Matrix4 & View, const Matrix4 & Proj)
+void EffectUIRender::SetWorldViewProj(const Matrix4 & WorldViewProj)
 {
 	if(m_UIEffect->m_ptr)
-		m_UIEffect->SetMatrix("g_mWorldViewProjection", World * View * Proj);
+		m_UIEffect->SetMatrix("g_mWorldViewProjection", WorldViewProj);
 }
 
 void EffectUIRender::DrawVertexList(void)
 {
-	if(m_UIEffect->m_ptr)
+	if(m_UIEffect->m_ptr && vertex_count > 0)
 	{
-		if(vertex_count > 0)
+		for(UINT p = 0; p < m_Passes; p++)
 		{
-			for(UINT p = 0; p < m_Passes; p++)
-			{
-				m_UIEffect->BeginPass(p);
-				V(m_Device->SetFVF(D3DFVF_CUSTOMVERTEX));
-				V(m_Device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertex_count / 3, vertex_list, sizeof(vertex_list[0])));
-				m_UIEffect->EndPass();
-			}
+			m_UIEffect->BeginPass(p);
+			V(m_Device->SetFVF(D3DFVF_CUSTOMVERTEX));
+			V(m_Device->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertex_count / 3, vertex_list, sizeof(vertex_list[0])));
+			m_UIEffect->EndPass();
 		}
+	}
+}
+
+void EffectEmitterInstance::DrawInstance(IDirect3DDevice9 * pd3dDevice, DWORD NumInstances)
+{
+	if(m_ParticleEffect->m_ptr)
+	{
+		UINT uPasses = m_ParticleEffect->Begin();
+		for(UINT p = 0; p < uPasses; p++)
+		{
+			m_ParticleEffect->BeginPass(p);
+			EmitterInstance::DrawInstance(pd3dDevice, NumInstances);
+			m_ParticleEffect->EndPass();
+		}
+		m_ParticleEffect->End();
 	}
 }
 
@@ -141,10 +153,12 @@ HRESULT Game::OnCreateDevice(
 		return hr;
 	}
 
-	if(FAILED(hr = EmitterInstance::OnCreateDevice(pd3dDevice, pBackBufferSurfaceDesc)))
+	if(FAILED(hr = EffectEmitterInstance::OnCreateDevice(pd3dDevice, pBackBufferSurfaceDesc)))
 	{
 		return hr;
 	}
+
+	m_ParticleEffect = LoadEffect("shader/Particle.fx");
 
 	m_UIRender.reset(new EffectUIRender(pd3dDevice, LoadEffect("shader/UIEffect.fx")));
 
@@ -202,7 +216,7 @@ HRESULT Game::OnResetDevice(
 		return hres;
 	}
 
-	if(FAILED(hres = EmitterInstance::OnResetDevice(pd3dDevice, pBackBufferSurfaceDesc)))
+	if(FAILED(hres = EffectEmitterInstance::OnResetDevice(pd3dDevice, pBackBufferSurfaceDesc)))
 	{
 		return hres;
 	}
@@ -224,7 +238,7 @@ void Game::OnLostDevice(void)
 
 	SafeLostCurrentState();
 
-	EmitterInstance::OnLostDevice();
+	EffectEmitterInstance::OnLostDevice();
 
 	ResourceMgr::OnLostDevice();
 }
@@ -247,13 +261,13 @@ void Game::OnDestroyDevice(void)
 
 	m_UIRender.reset();
 
-	ImeEditBox::Uninitialize();
-
 	RemoveAllTimer();
 
-	EmitterInstance::OnDestroyDevice();
+	EffectEmitterInstance::OnDestroyDevice();
 
 	ResourceMgr::OnDestroyDevice();
+
+	ImeEditBox::Uninitialize();
 }
 
 void Game::OnFrameMove(
@@ -287,7 +301,7 @@ void Game::OnFrameRender(
 
 		_ASSERT(m_Font);
 
-		m_UIRender->SetTransform(Matrix4::Identity(), DialogMgr::m_Camera.m_View, DialogMgr::m_Camera.m_Proj);
+		m_UIRender->SetWorldViewProj(Matrix4::identity * DialogMgr::m_Camera.m_ViewProj);
 
 		m_Font->DrawString(m_UIRender.get(), m_strFPS, Rectangle::LeftTop(5,5,500,10), D3DCOLOR_ARGB(255,255,255,0));
 

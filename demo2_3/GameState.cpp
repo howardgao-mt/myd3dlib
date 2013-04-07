@@ -213,7 +213,7 @@ void GameStateMain::OnFrameRender(
 		Matrix4 World = Matrix4::Identity();
 		m_SimpleSample->SetFloat("g_fTime", (float)fTime);
 		m_SimpleSample->SetMatrix("g_mWorld", World);
-		m_SimpleSample->SetMatrix("g_mWorldViewProjection", World * m_Camera->m_View * m_Camera->m_Proj);
+		m_SimpleSample->SetMatrix("g_mWorldViewProjection", World * m_Camera->m_ViewProj);
 		m_SimpleSample->SetMatrix("g_mLightViewProjection", LightViewProj);
 		m_SimpleSample->SetVector("g_EyePos", m_Camera->m_Position);
 		m_SimpleSample->SetVector("g_EyePosOS", m_Camera->m_Position.transformCoord(World.inverse()));
@@ -234,7 +234,7 @@ void GameStateMain::OnFrameRender(
 				Matrix4::RotationQuaternion((*character_iter)->m_Rotation) *
 				Matrix4::Translation((*character_iter)->m_Position);
 			m_SimpleSample->SetMatrix("g_mWorld", World);
-			m_SimpleSample->SetMatrix("g_mWorldViewProjection", World * m_Camera->m_View * m_Camera->m_Proj);
+			m_SimpleSample->SetMatrix("g_mWorldViewProjection", World * m_Camera->m_ViewProj);
 			m_SimpleSample->SetVector("g_EyePosOS", m_Camera->m_Position.transformCoord(World.inverse()));
 			m_SimpleSample->SetMatrixArray("g_dualquat", &(*character_iter)->m_dualQuaternionList[0], (*character_iter)->m_dualQuaternionList.size());
 			(*character_iter)->Draw(pd3dDevice, fElapsedTime);

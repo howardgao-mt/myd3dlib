@@ -68,11 +68,11 @@ void UIRender::SetTexture(IDirect3DBaseTexture9 * pTexture)
 	V(m_Device->SetTexture(0, pTexture));
 }
 
-void UIRender::SetTransform(const Matrix4 & World, const Matrix4 & View, const Matrix4 & Proj)
+void UIRender::SetWorldViewProj(const Matrix4 & WorldViewProj)
 {
-	V(m_Device->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&World));
-	V(m_Device->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&View));
-	V(m_Device->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&Proj));
+	V(m_Device->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&WorldViewProj));
+	V(m_Device->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&Matrix4::identity));
+	V(m_Device->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&Matrix4::identity));
 }
 
 void UIRender::ClearVertexList(void)
@@ -1936,7 +1936,7 @@ void Dialog::Draw(UIRender * ui_render, float fElapsedTime, const Vector2 & Offs
 	{
 		Control::Draw(ui_render, fElapsedTime, Vector2(0,0));
 
-		ControlPtrSet::iterator ctrl_iter = m_Controls.begin();
+		ControlPtrList::iterator ctrl_iter = m_Controls.begin();
 		for(; ctrl_iter != m_Controls.end(); ctrl_iter++)
 		{
 			(*ctrl_iter)->Draw(ui_render, fElapsedTime, m_Location);
@@ -1953,7 +1953,7 @@ bool Dialog::HandleKeyboard(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	if(m_bEnabled && m_bVisible)
 	{
-		ControlPtrSet::iterator ctrl_iter = m_Controls.begin();
+		ControlPtrList::iterator ctrl_iter = m_Controls.begin();
 		for(; ctrl_iter != m_Controls.end(); ctrl_iter++)
 		{
 			if((*ctrl_iter)->GetHotkey() == wParam)
@@ -2022,7 +2022,7 @@ void Dialog::SetVisible(bool bVisible)
 
 void Dialog::Refresh(void)
 {
-	ControlPtrSet::iterator ctrl_iter = m_Controls.begin();
+	ControlPtrList::iterator ctrl_iter = m_Controls.begin();
 	for(; ctrl_iter != m_Controls.end(); ctrl_iter++)
 	{
 		(*ctrl_iter)->Refresh();
@@ -2034,7 +2034,7 @@ void Dialog::Refresh(void)
 
 ControlPtr Dialog::GetControlAtPoint(const Vector2 & pt)
 {
-	ControlPtrSet::iterator ctrl_iter = m_Controls.begin();
+	ControlPtrList::iterator ctrl_iter = m_Controls.begin();
 	for(; ctrl_iter != m_Controls.end(); ctrl_iter++)
 	{
 		if((*ctrl_iter)->ContainsPoint(pt) && (*ctrl_iter)->GetVisible() && (*ctrl_iter)->GetEnabled())
@@ -2065,7 +2065,7 @@ void Dialog::RequestFocus(ControlPtr control)
 
 void Dialog::ForceFocusControl(void)
 {
-	ControlPtrSet::iterator ctrl_iter = m_Controls.begin();
+	ControlPtrList::iterator ctrl_iter = m_Controls.begin();
 	for(; ctrl_iter != m_Controls.end(); ctrl_iter++)
 	{
 		if((*ctrl_iter)->CanHaveFocus())

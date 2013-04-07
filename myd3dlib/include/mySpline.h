@@ -21,13 +21,8 @@ namespace my
 
 	typedef boost::shared_ptr<SplineNode> SplineNodePtr;
 
-	typedef std::vector<SplineNodePtr> SplineNodeList;
-
-	class Spline
+	class Spline : protected std::vector<SplineNodePtr>
 	{
-	protected:
-		SplineNodeList nodes;
-
 	public:
 		Spline(void)
 		{
@@ -43,7 +38,7 @@ namespace my
 
 		void AddNode(float x, float y, float k0, float k);
 
-		float _Interpolate(float s, int begin_i, int end_i);
+		float Interpolate(float s, int begin_i, int end_i);
 
 		float Interpolate(float s);
 	};

@@ -31,9 +31,23 @@ public:
 
 	virtual void SetTexture(IDirect3DBaseTexture9 * pTexture);
 
-	virtual void SetTransform(const my::Matrix4 & World, const my::Matrix4 & View, const my::Matrix4 & Proj);
+	virtual void SetWorldViewProj(const my::Matrix4 & WorldViewProj);
 
 	virtual void DrawVertexList(void);
+};
+
+class EffectEmitterInstance
+	: public my::EmitterInstance
+{
+public:
+	my::EffectPtr m_ParticleEffect;
+
+public:
+	EffectEmitterInstance(void)
+	{
+	}
+
+	virtual void DrawInstance(IDirect3DDevice9 * pd3dDevice, DWORD NumInstances);
 };
 
 class GameStateBase
@@ -214,7 +228,7 @@ class Game
 	, public my::ResourceMgr
 	, public my::TimerMgr
 	, public my::DialogMgr
-	, public my::EmitterInstance
+	, public EffectEmitterInstance
 	, public GameStateMachine
 {
 public:
