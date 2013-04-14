@@ -13,45 +13,23 @@ void Emitter::Spawn(const Vector3 & Position, const Vector3 & Velocity)
 	ParticlePtr particle(new Particle());
 	particle->setPosition(Position);
 	particle->setVelocity(Velocity);
-	m_ParticleList.push_back(particle);
+	m_ParticleList.push_back(std::make_pair(particle, 0.0f));
 }
 
 void Emitter::Update(double fTime, float fElapsedTime)
 {
-	m_Time += fElapsedTime;
-
-	m_RemainingSpawnTime += fElapsedTime;
-
-	ParticlePtrList::iterator part_iter = m_ParticleList.begin();
-	for(; part_iter != m_ParticleList.end(); part_iter++)
+	ParticlePtrPairList::reverse_iterator part_iter = m_ParticleList.rbegin();
+	for(; part_iter != m_ParticleList.rend(); part_iter++)
 	{
-		(*part_iter)->integrate(fElapsedTime);
-	}
-
-	_ASSERT(m_SpawnInterval > 0);
-
-	while(m_RemainingSpawnTime >= m_SpawnInterval)
-	{
-		Spawn(
-			Vector3(
-				Random(m_Position.x - m_HalfSpawnArea.x, m_Position.x + m_HalfSpawnArea.x),
-				Random(m_Position.y - m_HalfSpawnArea.y, m_Position.y + m_HalfSpawnArea.y),
-				Random(m_Position.z - m_HalfSpawnArea.z, m_Position.z + m_HalfSpawnArea.z)),
-
-			Vector3::SphericalToCartesian(Vector3(
-				m_SpawnSpeed,
-				m_SpawnInclination.Interpolate(fmod(m_Time, m_SpawnLoopTime)),
-				m_SpawnAzimuth.Interpolate(fmod(m_Time, m_SpawnLoopTime)))).transform(m_Orientation));
-
-		m_RemainingSpawnTime -= m_SpawnInterval;
-	}
-
-	float ParticleTime = m_ParticleList.size() * m_SpawnInterval + m_RemainingSpawnTime;
-	if(ParticleTime >= m_ParticleLifeTime + m_SpawnInterval)
-	{
-		float OverTime = ParticleTime - m_ParticleLifeTime;
-		size_t remove_count = Min((size_t)(OverTime / m_SpawnInterval), m_ParticleList.size());
-		m_ParticleList.erase(m_ParticleList.begin(), m_ParticleList.begin() + remove_count);
+		if((part_iter->second += fElapsedTime) < m_ParticleLifeTime)
+		{
+			part_iter->first->integrate(fElapsedTime);
+		}
+		else
+		{
+			m_ParticleList.erase(m_ParticleList.begin(), m_ParticleList.begin() + (m_ParticleList.rend() - part_iter));
+			break;
+		}
 	}
 }
 
@@ -69,14 +47,17 @@ DWORD Emitter::BuildInstance(
 	{
 		// ! Can optimize, because all offset are constant
 		unsigned char * pInstance = pInstances + pEmitterInstance->m_InstanceStride * i;
-		pEmitterInstance->m_VertexElemSet.SetPosition(pInstance, m_ParticleList[i]->getPosition(), 1, 0);
+		pEmitterInstance->m_VertexElemSet.SetPosition(pInstance, m_ParticleList[i].first->getPosition(), 1, 0);
 
-		float ParticleTime = m_SpawnInterval * (m_ParticleList.size() - i - 1) + m_RemainingSpawnTime;
 		pEmitterInstance->m_VertexElemSet.SetColor(pInstance, D3DCOLOR_ARGB(
-			m_ParticleColorAlpha.Interpolate(ParticleTime),
-			m_ParticleColorRed.Interpolate(ParticleTime),
-			m_ParticleColorGreen.Interpolate(ParticleTime),
-			m_ParticleColorBlue.Interpolate(ParticleTime)), 1, 0);
+			m_ParticleColorAlpha.Interpolate(m_ParticleList[i].second),
+			m_ParticleColorRed.Interpolate(m_ParticleList[i].second),
+			m_ParticleColorGreen.Interpolate(m_ParticleList[i].second),
+			m_ParticleColorBlue.Interpolate(m_ParticleList[i].second)), 1, 0);
+
+		pEmitterInstance->m_VertexElemSet.SetCustomType(pInstance, 1, D3DDECLUSAGE_TEXCOORD, 1, Vector4(
+			m_ParticleSizeX.Interpolate(m_ParticleList[i].second),
+			m_ParticleSizeY.Interpolate(m_ParticleList[i].second), 1, 1));
 	}
 	pEmitterInstance->m_InstanceData.Unlock();
 
@@ -93,6 +74,42 @@ void Emitter::Draw(IDirect3DDevice9 * pd3dDevice,
 	DWORD ParticleCount = BuildInstance(pEmitterInstance, fTime, fElapsedTime);
 
 	pEmitterInstance->DrawInstance(pd3dDevice, ParticleCount);
+}
+
+void AutoSpawnEmitter::Update(double fTime, float fElapsedTime)
+{
+	Emitter::Update(fTime, fElapsedTime);
+
+	m_Time += fElapsedTime;
+
+	m_RemainingSpawnTime += fElapsedTime;
+
+	_ASSERT(m_SpawnInterval > 0);
+
+	while(m_RemainingSpawnTime >= m_SpawnInterval)
+	{
+		Spawn(
+			Vector3(
+				Random(m_Position.x - m_HalfSpawnArea.x, m_Position.x + m_HalfSpawnArea.x),
+				Random(m_Position.y - m_HalfSpawnArea.y, m_Position.y + m_HalfSpawnArea.y),
+				Random(m_Position.z - m_HalfSpawnArea.z, m_Position.z + m_HalfSpawnArea.z)),
+
+			Vector3::SphericalToCartesian(Vector3(
+				m_SpawnSpeed,
+				m_SpawnInclination.Interpolate(fmod(m_Time, m_SpawnLoopTime)),
+				m_SpawnAzimuth.Interpolate(fmod(m_Time, m_SpawnLoopTime)))).transform(m_Orientation));
+
+		m_RemainingSpawnTime -= m_SpawnInterval;
+
+		if((m_ParticleList.back().second += m_RemainingSpawnTime) < m_ParticleLifeTime)
+		{
+			m_ParticleList.back().first->integrate(m_RemainingSpawnTime);
+		}
+		else
+		{
+			m_ParticleList.pop_back();
+		}
+	}
 }
 
 EmitterInstance::SingleInstance * SingleInstance<EmitterInstance>::s_ptr = NULL;

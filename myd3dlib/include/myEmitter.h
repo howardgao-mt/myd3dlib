@@ -34,17 +34,67 @@ namespace my
 	class Emitter
 	{
 	public:
+		typedef std::deque<std::pair<ParticlePtr, float> > ParticlePtrPairList;
+
+		ParticlePtrPairList m_ParticleList;
+
+		float m_ParticleLifeTime;
+
+		EmitterParameter<int> m_ParticleColorAlpha;
+
+		EmitterParameter<int> m_ParticleColorRed;
+
+		EmitterParameter<int> m_ParticleColorGreen;
+
+		EmitterParameter<int> m_ParticleColorBlue;
+
+		EmitterParameter<float> m_ParticleSizeX;
+
+		EmitterParameter<float> m_ParticleSizeY;
+
+	public:
+		Emitter(void)
+			: m_ParticleLifeTime(10)
+			, m_ParticleColorAlpha(255)
+			, m_ParticleColorRed(255)
+			, m_ParticleColorGreen(255)
+			, m_ParticleColorBlue(255)
+			, m_ParticleSizeX(1)
+			, m_ParticleSizeY(1)
+		{
+		}
+
+		virtual ~Emitter(void)
+		{
+		}
+
+		void Reset(void);
+
+		void Spawn(const Vector3 & Position, const Vector3 & Velocity);
+
+		virtual void Update(double fTime, float fElapsedTime);
+
+		DWORD BuildInstance(
+			EmitterInstance * pEmitterInstance,
+			double fTime,
+			float fElapsedTime);
+
+		void Draw(IDirect3DDevice9 * pd3dDevice,
+			double fTime,
+			float fElapsedTime);
+	};
+
+	typedef boost::shared_ptr<Emitter> EmitterPtr;
+
+	class AutoSpawnEmitter
+		: public Emitter
+	{
+	public:
 		Vector3 m_Position;
 
 		Quaternion m_Orientation;
 
-		typedef std::deque<ParticlePtr> ParticlePtrList;
-
-		ParticlePtrList m_ParticleList;
-
 		float m_Time;
-
-		float m_ParticleLifeTime;
 
 		float m_SpawnInterval;
 
@@ -60,20 +110,11 @@ namespace my
 
 		float m_SpawnLoopTime;
 
-		EmitterParameter<int> m_ParticleColorAlpha;
-
-		EmitterParameter<int> m_ParticleColorRed;
-
-		EmitterParameter<int> m_ParticleColorGreen;
-
-		EmitterParameter<int> m_ParticleColorBlue;
-
 	public:
-		Emitter(void)
+		AutoSpawnEmitter(void)
 			: m_Position(0,0,0)
 			, m_Orientation(Quaternion::Identity())
 			, m_Time(0)
-			, m_ParticleLifeTime(10)
 			, m_SpawnInterval(1/100.0f)
 			, m_RemainingSpawnTime(0)
 			, m_HalfSpawnArea(0,0,0)
@@ -81,34 +122,13 @@ namespace my
 			, m_SpawnInclination(D3DXToRadian(0))
 			, m_SpawnAzimuth(D3DXToRadian(0))
 			, m_SpawnLoopTime(10)
-			, m_ParticleColorAlpha(255)
-			, m_ParticleColorRed(255)
-			, m_ParticleColorGreen(255)
-			, m_ParticleColorBlue(255)
 		{
 		}
 
-		virtual ~Emitter(void)
-		{
-		}
-
-		void Reset(void);
-
-		void Spawn(const Vector3 & Position, const Vector3 & Velocity);
-
-		void Update(double fTime, float fElapsedTime);
-
-		DWORD BuildInstance(
-			EmitterInstance * pEmitterInstance,
-			double fTime,
-			float fElapsedTime);
-
-		void Draw(IDirect3DDevice9 * pd3dDevice,
-			double fTime,
-			float fElapsedTime);
+		virtual void Update(double fTime, float fElapsedTime);
 	};
 
-	typedef boost::shared_ptr<Emitter> EmitterPtr;
+	typedef boost::shared_ptr<AutoSpawnEmitter> AutoSpawnEmitterPtr;
 
 	class EmitterInstance
 		: public SingleInstance<EmitterInstance>
@@ -137,6 +157,8 @@ namespace my
 			offset += sizeof(D3DVERTEXELEMENT9Set::PositionType);
 			m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateColorElement(1, offset, 0));
 			offset += sizeof(D3DVERTEXELEMENT9Set::ColorType);
+			m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateCustomElement(1, D3DDECLUSAGE_TEXCOORD, 1, offset, D3DDECLTYPE_FLOAT4));
+			offset += sizeof(FLOAT) * 4;
 
 			m_VertexStride = m_VertexElemSet.CalculateVertexStride(0);
 			m_InstanceStride = m_VertexElemSet.CalculateVertexStride(1);
