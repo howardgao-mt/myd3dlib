@@ -59,6 +59,10 @@ DWORD Emitter::BuildInstance(
 			m_ParticleSizeX.Interpolate(m_ParticleList[i].second),
 			m_ParticleSizeY.Interpolate(m_ParticleList[i].second),
 			m_ParticleAngle.Interpolate(m_ParticleList[i].second), 1));
+
+		unsigned int AnimFrame = (unsigned int)(m_ParticleList[i].second * m_ParticleAnimFPS) % ((unsigned int)m_ParticleAnimColumn * m_ParticleAnimRow);
+		pEmitterInstance->m_VertexElemSet.SetCustomType(pInstance, 1, D3DDECLUSAGE_TEXCOORD, 2, (unsigned int)D3DCOLOR_ARGB(
+			0, 0, AnimFrame / m_ParticleAnimRow, AnimFrame % m_ParticleAnimColumn));
 	}
 	pEmitterInstance->m_InstanceData.Unlock();
 
