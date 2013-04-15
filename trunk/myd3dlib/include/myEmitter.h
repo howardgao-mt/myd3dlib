@@ -54,6 +54,12 @@ namespace my
 
 		EmitterParameter<float> m_ParticleAngle;
 
+		float m_ParticleAnimFPS;
+
+		unsigned char m_ParticleAnimColumn;
+
+		unsigned char m_ParticleAnimRow;
+
 	public:
 		Emitter(void)
 			: m_ParticleLifeTime(10)
@@ -64,6 +70,9 @@ namespace my
 			, m_ParticleSizeX(1)
 			, m_ParticleSizeY(1)
 			, m_ParticleAngle(0)
+			, m_ParticleAnimFPS(1)
+			, m_ParticleAnimColumn(1)
+			, m_ParticleAnimRow(1)
 		{
 		}
 
@@ -162,6 +171,8 @@ namespace my
 			offset += sizeof(D3DVERTEXELEMENT9Set::ColorType);
 			m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateCustomElement(1, D3DDECLUSAGE_TEXCOORD, 1, offset, D3DDECLTYPE_FLOAT4));
 			offset += sizeof(FLOAT) * 4;
+			m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateCustomElement(1, D3DDECLUSAGE_TEXCOORD, 2, offset, D3DDECLTYPE_UBYTE4));
+			offset += sizeof(UCHAR) * 4;
 
 			m_VertexStride = m_VertexElemSet.CalculateVertexStride(0);
 			m_InstanceStride = m_VertexElemSet.CalculateVertexStride(1);

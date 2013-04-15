@@ -5,8 +5,9 @@
 // Global variables
 //--------------------------------------------------------------------------------------
 
-shared float3 g_CameraUp;
-shared float3 g_CameraRight;
+float3 g_CameraUp;
+float3 g_CameraRight;
+float2 g_AnimationColumnRow;
 texture g_MeshTexture;
 
 //--------------------------------------------------------------------------------------
@@ -40,7 +41,8 @@ struct VS_OUTPUT
 VS_OUTPUT RenderSceneVS( float2 vTexCoord0 : TEXCOORD0, 
 						 float4 vPos : POSITION0,
                          float4 vDiffuse : COLOR0,
-						 float4 vTexCoord1 : TEXCOORD1 )
+						 float4 vTexCoord1 : TEXCOORD1,
+						 float4 vTexCoord2 : TEXCOORD2 )
 {
     VS_OUTPUT Output;
 	float4 LocalPos = float4(rotate_angle_axis(
@@ -50,7 +52,7 @@ VS_OUTPUT RenderSceneVS( float2 vTexCoord0 : TEXCOORD0,
 	Output.Position = mul(LocalPos + vPos, g_mWorldViewProjection);
 	
 	Output.Diffuse = vDiffuse;
-	Output.TextureUV = vTexCoord0;
+	Output.TextureUV = (vTexCoord2.xy + vTexCoord0.xy) / g_AnimationColumnRow;
     
     return Output;    
 }
