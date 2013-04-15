@@ -43,9 +43,10 @@ VS_OUTPUT RenderSceneVS( float2 vTexCoord0 : TEXCOORD0,
 						 float4 vTexCoord1 : TEXCOORD1 )
 {
     VS_OUTPUT Output;
-	float4 LocalPos = float4(
+	float4 LocalPos = float4(rotate_angle_axis(
 		g_CameraUp * lerp(vTexCoord1.x * 0.5, -vTexCoord1.y * 0.5, vTexCoord0.y) +
-		g_CameraRight * lerp(-vTexCoord1.x * 0.5, vTexCoord1.y * 0.5, vTexCoord0.x), 0);
+		g_CameraRight * lerp(-vTexCoord1.x * 0.5, vTexCoord1.y * 0.5, vTexCoord0.x), vTexCoord1.z, cross(g_CameraRight, g_CameraUp)), 0);
+		
 	Output.Position = mul(LocalPos + vPos, g_mWorldViewProjection);
 	
 	Output.Diffuse = vDiffuse;

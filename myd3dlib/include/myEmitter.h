@@ -52,6 +52,8 @@ namespace my
 
 		EmitterParameter<float> m_ParticleSizeY;
 
+		EmitterParameter<float> m_ParticleAngle;
+
 	public:
 		Emitter(void)
 			: m_ParticleLifeTime(10)
@@ -61,6 +63,7 @@ namespace my
 			, m_ParticleColorBlue(255)
 			, m_ParticleSizeX(1)
 			, m_ParticleSizeY(1)
+			, m_ParticleAngle(0)
 		{
 		}
 
@@ -115,10 +118,10 @@ namespace my
 			: m_Position(0,0,0)
 			, m_Orientation(Quaternion::Identity())
 			, m_Time(0)
-			, m_SpawnInterval(1/100.0f)
+			, m_SpawnInterval(10)
 			, m_RemainingSpawnTime(0)
 			, m_HalfSpawnArea(0,0,0)
-			, m_SpawnSpeed(1)
+			, m_SpawnSpeed(0)
 			, m_SpawnInclination(D3DXToRadian(0))
 			, m_SpawnAzimuth(D3DXToRadian(0))
 			, m_SpawnLoopTime(10)
