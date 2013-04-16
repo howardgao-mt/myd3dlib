@@ -75,3 +75,12 @@ CreateRole("casual19_m_highpoly", Vector3(0,0,0), 0, 0.01)
 		-- CreateRole("casual19_m_highpoly", Vector3(i,0,j), math.random(0,1), 0.01)
 	-- end
 -- end
+
+-- local emitter=AutoSpawnEmitter()
+-- emitter.SpawnInterval=16
+-- emitter.ParticleLifeTime=16
+-- emitter.RemainingSpawnTime=16
+-- emitter.ParticleAnimColumn=4
+-- emitter.ParticleAnimRow=4
+-- emitter.Texture=game:LoadTexture("texture/Checker.bmp")
+-- state:InsertEmitter(emitter)
