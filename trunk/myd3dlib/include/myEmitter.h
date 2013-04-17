@@ -35,6 +35,15 @@ namespace my
 	class Emitter
 	{
 	public:
+		enum DirectionType
+		{
+			DirectionTypeCamera,
+			DirectionTypeVertical,
+			DirectionTypeHorizontal,
+		};
+
+		DirectionType m_Direction;
+
 		typedef std::deque<std::pair<ParticlePtr, float> > ParticlePtrPairList;
 
 		ParticlePtrPairList m_ParticleList;
@@ -65,7 +74,8 @@ namespace my
 
 	public:
 		Emitter(void)
-			: m_ParticleLifeTime(10)
+			: m_Direction(DirectionTypeCamera)
+			, m_ParticleLifeTime(10)
 			, m_ParticleColorA(255)
 			, m_ParticleColorR(255)
 			, m_ParticleColorG(255)
