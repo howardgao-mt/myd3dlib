@@ -199,13 +199,17 @@ namespace my
 
 		void OnDestroyDevice(void);
 
-		virtual void SetWorldViewProj(const Matrix4 & WorldViewProj);
+		virtual void Begin(void) {}
 
-		virtual void SetTexture(IDirect3DBaseTexture9 * pTexture);
+		virtual void End(void) {}
 
-		virtual void SetDirection(const Vector3 & Dir, const Vector3 & Up, const Vector3 & Right);
+		virtual void SetWorldViewProj(const Matrix4 & WorldViewProj) {}
 
-		virtual void SetAnimationColumnRow(unsigned char Column, unsigned char Row);
+		virtual void SetTexture(IDirect3DBaseTexture9 * pTexture) {}
+
+		virtual void SetDirection(const Vector3 & Dir, const Vector3 & Up, const Vector3 & Right) {}
+
+		virtual void SetAnimationColumnRow(unsigned char Column, unsigned char Row) {}
 
 		virtual void DrawInstance(DWORD NumInstances);
 	};
