@@ -1,36 +1,36 @@
 #pragma once
 
-class BaseParameter
+class EffectParameterBase
 {
 public:
-	BaseParameter(void)
+	EffectParameterBase(void)
 	{
 	}
 
-	virtual ~BaseParameter(void)
+	virtual ~EffectParameterBase(void)
 	{
 	}
 
 	virtual void SetParameter(my::Effect * effect, const std::string & name) const = 0;
 };
 
-template <class ParameterType>
-class Parameter : public BaseParameter
+typedef boost::shared_ptr<EffectParameterBase> EffectParameterBasePtr;
+
+template <class T>
+class EffectParameter : public EffectParameterBase
 {
 public:
-	ParameterType value;
+	T m_Value;
 
-	Parameter(const ParameterType & _value)
-		: value(_value)
+	EffectParameter(const T & Value)
+		: m_Value(Value)
 	{
 	}
 
 	virtual void SetParameter(my::Effect * effect, const std::string & name) const;
 };
 
-typedef boost::shared_ptr<BaseParameter> BaseParameterPtr;
-
-class ParameterMap : public std::map<std::string, BaseParameterPtr>
+class EffectParameterMap : public std::map<std::string, EffectParameterBasePtr>
 {
 public:
 	void SetBool(const std::string & name, bool value);
@@ -48,7 +48,7 @@ public:
 	void SetTexture(const std::string & name, my::BaseTexturePtr value);
 };
 
-class Material : public ParameterMap
+class Material : public EffectParameterMap
 {
 public:
 	my::EffectPtr m_Effect;
