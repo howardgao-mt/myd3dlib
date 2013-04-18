@@ -715,3 +715,89 @@ void EmitterMgr::Draw(
 		(*emitter_iter)->Draw(pInstance, fTime, fElapsedTime);
 	}
 }
+
+template <>
+void EffectParameter<bool>::SetParameter(Effect * pEffect, const std::string & Name) const
+{
+	pEffect->SetBool(Name.c_str(), m_Value);
+}
+
+template <>
+void EffectParameter<float>::SetParameter(Effect * pEffect, const std::string & Name) const
+{
+	pEffect->SetFloat(Name.c_str(), m_Value);
+}
+
+template <>
+void EffectParameter<int>::SetParameter(Effect * pEffect, const std::string & Name) const
+{
+	pEffect->SetInt(Name.c_str(), m_Value);
+}
+
+template <>
+void EffectParameter<Vector4>::SetParameter(Effect * pEffect, const std::string & Name) const
+{
+	pEffect->SetVector(Name.c_str(), m_Value);
+}
+
+template <>
+void EffectParameter<Matrix4>::SetParameter(Effect * pEffect, const std::string & Name) const
+{
+	pEffect->SetMatrix(Name.c_str(), m_Value);
+}
+
+template <>
+void EffectParameter<std::string>::SetParameter(Effect * pEffect, const std::string & Name) const
+{
+	pEffect->SetString(Name.c_str(), m_Value.c_str());
+}
+
+template <>
+void EffectParameter<BaseTexturePtr>::SetParameter(Effect * pEffect, const std::string & Name) const
+{
+	pEffect->SetTexture(Name.c_str(), m_Value ? m_Value->m_ptr : NULL);
+}
+
+void EffectParameterMap::SetBool(const std::string & Name, bool Value)
+{
+	operator[](Name) = EffectParameterBasePtr(new EffectParameter<bool>(Value));
+}
+
+void EffectParameterMap::SetFloat(const std::string & Name, float Value)
+{
+	operator[](Name) = EffectParameterBasePtr(new EffectParameter<float>(Value));
+}
+
+void EffectParameterMap::SetInt(const std::string & Name, int Value)
+{
+	operator[](Name) = EffectParameterBasePtr(new EffectParameter<int>(Value));
+}
+
+void EffectParameterMap::SetVector(const std::string & Name, const Vector4 & Value)
+{
+	operator[](Name) = EffectParameterBasePtr(new EffectParameter<Vector4>(Value));
+}
+
+void EffectParameterMap::SetMatrix(const std::string & Name, const Matrix4 & Value)
+{
+	operator[](Name) = EffectParameterBasePtr(new EffectParameter<Matrix4>(Value));
+}
+
+void EffectParameterMap::SetString(const std::string & Name, const std::string & Value)
+{
+	operator[](Name) = EffectParameterBasePtr(new EffectParameter<std::string>(Value));
+}
+
+void EffectParameterMap::SetTexture(const std::string & Name, BaseTexturePtr Value)
+{
+	operator[](Name) = EffectParameterBasePtr(new EffectParameter<BaseTexturePtr>(Value));
+}
+
+void Material::ApplyParameterBlock(void)
+{
+	const_iterator param_iter = begin();
+	for(; param_iter != end(); param_iter++)
+	{
+		param_iter->second->SetParameter(m_Effect.get(), param_iter->first);
+	}
+}
