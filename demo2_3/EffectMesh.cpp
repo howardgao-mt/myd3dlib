@@ -4,80 +4,80 @@
 using namespace my;
 
 template <>
-void Parameter<bool>::SetParameter(Effect * effect, const std::string & name) const
+void EffectParameter<bool>::SetParameter(Effect * effect, const std::string & name) const
 {
-	effect->SetBool(name.c_str(), value);
+	effect->SetBool(name.c_str(), m_Value);
 }
 
 template <>
-void Parameter<float>::SetParameter(Effect * effect, const std::string & name) const
+void EffectParameter<float>::SetParameter(Effect * effect, const std::string & name) const
 {
-	effect->SetFloat(name.c_str(), value);
+	effect->SetFloat(name.c_str(), m_Value);
 }
 
 template <>
-void Parameter<int>::SetParameter(Effect * effect, const std::string & name) const
+void EffectParameter<int>::SetParameter(Effect * effect, const std::string & name) const
 {
-	effect->SetInt(name.c_str(), value);
+	effect->SetInt(name.c_str(), m_Value);
 }
 
 template <>
-void Parameter<Vector4>::SetParameter(Effect * effect, const std::string & name) const
+void EffectParameter<Vector4>::SetParameter(Effect * effect, const std::string & name) const
 {
-	effect->SetVector(name.c_str(), value);
+	effect->SetVector(name.c_str(), m_Value);
 }
 
 template <>
-void Parameter<Matrix4>::SetParameter(Effect * effect, const std::string & name) const
+void EffectParameter<Matrix4>::SetParameter(Effect * effect, const std::string & name) const
 {
-	effect->SetMatrix(name.c_str(), value);
+	effect->SetMatrix(name.c_str(), m_Value);
 }
 
 template <>
-void Parameter<std::string>::SetParameter(Effect * effect, const std::string & name) const
+void EffectParameter<std::string>::SetParameter(Effect * effect, const std::string & name) const
 {
-	effect->SetString(name.c_str(), value.c_str());
+	effect->SetString(name.c_str(), m_Value.c_str());
 }
 
 template <>
-void Parameter<BaseTexturePtr>::SetParameter(Effect * effect, const std::string & name) const
+void EffectParameter<BaseTexturePtr>::SetParameter(Effect * effect, const std::string & name) const
 {
-	effect->SetTexture(name.c_str(), value ? value->m_ptr : NULL);
+	effect->SetTexture(name.c_str(), m_Value ? m_Value->m_ptr : NULL);
 }
 
-void ParameterMap::SetBool(const std::string & name, bool value)
+void EffectParameterMap::SetBool(const std::string & name, bool value)
 {
-	operator[](name) = BaseParameterPtr(new Parameter<bool>(value));
+	operator[](name) = EffectParameterBasePtr(new EffectParameter<bool>(value));
 }
 
-void ParameterMap::SetFloat(const std::string & name, float value)
+void EffectParameterMap::SetFloat(const std::string & name, float value)
 {
-	operator[](name) = BaseParameterPtr(new Parameter<float>(value));
+	operator[](name) = EffectParameterBasePtr(new EffectParameter<float>(value));
 }
 
-void ParameterMap::SetInt(const std::string & name, int value)
+void EffectParameterMap::SetInt(const std::string & name, int value)
 {
-	operator[](name) = BaseParameterPtr(new Parameter<int>(value));
+	operator[](name) = EffectParameterBasePtr(new EffectParameter<int>(value));
 }
 
-void ParameterMap::SetVector(const std::string & name, const Vector4 & value)
+void EffectParameterMap::SetVector(const std::string & name, const Vector4 & value)
 {
-	operator[](name) = BaseParameterPtr(new Parameter<Vector4>(value));
+	operator[](name) = EffectParameterBasePtr(new EffectParameter<Vector4>(value));
 }
 
-void ParameterMap::SetMatrix(const std::string & name, const Matrix4 & value)
+void EffectParameterMap::SetMatrix(const std::string & name, const Matrix4 & value)
 {
-	operator[](name) = BaseParameterPtr(new Parameter<Matrix4>(value));
+	operator[](name) = EffectParameterBasePtr(new EffectParameter<Matrix4>(value));
 }
 
-void ParameterMap::SetString(const std::string & name, const std::string & value)
+void EffectParameterMap::SetString(const std::string & name, const std::string & value)
 {
-	operator[](name) = BaseParameterPtr(new Parameter<std::string>(value));
+	operator[](name) = EffectParameterBasePtr(new EffectParameter<std::string>(value));
 }
 
-void ParameterMap::SetTexture(const std::string & name, BaseTexturePtr value)
+void EffectParameterMap::SetTexture(const std::string & name, BaseTexturePtr value)
 {
-	operator[](name) = BaseParameterPtr(new Parameter<BaseTexturePtr>(value));
+	operator[](name) = EffectParameterBasePtr(new EffectParameter<BaseTexturePtr>(value));
 }
 
 void Material::ApplyParameterBlock(void)

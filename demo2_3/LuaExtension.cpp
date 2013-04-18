@@ -276,12 +276,12 @@ struct HelpFunc
 		obj->SetTexture(hParameter, texture ? texture->m_ptr : NULL);
 	}
 
-	static void ParameterMap_SetTexture(ParameterMap * obj, const std::string & name, my::TexturePtr value)
+	static void EffectParameterMap_SetTexture(EffectParameterMap * obj, const std::string & name, my::TexturePtr value)
 	{
 		obj->SetTexture(name, value);
 	}
 
-	static void ParameterMap_SetTexture(ParameterMap * obj, const std::string & name, my::CubeTexturePtr value)
+	static void EffectParameterMap_SetTexture(EffectParameterMap * obj, const std::string & name, my::CubeTexturePtr value)
 	{
 		obj->SetTexture(name, value);
 	}
@@ -1023,17 +1023,17 @@ void Export2Lua(lua_State * L)
 			.def("InsertStaticMesh", &GameStateMain::InsertStaticMesh)
 			.def("InsertCharacter", &GameStateMain::InsertCharacter)
 
-		, class_<ParameterMap>("ParameterMap")
-			.def("SetBool", &ParameterMap::SetBool)
-			.def("SetFloat", &ParameterMap::SetFloat)
-			.def("SetInt", &ParameterMap::SetInt)
-			.def("SetVector", &ParameterMap::SetVector)
-			.def("SetMatrix", &ParameterMap::SetMatrix)
-			.def("SetString", &ParameterMap::SetString)
-			.def("SetTexture", (void (*)(ParameterMap *, const std::string &, my::TexturePtr))&HelpFunc::ParameterMap_SetTexture)
-			.def("SetTexture", (void (*)(ParameterMap *, const std::string &, my::CubeTexturePtr))&HelpFunc::ParameterMap_SetTexture)
+		, class_<EffectParameterMap>("EffectParameterMap")
+			.def("SetBool", &EffectParameterMap::SetBool)
+			.def("SetFloat", &EffectParameterMap::SetFloat)
+			.def("SetInt", &EffectParameterMap::SetInt)
+			.def("SetVector", &EffectParameterMap::SetVector)
+			.def("SetMatrix", &EffectParameterMap::SetMatrix)
+			.def("SetString", &EffectParameterMap::SetString)
+			.def("SetTexture", (void (*)(EffectParameterMap *, const std::string &, my::TexturePtr))&HelpFunc::EffectParameterMap_SetTexture)
+			.def("SetTexture", (void (*)(EffectParameterMap *, const std::string &, my::CubeTexturePtr))&HelpFunc::EffectParameterMap_SetTexture)
 
-		, class_<Material, ParameterMap, boost::shared_ptr<Material> >("Material")
+		, class_<Material, EffectParameterMap, boost::shared_ptr<Material> >("Material")
 			.def(constructor<>())
 			.def_readwrite("Effect", &Material::m_Effect)
 
