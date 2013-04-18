@@ -369,4 +369,67 @@ namespace my
 			m_EmitterSet.clear();
 		}
 	};
+
+	class EffectParameterBase
+	{
+	public:
+		EffectParameterBase(void)
+		{
+		}
+
+		virtual ~EffectParameterBase(void)
+		{
+		}
+
+		virtual void SetParameter(my::Effect * pEffect, const std::string & Name) const = 0;
+	};
+
+	typedef boost::shared_ptr<EffectParameterBase> EffectParameterBasePtr;
+
+	template <class T>
+	class EffectParameter : public EffectParameterBase
+	{
+	public:
+		T m_Value;
+
+		EffectParameter(const T & Value)
+			: m_Value(Value)
+		{
+		}
+
+		virtual void SetParameter(my::Effect * pEffect, const std::string & Name) const;
+	};
+
+	class EffectParameterMap : public std::map<std::string, EffectParameterBasePtr>
+	{
+	public:
+		void SetBool(const std::string & Name, bool Value);
+
+		void SetFloat(const std::string & Name, float Value);
+
+		void SetInt(const std::string & Name, int Value);
+
+		void SetVector(const std::string & Name, const my::Vector4 & Value);
+
+		void SetMatrix(const std::string & Name, const my::Matrix4 & Value);
+
+		void SetString(const std::string & Name, const std::string & Value);
+
+		void SetTexture(const std::string & Name, my::BaseTexturePtr Value);
+	};
+
+	class Material : public EffectParameterMap
+	{
+	public:
+		my::EffectPtr m_Effect;
+
+	public:
+		Material(void)
+		{
+		}
+
+		void ApplyParameterBlock(void);
+	};
+
+	typedef boost::shared_ptr<Material> MaterialPtr;
 }
