@@ -986,7 +986,7 @@ void Export2Lua(lua_State * L)
 			.def("SetTexture", (void (*)(my::EffectParameterMap *, const std::string &, my::TexturePtr))&HelpFunc::EffectParameterMap_SetTexture)
 			.def("SetTexture", (void (*)(my::EffectParameterMap *, const std::string &, my::CubeTexturePtr))&HelpFunc::EffectParameterMap_SetTexture)
 
-		, class_<my::Material, my::EffectParameterMap, boost::shared_ptr<Material> >("Material")
+		, class_<my::Material, my::EffectParameterMap, boost::shared_ptr<my::Material> >("Material")
 			.def(constructor<>())
 			.def_readwrite("Effect", &my::Material::m_Effect)
 
