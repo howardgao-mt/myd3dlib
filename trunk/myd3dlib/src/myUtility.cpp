@@ -735,12 +735,6 @@ void EffectParameter<int>::SetParameter(Effect * pEffect, const std::string & Na
 }
 
 template <>
-void EffectParameter<Vector3>::SetParameter(Effect * pEffect, const std::string & Name) const
-{
-	pEffect->SetVector(Name.c_str(), m_Value);
-}
-
-template <>
 void EffectParameter<Vector4>::SetParameter(Effect * pEffect, const std::string & Name) const
 {
 	pEffect->SetVector(Name.c_str(), m_Value);
@@ -779,11 +773,6 @@ void EffectParameterMap::SetInt(const std::string & Name, int Value)
 	operator[](Name) = EffectParameterBasePtr(new EffectParameter<int>(Value));
 }
 
-void EffectParameterMap::SetVector(const std::string & Name, const my::Vector3 & Value)
-{
-	operator[](Name) = EffectParameterBasePtr(new EffectParameter<Vector3>(Value));
-}
-
 void EffectParameterMap::SetVector(const std::string & Name, const Vector4 & Value)
 {
 	operator[](Name) = EffectParameterBasePtr(new EffectParameter<Vector4>(Value));
@@ -811,4 +800,18 @@ void Material::ApplyParameterBlock(void)
 	{
 		param_iter->second->SetParameter(m_Effect.get(), param_iter->first);
 	}
+}
+
+void Material::DrawMeshSubset(Mesh * pMesh, DWORD i)
+{
+	ApplyParameterBlock();
+
+	UINT cPasses = m_Effect->Begin();
+	for(UINT p = 0; p < cPasses; p++)
+	{
+		m_Effect->BeginPass(p);
+		pMesh->DrawSubset(i);
+		m_Effect->EndPass();
+	}
+	m_Effect->End();
 }
