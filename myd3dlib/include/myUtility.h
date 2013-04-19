@@ -409,6 +409,8 @@ namespace my
 
 		void SetInt(const std::string & Name, int Value);
 
+		void SetVector(const std::string & Name, const my::Vector3 & Value);
+
 		void SetVector(const std::string & Name, const my::Vector4 & Value);
 
 		void SetMatrix(const std::string & Name, const my::Matrix4 & Value);

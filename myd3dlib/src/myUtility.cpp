@@ -735,6 +735,12 @@ void EffectParameter<int>::SetParameter(Effect * pEffect, const std::string & Na
 }
 
 template <>
+void EffectParameter<Vector3>::SetParameter(Effect * pEffect, const std::string & Name) const
+{
+	pEffect->SetVector(Name.c_str(), m_Value);
+}
+
+template <>
 void EffectParameter<Vector4>::SetParameter(Effect * pEffect, const std::string & Name) const
 {
 	pEffect->SetVector(Name.c_str(), m_Value);
@@ -771,6 +777,11 @@ void EffectParameterMap::SetFloat(const std::string & Name, float Value)
 void EffectParameterMap::SetInt(const std::string & Name, int Value)
 {
 	operator[](Name) = EffectParameterBasePtr(new EffectParameter<int>(Value));
+}
+
+void EffectParameterMap::SetVector(const std::string & Name, const my::Vector3 & Value)
+{
+	operator[](Name) = EffectParameterBasePtr(new EffectParameter<Vector3>(Value));
 }
 
 void EffectParameterMap::SetVector(const std::string & Name, const Vector4 & Value)
