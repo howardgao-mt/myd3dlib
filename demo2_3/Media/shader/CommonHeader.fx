@@ -3,10 +3,10 @@
 // Global variables
 //--------------------------------------------------------------------------------------
 
-shared float g_fTime;
-shared float4x4 g_mWorld;
-shared float4x4 g_mWorldViewProjection;
-shared float4x4 g_mLightViewProjection;
+shared float g_Time;
+shared float4x4 g_World;
+shared float4x4 g_ViewProj;
+shared float4x4 g_ViewProjLS;
 shared float3 g_EyePos;
 shared float3 g_EyePosOS;
 shared float3 g_LightDir;
