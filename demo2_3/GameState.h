@@ -60,18 +60,6 @@ class GameStateMain
 public:
 	typedef boost::statechart::transition<GameEventInit, GameStateMain> reactions;
 
-	boost::shared_ptr<btDefaultCollisionConfiguration> m_collisionConfiguration;
-
-	boost::shared_ptr<btCollisionDispatcher> m_dispatcher;
-
-	boost::shared_ptr<btBroadphaseInterface> m_overlappingPairCache;
-
-	boost::shared_ptr<btConstraintSolver> m_constraintSolver;
-
-	boost::shared_ptr<btDiscreteDynamicsWorld> m_dynamicsWorld;
-
-	btAlignedObjectArray<boost::shared_ptr<btCollisionShape> > m_collisionShapes;
-
 	my::EffectPtr m_SimpleSample;
 
 	my::EffectPtr m_ShadowMap;
