@@ -74,29 +74,9 @@ HRESULT GameStateMain::OnCreateDevice(
 
 	m_ShadowTextureDS.reset(new my::Surface());
 
-	if(!(m_Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, m_DefaultAllocator, m_DefaultErrorCallback)))
+	if(!PhysxSample::OnInit())
 	{
-		THROW_CUSEXCEPTION("PxCreateFoundation failed");
-	}
-
-	if(!(m_ProfileZoneManager = &PxProfileZoneManager::createProfileZoneManager(m_Foundation)))
-	{
-		THROW_CUSEXCEPTION("PxProfileZoneManager::createProfileZoneManager failed");
-	}
-
-	if(!(m_Physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_Foundation, PxTolerancesScale(), true, m_ProfileZoneManager)))
-	{
-		THROW_CUSEXCEPTION("PxCreatePhysics failed");
-	}
-
-	if(!PxInitExtensions(*m_Physics))
-	{
-		THROW_CUSEXCEPTION("PxInitExtensions failed");
-	}
-
-	if(!(m_Cooking = PxCreateCooking(PX_PHYSICS_VERSION, *m_Foundation, PxCookingParams())))
-	{
-		THROW_CUSEXCEPTION("PxCreateCooking failed");
+		return E_FAIL;
 	}
 
 	if(!Game::getSingleton().ExecuteCode("dofile \"GameStateMain.lua\""))
@@ -147,19 +127,7 @@ void GameStateMain::OnDestroyDevice(void)
 
 	m_Characters.clear();
 
-	if(m_Cooking)
-		m_Cooking->release();
-
-	PxCloseExtensions();
-
-	if(m_Physics)
-		m_Physics->release();
-
-	if(m_ProfileZoneManager)
-		m_ProfileZoneManager->release();
-
-	if(m_Foundation)
-		m_Foundation->release();
+	PhysxSample::OnShutdown();
 }
 
 void GameStateMain::OnFrameMove(
@@ -182,6 +150,8 @@ void GameStateMain::OnFrameRender(
 	double fTime,
 	float fElapsedTime)
 {
+	PhysxSample::OnTickPreRender(fElapsedTime);
+
 	CComPtr<IDirect3DSurface9> oldRt;
 	V(pd3dDevice->GetRenderTarget(0, &oldRt));
 	CComPtr<IDirect3DSurface9> oldDs;
@@ -293,6 +263,8 @@ void GameStateMain::OnFrameRender(
 
 		V(pd3dDevice->EndScene());
 	}
+
+	PhysxSample::OnTickPostRender(fElapsedTime);
 }
 
 LRESULT GameStateMain::MsgProc(
