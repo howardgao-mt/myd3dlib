@@ -10,230 +10,236 @@
 
 namespace my
 {
-	struct D3DVERTEXELEMENT9Less
+	class D3DVertexElement
 	{
-		bool operator ()(const D3DVERTEXELEMENT9 & lhs, const D3DVERTEXELEMENT9 & rhs) const
+	public:
+		WORD Offset;
+
+		D3DDECLTYPE Type;
+
+		D3DDECLMETHOD Method;
+
+		D3DVertexElement(void)
+			: Offset(0)
+			, Type(D3DDECLTYPE_UNUSED)
+			, Method(D3DDECLMETHOD_DEFAULT)
 		{
-			if(lhs.Stream == rhs.Stream)
-			{
-				if(lhs.Usage == rhs.Usage)
-				{
-					return lhs.UsageIndex < rhs.UsageIndex;
-				}
-				return lhs.Usage < rhs.Usage;
-			}
-			return lhs.Stream < rhs.Stream;
+		}
+
+		D3DVertexElement(WORD _Offset, D3DDECLTYPE _Type, D3DDECLMETHOD _Method)
+			: Offset(_Offset)
+			, Type(_Type)
+			, Method(_Method)
+		{
 		}
 	};
 
-	class D3DVERTEXELEMENT9Set : public std::set<D3DVERTEXELEMENT9, D3DVERTEXELEMENT9Less>
+	class D3DVertexElementSet
 	{
 	public:
 		static const int MAX_BONE_INDICES = 4;
 
-		std::pair<iterator, bool> insert(const value_type & val)
-		{
-			_ASSERT(end() == find(val));
+		static const int MAX_USAGE = D3DDECLUSAGE_SAMPLE+1;
 
-			return std::set<D3DVERTEXELEMENT9, D3DVERTEXELEMENT9Less>::insert(val);
+		static const int MAX_USAGE_INDEX = 8;
+
+		D3DVertexElement elems[MAX_USAGE][MAX_USAGE_INDEX];
+
+	public:
+		D3DVertexElementSet(void)
+		{
 		}
 
-		static D3DVERTEXELEMENT9 CreateCustomElement(WORD Stream, D3DDECLUSAGE Usage, BYTE UsageIndex, WORD Offset = 0, D3DDECLTYPE Type = D3DDECLTYPE_UNUSED, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
+		void InsertVertexElement(WORD Offset, D3DDECLTYPE Type, D3DDECLUSAGE Usage, BYTE UsageIndex, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			D3DVERTEXELEMENT9 ret = {Stream, Offset, Type, Method, Usage, UsageIndex};
+			_ASSERT(Type != D3DDECLTYPE_UNUSED);
+
+			_ASSERT(Usage < MAX_USAGE && UsageIndex < MAX_USAGE_INDEX);
+
+			elems[Usage][UsageIndex] = D3DVertexElement(Offset, Type, Method);
+		}
+
+		template <typename ElementType>
+		ElementType & GetVertexValue(void * pVertex, D3DDECLUSAGE Usage, BYTE UsageIndex) const
+		{
+			return *(ElementType *)((unsigned char *)pVertex + elems[Usage][UsageIndex].Offset);
+		}
+
+		template <typename ElementType>
+		void SetVertexValue(void * pVertex, D3DDECLUSAGE Usage, BYTE UsageIndex, const ElementType & Value) const
+		{
+			GetVertexValue<ElementType>(pVertex, Usage, UsageIndex) = Value;
+		}
+
+		std::vector<D3DVERTEXELEMENT9> BuildVertexElementList(WORD Stream)
+		{
+			std::vector<D3DVERTEXELEMENT9> ret;
+			for(unsigned int Usage = 0; Usage < MAX_USAGE; Usage++)
+			{
+				for(unsigned int UsageIndex = 0; UsageIndex < MAX_USAGE_INDEX; UsageIndex++)
+				{
+					const D3DVertexElement & elem = elems[Usage][UsageIndex];
+					if(elem.Type != D3DDECLTYPE_UNUSED)
+					{
+						D3DVERTEXELEMENT9 ve = {Stream, elem.Offset, elem.Type, elem.Method, Usage, UsageIndex};
+						ret.push_back(ve);
+					}
+				}
+			}
 			return ret;
 		}
 
-		template <typename ElementType>
-		ElementType & GetCustomType(void * pVertex, DWORD Offset) const
+		void InsertPositionElement(WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			return *(ElementType *)((unsigned char *)pVertex + Offset);
+			InsertVertexElement(Offset, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_POSITION, UsageIndex, Method);
 		}
 
-		template <typename ElementType>
-		ElementType & GetCustomType(void * pVertex, WORD Stream, D3DDECLUSAGE Usage, BYTE UsageIndex) const
+		Vector3 & GetPosition(void * pVertex, BYTE UsageIndex = 0)
 		{
-			const_iterator elem_iter = find(CreateCustomElement(Stream, Usage, UsageIndex));
-			_ASSERT(elem_iter != end());
+			_ASSERT(elems[D3DDECLUSAGE_POSITION][UsageIndex].Type == D3DDECLTYPE_FLOAT3);
 
-			return GetCustomType<ElementType>(pVertex, elem_iter->Offset);
+			return GetVertexValue<Vector3>(pVertex, D3DDECLUSAGE_POSITION, UsageIndex);
 		}
 
-		template <typename ElementType>
-		ElementType & SetCustomType(void * pVertex, WORD Stream, D3DDECLUSAGE Usage, BYTE UsageIndex, const ElementType & value) const
+		void SetPosition(void * pVertex, const Vector3 & Position, BYTE UsageIndex = 0) const
 		{
-			return GetCustomType<ElementType>(pVertex, Stream, Usage, UsageIndex) = value;
+			_ASSERT(elems[D3DDECLUSAGE_POSITION][UsageIndex].Type == D3DDECLTYPE_FLOAT3);
+
+			return SetVertexValue<Vector3>(pVertex, D3DDECLUSAGE_POSITION, UsageIndex, Position);
 		}
 
-		typedef Vector3 PositionType;
-
-		static D3DVERTEXELEMENT9 CreatePositionElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
+		void InsertBlendWeightElement(WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			return CreateCustomElement(Stream, D3DDECLUSAGE_POSITION, UsageIndex, Offset, D3DDECLTYPE_FLOAT3, Method);
+			InsertVertexElement(Offset, D3DDECLTYPE_FLOAT4, D3DDECLUSAGE_BLENDWEIGHT, UsageIndex, Method);
 		}
 
-		PositionType & GetPosition(void * pVertex, WORD Stream = 0, BYTE UsageIndex = 0) const
+		Vector4 & GetBlendWeight(void * pVertex, BYTE UsageIndex = 0)
 		{
-			return GetCustomType<PositionType>(pVertex, Stream, D3DDECLUSAGE_POSITION, UsageIndex);
+			_ASSERT(elems[D3DDECLUSAGE_BLENDWEIGHT][UsageIndex].Type == D3DDECLTYPE_FLOAT4);
+
+			return GetVertexValue<Vector4>(pVertex, D3DDECLUSAGE_BLENDWEIGHT, UsageIndex);
 		}
 
-		void SetPosition(void * pVertex, const PositionType & Position, WORD Stream = 0, BYTE UsageIndex = 0) const
+		void SetBlendWeight(void * pVertex, const Vector4 & BlendWeight, BYTE UsageIndex = 0) const
 		{
-			GetPosition(pVertex, Stream, UsageIndex) = Position;
+			_ASSERT(elems[D3DDECLUSAGE_BLENDWEIGHT][UsageIndex].Type == D3DDECLTYPE_FLOAT4);
+
+			return SetVertexValue<Vector4>(pVertex, D3DDECLUSAGE_BLENDWEIGHT, UsageIndex, BlendWeight);
 		}
 
-		typedef Vector3 BinormalType;
-
-		static D3DVERTEXELEMENT9 CreateBinormalElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
+		void InsertBlendIndicesElement(WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			return CreateCustomElement(Stream, D3DDECLUSAGE_BINORMAL, UsageIndex, Offset, D3DDECLTYPE_FLOAT3, Method);
+			InsertVertexElement(Offset, D3DDECLTYPE_UBYTE4, D3DDECLUSAGE_BLENDINDICES, UsageIndex, Method);
 		}
 
-		BinormalType & GetBinormal(void * pVertex, WORD Stream = 0, BYTE UsageIndex = 0) const
+		DWORD & GetBlendIndices(void * pVertex, BYTE UsageIndex = 0)
 		{
-			return GetCustomType<BinormalType>(pVertex, Stream, D3DDECLUSAGE_BINORMAL, UsageIndex);
+			_ASSERT(elems[D3DDECLUSAGE_BLENDINDICES][UsageIndex].Type == D3DDECLTYPE_UBYTE4);
+
+			return GetVertexValue<DWORD>(pVertex, D3DDECLUSAGE_BLENDINDICES, UsageIndex);
 		}
 
-		void SetBinormal(void * pVertex, const BinormalType & Binormal, WORD Stream = 0, BYTE UsageIndex = 0) const
+		void SetBlendIndices(void * pVertex, const DWORD & BlendIndices, BYTE UsageIndex = 0) const
 		{
-			GetBinormal(pVertex, Stream, UsageIndex) = Binormal;
+			_ASSERT(elems[D3DDECLUSAGE_BLENDINDICES][UsageIndex].Type == D3DDECLTYPE_UBYTE4);
+
+			return SetVertexValue<DWORD>(pVertex, D3DDECLUSAGE_BLENDINDICES, UsageIndex, BlendIndices);
 		}
 
-		typedef Vector3 TangentType;
-
-		static D3DVERTEXELEMENT9 CreateTangentElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
+		void InsertNormalElement(WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			return CreateCustomElement(Stream, D3DDECLUSAGE_TANGENT, UsageIndex, Offset, D3DDECLTYPE_FLOAT3, Method);
+			InsertVertexElement(Offset, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_NORMAL, UsageIndex, Method);
 		}
 
-		TangentType & GetTangent(void * pVertex, WORD Stream = 0, BYTE UsageIndex = 0) const
+		Vector3 & GetNormal(void * pVertex, BYTE UsageIndex = 0)
 		{
-			return GetCustomType<TangentType>(pVertex, Stream, D3DDECLUSAGE_TANGENT, UsageIndex);
+			_ASSERT(elems[D3DDECLUSAGE_NORMAL][UsageIndex].Type == D3DDECLTYPE_FLOAT3);
+
+			return GetVertexValue<Vector3>(pVertex, D3DDECLUSAGE_NORMAL, UsageIndex);
 		}
 
-		void SetTangent(void * pVertex, const TangentType & Tangent, WORD Stream = 0, BYTE UsageIndex = 0) const
+		void SetNormal(void * pVertex, const Vector3 & Normal, BYTE UsageIndex = 0) const
 		{
-			GetTangent(pVertex, Stream, UsageIndex) = Tangent;
+			_ASSERT(elems[D3DDECLUSAGE_NORMAL][UsageIndex].Type == D3DDECLTYPE_FLOAT3);
+
+			return SetVertexValue<Vector3>(pVertex, D3DDECLUSAGE_NORMAL, UsageIndex, Normal);
 		}
 
-		typedef Vector3 NormalType;
-
-		static D3DVERTEXELEMENT9 CreateNormalElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
+		void InsertTexcoordElement(WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			return CreateCustomElement(Stream, D3DDECLUSAGE_NORMAL, UsageIndex, Offset, D3DDECLTYPE_FLOAT3, Method);
+			InsertVertexElement(Offset, D3DDECLTYPE_FLOAT2, D3DDECLUSAGE_TEXCOORD, UsageIndex, Method);
 		}
 
-		NormalType & GetNormal(void * pVertex, WORD Stream = 0, BYTE UsageIndex = 0) const
+		Vector2 & GetTexcoord(void * pVertex, BYTE UsageIndex = 0)
 		{
-			return GetCustomType<NormalType>(pVertex, Stream, D3DDECLUSAGE_NORMAL, UsageIndex);
+			_ASSERT(elems[D3DDECLUSAGE_TEXCOORD][UsageIndex].Type == D3DDECLTYPE_FLOAT2);
+
+			return GetVertexValue<Vector2>(pVertex, D3DDECLUSAGE_TEXCOORD, UsageIndex);
 		}
 
-		void SetNormal(void * pVertex, const NormalType & Normal, WORD Stream = 0, BYTE UsageIndex = 0) const
+		void SetTexcoord(void * pVertex, const Vector2 & Texcoord, BYTE UsageIndex = 0) const
 		{
-			GetNormal(pVertex, Stream, UsageIndex) = Normal;
+			_ASSERT(elems[D3DDECLUSAGE_TEXCOORD][UsageIndex].Type == D3DDECLTYPE_FLOAT2);
+
+			return SetVertexValue<Vector2>(pVertex, D3DDECLUSAGE_TEXCOORD, UsageIndex, Texcoord);
 		}
 
-		typedef Vector2 TexcoordType;
-
-		static D3DVERTEXELEMENT9 CreateTexcoordElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
+		void InsertTangentElement(WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			return CreateCustomElement(Stream, D3DDECLUSAGE_TEXCOORD, UsageIndex, Offset, D3DDECLTYPE_FLOAT2, Method);
+			InsertVertexElement(Offset, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_TANGENT, UsageIndex, Method);
 		}
 
-		TexcoordType & GetTexcoord(void * pVertex, WORD Stream = 0, BYTE UsageIndex = 0) const
+		Vector3 & GetTangent(void * pVertex, BYTE UsageIndex = 0)
 		{
-			return GetCustomType<TexcoordType>(pVertex, Stream, D3DDECLUSAGE_TEXCOORD, UsageIndex);
+			_ASSERT(elems[D3DDECLUSAGE_TANGENT][UsageIndex].Type == D3DDECLTYPE_FLOAT3);
+
+			return GetVertexValue<Vector3>(pVertex, D3DDECLUSAGE_TANGENT, UsageIndex);
 		}
 
-		void SetTexcoord(void * pVertex, const TexcoordType & Texcoord, WORD Stream = 0, BYTE UsageIndex = 0) const
+		void SetTangent(void * pVertex, const Vector3 & Tangent, BYTE UsageIndex = 0) const
 		{
-			GetTexcoord(pVertex, Stream, UsageIndex) = Texcoord;
+			_ASSERT(elems[D3DDECLUSAGE_TANGENT][UsageIndex].Type == D3DDECLTYPE_FLOAT3);
+
+			return SetVertexValue<Vector3>(pVertex, D3DDECLUSAGE_TANGENT, UsageIndex, Tangent);
 		}
 
-		typedef D3DCOLOR ColorType;
-
-		static D3DVERTEXELEMENT9 CreateColorElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
+		void InsertBinormalElement(WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			return CreateCustomElement(Stream, D3DDECLUSAGE_COLOR, UsageIndex, Offset, D3DDECLTYPE_D3DCOLOR, Method);
+			InsertVertexElement(Offset, D3DDECLTYPE_FLOAT3, D3DDECLUSAGE_BINORMAL, UsageIndex, Method);
 		}
 
-		ColorType & GetColor(void * pVertex, WORD Stream = 0, BYTE UsageIndex = 0) const
+		Vector3 & GetBinormal(void * pVertex, BYTE UsageIndex = 0)
 		{
-			return GetCustomType<ColorType>(pVertex, Stream, D3DDECLUSAGE_COLOR, UsageIndex);
+			_ASSERT(elems[D3DDECLUSAGE_BINORMAL][UsageIndex].Type == D3DDECLTYPE_FLOAT3);
+
+			return GetVertexValue<Vector3>(pVertex, D3DDECLUSAGE_BINORMAL, UsageIndex);
 		}
 
-		void SetColor(void * pVertex, const ColorType & Color, WORD Stream = 0, BYTE UsageIndex = 0) const
+		void SetBinormal(void * pVertex, const Vector3 & Binormal, BYTE UsageIndex = 0) const
 		{
-			GetColor(pVertex, Stream, UsageIndex) = Color;
+			_ASSERT(elems[D3DDECLUSAGE_BINORMAL][UsageIndex].Type == D3DDECLTYPE_FLOAT3);
+
+			return SetVertexValue<Vector3>(pVertex, D3DDECLUSAGE_BINORMAL, UsageIndex, Binormal);
 		}
 
-		typedef D3DCOLOR BlendIndicesType;
-
-		static D3DVERTEXELEMENT9 CreateBlendIndicesElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
+		void InsertColorElement(WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
 		{
-			_ASSERT(sizeof(BlendIndicesType) / sizeof(unsigned char) == MAX_BONE_INDICES);
-
-			return CreateCustomElement(Stream, D3DDECLUSAGE_BLENDINDICES, UsageIndex, Offset, D3DDECLTYPE_UBYTE4, Method);
+			InsertVertexElement(Offset, D3DDECLTYPE_D3DCOLOR, D3DDECLUSAGE_COLOR, UsageIndex, Method);
 		}
 
-		BlendIndicesType & GetBlendIndices(void * pVertex, WORD Stream = 0, BYTE UsageIndex = 0) const
+		D3DCOLOR & GetColor(void * pVertex, BYTE UsageIndex = 0)
 		{
-			return GetCustomType<BlendIndicesType>(pVertex, Stream, D3DDECLUSAGE_BLENDINDICES, UsageIndex);
+			_ASSERT(elems[D3DDECLUSAGE_COLOR][UsageIndex].Type == D3DDECLTYPE_D3DCOLOR);
+
+			return GetVertexValue<D3DCOLOR>(pVertex, D3DDECLUSAGE_COLOR, UsageIndex);
 		}
 
-		void SetBlendIndices(void * pVertex, const BlendIndicesType & BlendIndices, WORD Stream = 0, BYTE UsageIndex = 0) const
+		void SetColor(void * pVertex, const D3DCOLOR & Color, BYTE UsageIndex = 0) const
 		{
-			GetBlendIndices(pVertex, Stream, UsageIndex) = BlendIndices;
+			_ASSERT(elems[D3DDECLUSAGE_COLOR][UsageIndex].Type == D3DDECLTYPE_D3DCOLOR);
+
+			return SetVertexValue<D3DCOLOR>(pVertex, D3DDECLUSAGE_COLOR, UsageIndex, Color);
 		}
-
-		typedef Vector4 BlendWeightsType;
-
-		static D3DVERTEXELEMENT9 CreateBlendWeightsElement(WORD Stream, WORD Offset, BYTE UsageIndex = 0, D3DDECLMETHOD Method = D3DDECLMETHOD_DEFAULT)
-		{
-			return CreateCustomElement(Stream, D3DDECLUSAGE_BLENDWEIGHT, UsageIndex, Offset, D3DDECLTYPE_FLOAT4, Method);
-		}
-
-		BlendWeightsType & GetBlendWeights(void * pVertex, WORD Stream = 0, BYTE UsageIndex = 0) const
-		{
-			return GetCustomType<BlendWeightsType>(pVertex, Stream, D3DDECLUSAGE_BLENDWEIGHT, UsageIndex);
-		}
-
-		void SetBlendWeights(void * pVertex, const BlendWeightsType & BlendWeights, WORD Stream = 0, BYTE UsageIndex = 0) const
-		{
-			GetBlendWeights(pVertex, Stream, UsageIndex) = BlendWeights;
-		}
-
-		static WORD CalculateElementUsageSize(BYTE Usage)
-		{
-			switch(Usage)
-			{
-			case D3DDECLUSAGE_POSITION:
-				return sizeof(PositionType);
-
-			case D3DDECLUSAGE_NORMAL:
-				return sizeof(NormalType);
-
-			case D3DDECLUSAGE_TEXCOORD:
-				return sizeof(TexcoordType);
-
-			case D3DDECLUSAGE_BLENDINDICES:
-				return sizeof(BlendIndicesType);
-
-			case D3DDECLUSAGE_BLENDWEIGHT:
-				return sizeof(BlendWeightsType);
-			}
-
-			_ASSERT(false);
-			return 0;
-		}
-
-		std::vector<D3DVERTEXELEMENT9> BuildVertexElementList(void) const;
-
-		std::vector<D3DVERTEXELEMENT9> BuildVertexElementList(WORD OverideStream) const;
-
-		UINT CalculateVertexStride(DWORD Stream = 0) const;
-
-		CComPtr<IDirect3DVertexDeclaration9> CreateVertexDeclaration(LPDIRECT3DDEVICE9 pDevice) const;
 	};
 
 	class VertexBuffer : public DeviceRelatedObject<IDirect3DVertexBuffer9>
@@ -582,7 +588,7 @@ namespace my
 	class OgreMesh : public Mesh
 	{
 	public:
-		D3DVERTEXELEMENT9Set m_VertexElemSet;
+		D3DVertexElementSet m_VertexElems;
 
 		std::vector<std::string> m_MaterialNameList;
 

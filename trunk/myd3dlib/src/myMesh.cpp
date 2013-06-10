@@ -6,53 +6,6 @@
 
 using namespace my;
 
-std::vector<D3DVERTEXELEMENT9> D3DVERTEXELEMENT9Set::BuildVertexElementList(void) const
-{
-	std::vector<D3DVERTEXELEMENT9> ret;
-	const_iterator elem_iter = begin();
-	for(; elem_iter != end(); elem_iter++)
-	{
-		ret.push_back(*elem_iter);
-	}
-
-	D3DVERTEXELEMENT9 elem_end = {0xFF, 0, D3DDECLTYPE_UNUSED, 0, 0, 0};
-	ret.push_back(elem_end);
-	return ret;
-}
-
-std::vector<D3DVERTEXELEMENT9> D3DVERTEXELEMENT9Set::BuildVertexElementList(WORD OverideStream) const
-{
-	std::vector<D3DVERTEXELEMENT9> ret;
-	const_iterator elem_iter = begin();
-	for(; elem_iter != end(); elem_iter++)
-	{
-		ret.push_back(*elem_iter);
-		ret.back().Stream = OverideStream;
-	}
-
-	//D3DVERTEXELEMENT9 elem_end = {0xFF, 0, D3DDECLTYPE_UNUSED, 0, 0, 0};
-	//ret.push_back(elem_end);
-	return ret;
-}
-
-UINT D3DVERTEXELEMENT9Set::CalculateVertexStride(DWORD Stream) const
-{
-	return D3DXGetDeclVertexSize(&BuildVertexElementList()[0], Stream);
-}
-
-CComPtr<IDirect3DVertexDeclaration9> D3DVERTEXELEMENT9Set::CreateVertexDeclaration(LPDIRECT3DDEVICE9 pDevice) const
-{
-	CComPtr<IDirect3DVertexDeclaration9> ret;
-
-	HRESULT hres = pDevice->CreateVertexDeclaration((D3DVERTEXELEMENT9 *)&BuildVertexElementList()[0], &ret);
-	if(FAILED(hres))
-	{
-		THROW_D3DEXCEPTION(hres);
-	}
-
-	return ret;
-}
-
 void VertexBuffer::CreateVertexBuffer(
 	LPDIRECT3DDEVICE9 pDevice,
 	UINT Length,
@@ -319,20 +272,19 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 		THROW_CUSEXCEPTION("cannot process non-position vertex");
 	}
 
-	_ASSERT(m_VertexElemSet.empty());
-	m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreatePositionElement(0, 0, 0));
-	WORD offset = sizeof(D3DVERTEXELEMENT9Set::PositionType);
+	m_VertexElems.InsertPositionElement(0);
+	WORD offset = sizeof(Vector3);
 
 	if(normals || bComputeTangentFrame)
 	{
-		m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateNormalElement(0, offset, 0));
-		offset += sizeof(D3DVERTEXELEMENT9Set::NormalType);
+		m_VertexElems.InsertNormalElement(offset);
+		offset += sizeof(Vector3);
 	}
 
 	if(bComputeTangentFrame)
 	{
-		m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateTangentElement(0, offset, 0));
-		offset += sizeof(D3DVERTEXELEMENT9Set::TangentType);
+		m_VertexElems.InsertTangentElement(offset);
+		offset += sizeof(Vector3);
 	}
 
 	if(texture_coords > MAXBYTE)
@@ -342,19 +294,19 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 
 	for(int i = 0; i < texture_coords; i++)
 	{
-		m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateTexcoordElement(0, offset, i));
-		offset += sizeof(D3DVERTEXELEMENT9Set::TexcoordType);
+		m_VertexElems.InsertTexcoordElement(offset, i);
+		offset += sizeof(Vector2);
 	}
 
 	rapidxml::xml_node<char> * node_boneassignments = node_mesh->first_node("boneassignments");
 	WORD indicesOffset = 0, weightsOffset = 0;
 	if(node_boneassignments != NULL)
 	{
-		m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateBlendIndicesElement(0, offset, 0));
-		offset += sizeof(D3DVERTEXELEMENT9Set::BlendIndicesType);
+		m_VertexElems.InsertBlendIndicesElement(offset);
+		offset += sizeof(DWORD);
 
-		m_VertexElemSet.insert(D3DVERTEXELEMENT9Set::CreateBlendWeightsElement(0, offset, 0));
-		offset += sizeof(D3DVERTEXELEMENT9Set::BlendWeightsType);
+		m_VertexElems.InsertBlendWeightElement(offset);
+		offset += sizeof(Vector4);
 	}
 
 	DEFINE_XML_NODE_SIMPLE(submeshes, mesh);
@@ -367,7 +319,11 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 		facecount += count;
 	}
 
-	CreateMesh(pd3dDevice, facecount, vertexcount, (D3DVERTEXELEMENT9 *)&m_VertexElemSet.BuildVertexElementList()[0], dwMeshOptions);
+	std::vector<D3DVERTEXELEMENT9> velist = m_VertexElems.BuildVertexElementList(0);
+	D3DVERTEXELEMENT9 ve_end = D3DDECL_END();
+	velist.push_back(ve_end);
+
+	CreateMesh(pd3dDevice, facecount, vertexcount, (D3DVERTEXELEMENT9 *)&velist[0], dwMeshOptions);
 
 	const VOID * pVertices = LockVertexBuffer();
 	DEFINE_XML_NODE_SIMPLE(vertex, vertexbuffer);
@@ -377,7 +333,7 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 		if(positions)
 		{
 			DEFINE_XML_NODE_SIMPLE(position, vertex);
-			D3DVERTEXELEMENT9Set::PositionType & Position = m_VertexElemSet.GetPosition(pVertex);
+			Vector3 & Position = m_VertexElems.GetPosition(pVertex);
 			rapidxml::xml_attribute<char> * attr_tmp;
 			DEFINE_XML_ATTRIBUTE_FLOAT(Position.x, attr_tmp, node_position, x);
 			DEFINE_XML_ATTRIBUTE_FLOAT(Position.y, attr_tmp, node_position, y);
@@ -387,7 +343,7 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 		if(normals)
 		{
 			DEFINE_XML_NODE_SIMPLE(normal, vertex);
-			D3DVERTEXELEMENT9Set::NormalType & Normal = m_VertexElemSet.GetNormal(pVertex);
+			Vector3 & Normal = m_VertexElems.GetNormal(pVertex);
 			rapidxml::xml_attribute<char> * attr_tmp;
 			DEFINE_XML_ATTRIBUTE_FLOAT(Normal.x, attr_tmp, node_normal, x);
 			DEFINE_XML_ATTRIBUTE_FLOAT(Normal.y, attr_tmp, node_normal, y);
@@ -397,7 +353,7 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 		rapidxml::xml_node<char> * node_texcoord = node_vertex->first_node("texcoord");
 		for(int i = 0; i < texture_coords && node_texcoord != NULL; i++, node_texcoord = node_texcoord->next_sibling())
 		{
-			D3DVERTEXELEMENT9Set::TexcoordType & Texcoord = m_VertexElemSet.GetTexcoord(pVertex, i);
+			Vector2 & Texcoord = m_VertexElems.GetTexcoord(pVertex, i);
 			rapidxml::xml_attribute<char> * attr_tmp;
 			DEFINE_XML_ATTRIBUTE_FLOAT(Texcoord.x, attr_tmp, node_texcoord, u);
 			DEFINE_XML_ATTRIBUTE_FLOAT(Texcoord.y, attr_tmp, node_texcoord, v);
@@ -405,8 +361,8 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 
 		if(node_boneassignments != NULL)
 		{
-			m_VertexElemSet.SetBlendIndices(pVertex, D3DCOLOR_ARGB(0, 0, 0, 0));
-			m_VertexElemSet.SetBlendWeights(pVertex, Vector4::zero);
+			m_VertexElems.SetBlendIndices(pVertex, 0);
+			m_VertexElems.SetBlendWeight(pVertex, Vector4::zero);
 		}
 	}
 
@@ -430,11 +386,11 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 			}
 
 			unsigned char * pVertex = (unsigned char *)pVertices + vertexindex * offset;
-			unsigned char * pIndices = (unsigned char *)&m_VertexElemSet.GetBlendIndices(pVertex);
-			float * pWeights = (float *)&m_VertexElemSet.GetBlendWeights(pVertex);
+			unsigned char * pIndices = (unsigned char *)&m_VertexElems.GetBlendIndices(pVertex);
+			float * pWeights = (float *)&m_VertexElems.GetBlendWeight(pVertex);
 
 			int i = 0;
-			for(; i < D3DVERTEXELEMENT9Set::MAX_BONE_INDICES; i++)
+			for(; i < D3DVertexElementSet::MAX_BONE_INDICES; i++)
 			{
 				if(pWeights[i] == 0)
 				{
@@ -444,7 +400,7 @@ void OgreMesh::CreateMeshFromOgreXmlInMemory(
 				}
 			}
 
-			if(i >= D3DVERTEXELEMENT9Set::MAX_BONE_INDICES)
+			if(i >= D3DVertexElementSet::MAX_BONE_INDICES)
 			{
 				THROW_CUSEXCEPTION("too much bone assignment");
 			}
@@ -519,7 +475,7 @@ void OgreMesh::ComputeTangentFrame(void)
 {
 	std::vector<Vector3> tan1(GetNumVertices(), Vector3::zero);
 	std::vector<Vector3> tan2(GetNumVertices(), Vector3::zero);
-	WORD VertexStride = m_VertexElemSet.CalculateVertexStride();
+	DWORD VertexStride = GetNumBytesPerVertex();
 
 	VOID * pIndices = LockIndexBuffer();
 	const VOID * pVertices = LockVertexBuffer();
@@ -544,13 +500,13 @@ void OgreMesh::ComputeTangentFrame(void)
 		unsigned char * pv2 = (unsigned char *)pVertices + i2 * VertexStride;
 		unsigned char * pv3 = (unsigned char *)pVertices + i3 * VertexStride;
 
-		const Vector3 & v1 = m_VertexElemSet.GetPosition(pv1);
-		const Vector3 & v2 = m_VertexElemSet.GetPosition(pv2);
-		const Vector3 & v3 = m_VertexElemSet.GetPosition(pv3);
+		const Vector3 & v1 = m_VertexElems.GetPosition(pv1);
+		const Vector3 & v2 = m_VertexElems.GetPosition(pv2);
+		const Vector3 & v3 = m_VertexElems.GetPosition(pv3);
 
-		const Vector2 & w1 = m_VertexElemSet.GetTexcoord(pv1);
-		const Vector2 & w2 = m_VertexElemSet.GetTexcoord(pv2);
-		const Vector2 & w3 = m_VertexElemSet.GetTexcoord(pv3);
+		const Vector2 & w1 = m_VertexElems.GetTexcoord(pv1);
+		const Vector2 & w2 = m_VertexElems.GetTexcoord(pv2);
+		const Vector2 & w3 = m_VertexElems.GetTexcoord(pv3);
 
 		float x1 = v2.x - v1.x;
 		float x2 = v3.x - v1.x;
@@ -580,11 +536,11 @@ void OgreMesh::ComputeTangentFrame(void)
 	for(DWORD vertex_i = 0; vertex_i < GetNumVertices(); vertex_i++)
 	{
 		unsigned char * pVertex = (unsigned char *)pVertices + vertex_i * VertexStride;
-		const Vector3 & n = m_VertexElemSet.GetNormal(pVertex);
+		const Vector3 & n = m_VertexElems.GetNormal(pVertex);
 		const Vector3 & t = tan1[vertex_i];
 
 		// Gram-Schmidt orthogonalize
-		m_VertexElemSet.GetTangent(pVertex) = (t - n * n.dot(t)).normalize();
+		m_VertexElems.GetTangent(pVertex) = (t - n * n.dot(t)).normalize();
 	}
 
 	UnlockVertexBuffer();
