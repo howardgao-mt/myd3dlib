@@ -234,6 +234,12 @@ void GameStateMain::OnDestroyDevice(void)
 
 	m_Characters.clear();
 
+	m_Actors.clear();
+
+	m_DestructibleActors.clear();
+
+	m_DestructibleAssets.clear();
+
 	PhysxScene::OnShutdown();
 }
 
@@ -371,10 +377,6 @@ void GameStateMain::OnFrameRender(
 			}
 		}
 
-		Game::getSingleton().m_EmitterInst->Begin();
-		EmitterMgr::Draw(Game::getSingleton().m_EmitterInst.get(), m_Camera.get(), fTime, fElapsedTime);
-		Game::getSingleton().m_EmitterInst->End();
-
 		for(size_t i = 0; i < m_DestructibleActors.size(); i++)
 		{
 			m_DestructibleActors[i]->lockRenderResources();
@@ -382,6 +384,10 @@ void GameStateMain::OnFrameRender(
 			m_DestructibleActors[i]->dispatchRenderResources(Game::getSingleton().m_ApexRenderer);
 			m_DestructibleActors[i]->unlockRenderResources();
 		}
+
+		Game::getSingleton().m_EmitterInst->Begin();
+		EmitterMgr::Draw(Game::getSingleton().m_EmitterInst.get(), m_Camera.get(), fTime, fElapsedTime);
+		Game::getSingleton().m_EmitterInst->End();
 
 		// ! The Right tick post render should be called after d3ddevice->present, for vertical sync reason
 		PhysxScene::OnTickPostRender(fElapsedTime);
