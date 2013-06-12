@@ -113,7 +113,7 @@ public:
 
 	void setSpriteBufferRange(physx::PxU32 firstSprite, physx::PxU32 numSprites) {}
 
-	void setMaterial(void* material) {m_material = static_cast<my::Material *>(material);}
+	void setMaterial(void* material) {m_material = static_cast<my::MaterialPtr *>(material)->get();}
 
 	physx::PxU32 getNbVertexBuffers() const {return m_ApexVbs.size();}
 
@@ -126,6 +126,8 @@ public:
 	physx::apex::NxUserRenderInstanceBuffer* getInstanceBuffer() const {return NULL;}
 
 	physx::apex::NxUserRenderSpriteBuffer* getSpriteBuffer() const {return NULL;}
+
+	void Draw(IDirect3DDevice9 * pd3dDevice, const my::Matrix4 & World);
 
 	std::vector<ApexRenderVertexBuffer *> m_ApexVbs;
 
