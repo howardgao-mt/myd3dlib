@@ -165,7 +165,7 @@ namespace my
 		ArchiveStreamPtr OpenArchiveStream(const std::string & path);
 	};
 
-	class ResourceMgr
+	class DeviceRelatedResourceMgr
 		: public ArchiveDirMgr
 		, public ID3DXInclude
 	{
@@ -181,11 +181,11 @@ namespace my
 		DeviceRelatedResourceSet m_resourceSet;
 
 	public:
-		ResourceMgr(void)
+		DeviceRelatedResourceMgr(void)
 		{
 		}
 
-		virtual ~ResourceMgr(void)
+		virtual ~DeviceRelatedResourceMgr(void)
 		{
 		}
 
@@ -223,7 +223,7 @@ namespace my
 					if(reload)
 						res->OnDestroyDevice();
 
-					return boost::dynamic_pointer_cast<ResourceType>(res);
+					boost::shared_ptr<ResourceType> ret = boost::dynamic_pointer_cast<ResourceType>(res); _ASSERT(ret); return ret;
 				}
 			}
 
@@ -240,7 +240,9 @@ namespace my
 
 		OgreSkeletonAnimationPtr LoadSkeleton(const std::string & path, bool reload = false);
 
-		EffectPtr LoadEffect(const std::string & path, bool reload = false);
+		typedef std::vector<std::pair<std::string, std::string> > string_pair_list;
+
+		EffectPtr LoadEffect(const std::string & path, const string_pair_list & macros, bool reload = false);
 
 		FontPtr LoadFont(const std::string & path, int height, bool reload = false);
 	};

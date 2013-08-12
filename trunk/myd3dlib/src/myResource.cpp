@@ -2,6 +2,7 @@
 #include "myResource.h"
 #include "myDxutApp.h"
 #include "libc.h"
+#include <strstream>
 
 using namespace my;
 
@@ -269,7 +270,7 @@ ArchiveStreamPtr ArchiveDirMgr::OpenArchiveStream(const std::string & path)
 	THROW_CUSEXCEPTION(str_printf("cannot find specified file: %s", path.c_str()));
 }
 
-HRESULT ResourceMgr::Open(
+HRESULT DeviceRelatedResourceMgr::Open(
 	D3DXINCLUDE_TYPE IncludeType,
 	LPCSTR pFileName,
 	LPCVOID pParentData,
@@ -297,7 +298,7 @@ HRESULT ResourceMgr::Open(
 	return E_FAIL;
 }
 
-HRESULT ResourceMgr::Close(
+HRESULT DeviceRelatedResourceMgr::Close(
 	LPCVOID pData)
 {
 	_ASSERT(m_cacheSet.end() != m_cacheSet.find(pData));
@@ -305,7 +306,7 @@ HRESULT ResourceMgr::Close(
 	return S_OK;
 }
 
-HRESULT ResourceMgr::OnCreateDevice(
+HRESULT DeviceRelatedResourceMgr::OnCreateDevice(
 	IDirect3DDevice9 * pd3dDevice,
 	const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
 {
@@ -318,7 +319,7 @@ HRESULT ResourceMgr::OnCreateDevice(
 	return S_OK;
 }
 
-HRESULT ResourceMgr::OnResetDevice(
+HRESULT DeviceRelatedResourceMgr::OnResetDevice(
 	IDirect3DDevice9 * pd3dDevice,
 	const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
 {
@@ -340,7 +341,7 @@ HRESULT ResourceMgr::OnResetDevice(
 	return S_OK;
 }
 
-void ResourceMgr::OnLostDevice(void)
+void DeviceRelatedResourceMgr::OnLostDevice(void)
 {
 	DeviceRelatedResourceSet::iterator res_iter = m_resourceSet.begin();
 	for(; res_iter != m_resourceSet.end();)
@@ -358,7 +359,7 @@ void ResourceMgr::OnLostDevice(void)
 	}
 }
 
-void ResourceMgr::OnDestroyDevice(void)
+void DeviceRelatedResourceMgr::OnDestroyDevice(void)
 {
 	DeviceRelatedResourceSet::iterator res_iter = m_resourceSet.begin();
 	for(; res_iter != m_resourceSet.end();)
@@ -380,7 +381,7 @@ void ResourceMgr::OnDestroyDevice(void)
 	m_EffectPool.Release();
 }
 
-TexturePtr ResourceMgr::LoadTexture(const std::string & path, bool reload)
+TexturePtr DeviceRelatedResourceMgr::LoadTexture(const std::string & path, bool reload)
 {
 	TexturePtr ret = GetDeviceRelatedResource<Texture>(path, reload);
 	if(!ret->m_ptr)
@@ -399,7 +400,7 @@ TexturePtr ResourceMgr::LoadTexture(const std::string & path, bool reload)
 	return ret;
 }
 
-CubeTexturePtr ResourceMgr::LoadCubeTexture(const std::string & path, bool reload)
+CubeTexturePtr DeviceRelatedResourceMgr::LoadCubeTexture(const std::string & path, bool reload)
 {
 	CubeTexturePtr ret = GetDeviceRelatedResource<CubeTexture>(path, reload);
 	if(!ret->m_ptr)
@@ -418,7 +419,7 @@ CubeTexturePtr ResourceMgr::LoadCubeTexture(const std::string & path, bool reloa
 	return ret;
 }
 
-OgreMeshPtr ResourceMgr::LoadMesh(const std::string & path, bool reload)
+OgreMeshPtr DeviceRelatedResourceMgr::LoadMesh(const std::string & path, bool reload)
 {
 	OgreMeshPtr ret = GetDeviceRelatedResource<OgreMesh>(path, reload);
 	if(!ret->m_ptr)
@@ -438,7 +439,7 @@ OgreMeshPtr ResourceMgr::LoadMesh(const std::string & path, bool reload)
 	return ret;
 }
 
-OgreSkeletonAnimationPtr ResourceMgr::LoadSkeleton(const std::string & path, bool reload)
+OgreSkeletonAnimationPtr DeviceRelatedResourceMgr::LoadSkeleton(const std::string & path, bool reload)
 {
 	OgreSkeletonAnimationPtr ret = GetDeviceRelatedResource<OgreSkeletonAnimation>(path, reload);
 	if(ret->m_boneHierarchy.empty())
@@ -458,9 +459,21 @@ OgreSkeletonAnimationPtr ResourceMgr::LoadSkeleton(const std::string & path, boo
 	return ret;
 }
 
-EffectPtr ResourceMgr::LoadEffect(const std::string & path, bool reload)
+EffectPtr DeviceRelatedResourceMgr::LoadEffect(const std::string & path, const string_pair_list & macros, bool reload)
 {
-	EffectPtr ret = GetDeviceRelatedResource<Effect>(path, reload);
+	std::ostrstream ostr;
+	ostr << path;
+	std::vector<D3DXMACRO> d3dmacros;
+	string_pair_list::const_iterator macro_iter = macros.begin();
+	for(; macro_iter != macros.end(); macro_iter++)
+	{
+		D3DXMACRO d3dmacro = {macro_iter->first.c_str(), macro_iter->second.c_str()};
+		ostr << ", " << d3dmacro.Name << ", " << d3dmacro.Definition;
+		d3dmacros.push_back(d3dmacro);
+	}
+	D3DXMACRO end = {0};
+	d3dmacros.push_back(end);
+	EffectPtr ret = GetDeviceRelatedResource<Effect>(ostr.str(), reload);
 	if(!ret->m_ptr)
 	{
 		m_EffectInclude = ZipArchiveDir::ReplaceSlash(path);
@@ -468,20 +481,22 @@ EffectPtr ResourceMgr::LoadEffect(const std::string & path, bool reload)
 		std::string full_path = GetFullPath(path);
 		if(!full_path.empty())
 		{
-			ret->CreateEffectFromFile(D3DContext::getSingleton().GetD3D9Device(), ms2ts(full_path.c_str()).c_str(), NULL, NULL, 0, m_EffectPool);
+			ret->CreateEffectFromFile(D3DContext::getSingleton().GetD3D9Device(), ms2ts(full_path.c_str()).c_str(), &d3dmacros[0], NULL, 0, m_EffectPool);
 		}
 		else
 		{
 			CachePtr cache = OpenArchiveStream(path)->GetWholeCache();
-			ret->CreateEffect(D3DContext::getSingleton().GetD3D9Device(), &(*cache)[0], cache->size(), NULL, this, 0, m_EffectPool);
+			ret->CreateEffect(D3DContext::getSingleton().GetD3D9Device(), &(*cache)[0], cache->size(), &d3dmacros[0], this, 0, m_EffectPool);
 		}
 	}
 	return ret;
 }
 
-FontPtr ResourceMgr::LoadFont(const std::string & path, int height, bool reload)
+FontPtr DeviceRelatedResourceMgr::LoadFont(const std::string & path, int height, bool reload)
 {
-	FontPtr ret = GetDeviceRelatedResource<Font>(str_printf("%s, %d", path.c_str(), height), reload);
+	std::ostrstream ostr;
+	ostr << path << ", " << height;
+	FontPtr ret = GetDeviceRelatedResource<Font>(ostr.str(), reload);
 	if(!ret->m_face)
 	{
 		std::string full_path = GetFullPath(path);

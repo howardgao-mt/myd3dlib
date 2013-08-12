@@ -194,9 +194,9 @@ HRESULT Game::OnCreateDevice(
 		return hr;
 	}
 
-	m_UIRender.reset(new EffectUIRender(pd3dDevice, LoadEffect("shader/UIEffect.fx")));
+	m_UIRender.reset(new EffectUIRender(pd3dDevice, LoadEffect("shader/UIEffect.fx", std::vector<std::pair<std::string, std::string> >())));
 
-	m_EmitterInst.reset(new EffectEmitterInstance(LoadEffect("shader/Particle.fx")));
+	m_EmitterInst.reset(new EffectEmitterInstance(LoadEffect("shader/Particle.fx", std::vector<std::pair<std::string, std::string> >())));
 
 	if(FAILED(hr = m_EmitterInst->OnCreateDevice(pd3dDevice, pBackBufferSurfaceDesc)))
 	{
@@ -458,7 +458,7 @@ bool Game::ExecuteCode(const char * code) throw()
 			msg = L"(error object is not a string)";
 		lua_pop(m_lua->_state, 1);
 
-		MessageBeep(-1); AddLine(msg);
+		MessageBeep(-1); AddLine(msg); if(!m_Console->GetVisible()) m_Console->SetVisible(true);
 		return false;
 	}
 	return true;
