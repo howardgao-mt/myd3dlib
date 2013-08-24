@@ -91,7 +91,7 @@ static int luaL_loadfile (lua_State *L, const char *filename)
 	}
 	catch(const my::Exception & e)
 	{
-		lua_pushfstring(L, e.GetDescription().c_str());
+		lua_pushfstring(L, ts2ms(e.what().c_str()).c_str());
 		lua_remove(L, fnameindex);
 		return LUA_ERRFILE;
 	}
@@ -173,7 +173,7 @@ static int add_file_and_line(lua_State * L)
 
 static void translate_my_exception(lua_State* L, my::Exception const & e)
 {
-	std::string s = e.GetDescription();
+	std::string s = ts2ms(e.what().c_str());
 	lua_pushlstring(L, s.c_str(), s.length());
 }
 
@@ -286,39 +286,9 @@ struct HelpFunc
 		obj->SetTexture(name, value);
 	}
 
-	static my::TexturePtr ResourceMgr_LoadTexture(my::ResourceMgr * obj, const std::string & path)
+	static my::EffectPtr ResourceMgr_LoadEffect(my::ResourceMgr * obj, const std::string & path, bool reload)
 	{
-		return obj->LoadTexture(path);
-	}
-
-	static my::CubeTexturePtr ResourceMgr_LoadCubeTexture(my::ResourceMgr * obj, const std::string & path)
-	{
-		return obj->LoadCubeTexture(path);
-	}
-
-	static my::OgreMeshPtr ResourceMgr_LoadMesh(my::ResourceMgr * obj, const std::string & path)
-	{
-		return obj->LoadMesh(path);
-	}
-
-	static my::OgreSkeletonAnimationPtr ResourceMgr_LoadSkeleton(my::ResourceMgr * obj, const std::string & path)
-	{
-		return obj->LoadSkeleton(path);
-	}
-
-	static my::EffectPtr ResourceMgr_LoadEffect(my::ResourceMgr * obj, const std::string & path)
-	{
-		return obj->LoadEffect(path, std::vector<std::pair<std::string, std::string> >());
-	}
-
-	static my::FontPtr ResourceMgr_LoadFont(my::ResourceMgr * obj, const std::string & path, int height)
-	{
-		return obj->LoadFont(path, height);
-	}
-
-	static my::MaterialPtr ResourceMgr_LoadMaterial(my::ResourceMgr * obj, const std::string & path)
-	{
-		return obj->LoadMaterial(path);
+		return obj->LoadEffect(path, std::vector<std::pair<std::string, std::string> >(), reload);
 	}
 };
 
@@ -826,12 +796,7 @@ void Export2Lua(lua_State * L)
 			.def("LoadEffect", &my::DeviceRelatedResourceMgr::LoadEffect)
 			.def("LoadFont", &my::DeviceRelatedResourceMgr::LoadFont)
 			// ! luabind unsupport default parameter
-			.def("LoadTexture", &HelpFunc::ResourceMgr_LoadTexture)
-			.def("LoadCubeTexture", &HelpFunc::ResourceMgr_LoadCubeTexture)
-			.def("LoadMesh", &HelpFunc::ResourceMgr_LoadMesh)
-			.def("LoadSkeleton", &HelpFunc::ResourceMgr_LoadSkeleton)
 			.def("LoadEffect", &HelpFunc::ResourceMgr_LoadEffect)
-			.def("LoadFont", &HelpFunc::ResourceMgr_LoadFont)
 
 		, class_<D3DSURFACE_DESC>("D3DSURFACE_DESC")
 			.def_readwrite("Format", &D3DSURFACE_DESC::Format)
@@ -990,8 +955,6 @@ void Export2Lua(lua_State * L)
 
 		, class_<my::ResourceMgr, my::DeviceRelatedResourceMgr>("ResourceMgr")
 			.def("LoadMaterial", &my::ResourceMgr::LoadMaterial)
-			// ! luabind unsupport default parameter
-			.def("LoadMaterial", &HelpFunc::ResourceMgr_LoadMaterial)
 
 		, class_<my::BaseCamera, boost::shared_ptr<my::BaseCamera> >("BaseCamera")
 			.def_readwrite("Fov", &my::BaseCamera::m_Fov)

@@ -2,7 +2,6 @@
 #define NOMINMAX
 //Find all "#include <", Match case, Whole word, Subfolders, Keep modified files open, Find Results 1, "Current Project", "*.c;*.cpp;*.cxx;*.cc;*.tli;*.tlh;*.h;*.hpp;*.hxx;*.hh;*.inl;*.rc;*.resx;*.idl;*.asm;*.inc"
 #include <windows.h>
-#include <stdlib.h>
 #include <string>
 #include <string>
 #include <sstream>
@@ -14,8 +13,7 @@
 #include <boost/type_traits/is_same.hpp>
 #include <limits>
 #include <boost/static_assert.hpp>
-extern "C"
-{
+extern "C" {
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -29,6 +27,7 @@ extern "C"
 #include <atlbase.h>
 #include <deque>
 #include <string>
+#include <tchar.h>
 #include <Windows.h>
 #include <boost/shared_ptr.hpp>
 #include <d3dx9.h>
@@ -40,7 +39,6 @@ extern "C"
 #include <dinput.h>
 #include <atlbase.h>
 #include <boost/shared_ptr.hpp>
-#include <crtdbg.h>
 #include <d3dx9.h>
 #include <d3d9.h>
 #include <set>
@@ -93,6 +91,8 @@ extern "C"
 #include <d3d9.h>
 #include <dinput.h>
 #include <dsound.h>
+#include <tchar.h>
+#include <crtdbg.h>
 #include <strstream>
 #include <tchar.h>
-  //Matching lines: 91    Matching files: 28    Total files searched: 51
+  //Matching lines: 92    Matching files: 29    Total files searched: 51
