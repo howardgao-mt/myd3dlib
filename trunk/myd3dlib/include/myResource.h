@@ -1,13 +1,12 @@
 #pragma once
 
 #include <unzip.h>
-#include "myTexture.h"
-#include "myEffect.h"
+#include "myThread.h"
+#include "mySingleton.h"
 #include "myMesh.h"
 #include "mySkeleton.h"
+#include "myEffect.h"
 #include "myFont.h"
-#include <boost/weak_ptr.hpp>
-#include <boost/unordered_map.hpp>
 
 namespace my
 {
@@ -29,8 +28,7 @@ namespace my
 
 	typedef boost::shared_ptr<ArchiveStream> ArchiveStreamPtr;
 
-	class ZipArchiveStream
-		: public ArchiveStream
+	class ZipArchiveStream : public ArchiveStream
 	{
 	protected:
 		unzFile m_zFile;
@@ -47,8 +45,7 @@ namespace my
 		virtual CachePtr GetWholeCache(void);
 	};
 
-	class FileArchiveStream
-		: public ArchiveStream
+	class FileArchiveStream : public ArchiveStream
 	{
 	protected:
 		FILE * m_fp;
@@ -85,8 +82,7 @@ namespace my
 		virtual ArchiveStreamPtr OpenArchiveStream(const std::string & path) = 0;
 	};
 
-	class ZipArchiveDir
-		: public ArchiveDir
+	class ZipArchiveDir : public ArchiveDir
 	{
 	protected:
 		std::string m_password;
@@ -118,8 +114,7 @@ namespace my
 		ArchiveStreamPtr OpenArchiveStream(const std::string & path);
 	};
 
-	class FileArchiveDir
-		: public ArchiveDir
+	class FileArchiveDir : public ArchiveDir
 	{
 	public:
 		FileArchiveDir(const std::string & dir)
@@ -141,7 +136,9 @@ namespace my
 
 		typedef boost::unordered_map<std::string, ResourceDirPtr> ResourceDirPtrMap;
 
-		ResourceDirPtrMap m_dirMap;
+		ResourceDirPtrMap m_DirMap;
+
+		CriticalSection m_DirMapSection;
 
 	public:
 		ArchiveDirMgr(void)
@@ -165,39 +162,102 @@ namespace my
 		ArchiveStreamPtr OpenArchiveStream(const std::string & path);
 	};
 
-	class DeviceRelatedResourceMgr
-		: public ArchiveDirMgr
-		, public ID3DXInclude
+	typedef boost::function<void (DeviceRelatedObjectBasePtr)> ResourceCallback;
+
+	class IORequest
+	{
+	public:
+		Event m_LoadEvent;
+
+		typedef std::vector<ResourceCallback> ResourceCallbackList;
+
+		ResourceCallbackList m_callbacks;
+
+		DeviceRelatedObjectBasePtr m_res;
+
+	public:
+		IORequest(void)
+			: m_LoadEvent(NULL, TRUE, FALSE, NULL)
+		{
+		}
+
+		virtual ~IORequest(void)
+		{
+		}
+
+		virtual void DoLoad(void) = 0;
+
+		virtual void BuildResource(LPDIRECT3DDEVICE9 pd3dDevice) = 0;
+	};
+
+	typedef boost::shared_ptr<IORequest> IORequestPtr;
+
+	class AsynchronousIOMgr : public ArchiveDirMgr , public Thread
 	{
 	protected:
-		CComPtr<ID3DXEffectPool> m_EffectPool;
+		typedef std::list<std::pair<std::string, IORequestPtr> > IORequestPtrPairList;
 
-		std::string m_EffectInclude;
+		IORequestPtrPairList m_IORequestList;
 
-		boost::unordered_map<LPCVOID, CachePtr> m_cacheSet;
+		CriticalSection m_IORequestListSection;
 
-		typedef boost::unordered_map<std::string, boost::weak_ptr<DeviceRelatedObjectBase> > DeviceRelatedResourceSet;
+		ConditionVariable m_IORequestListCondition;
 
-		DeviceRelatedResourceSet m_resourceSet;
+		bool m_bStopped;
+
+	public:
+		AsynchronousIOMgr(void)
+			: m_bStopped(false)
+		{
+		}
+
+		virtual DWORD OnProc(void);
+
+		my::IORequestPtr PushIORequestResource(const std::string & key, my::IORequestPtr request);
+
+		void StopIORequestProc(void);
+	};
+
+	class DeviceRelatedResourceMgr
+	{
+	protected:
+		typedef boost::weak_ptr<DeviceRelatedObjectBase> DeviceRelatedObjectBaseWeakPtr;
+
+		typedef boost::unordered_map<std::string, DeviceRelatedObjectBaseWeakPtr> DeviceRelatedObjectBaseWeakPtrSet;
+
+		DeviceRelatedObjectBaseWeakPtrSet m_ResourceWeakSet;
 
 	public:
 		DeviceRelatedResourceMgr(void)
 		{
 		}
 
-		virtual ~DeviceRelatedResourceMgr(void)
+		HRESULT OnCreateDevice(
+			IDirect3DDevice9 * pd3dDevice,
+			const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
+
+		HRESULT OnResetDevice(
+			IDirect3DDevice9 * pd3dDevice,
+			const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
+
+		void OnLostDevice(void);
+
+		void OnDestroyDevice(void);
+	};
+
+	class AsynchronousResourceMgr : public AsynchronousIOMgr, public DeviceRelatedResourceMgr, public ID3DXInclude
+	{
+	protected:
+		CComPtr<ID3DXEffectPool> m_EffectPool;
+
+		std::string m_EffectInclude;
+
+		boost::unordered_map<LPCVOID, CachePtr> m_CacheSet;
+
+	public:
+		AsynchronousResourceMgr(void)
 		{
 		}
-
-		virtual __declspec(nothrow) HRESULT __stdcall Open(
-			D3DXINCLUDE_TYPE IncludeType,
-			LPCSTR pFileName,
-			LPCVOID pParentData,
-			LPCVOID * ppData,
-			UINT * pBytes);
-
-		virtual __declspec(nothrow) HRESULT __stdcall Close(
-			LPCVOID pData);
 
 		HRESULT OnCreateDevice(
 			IDirect3DDevice9 * pd3dDevice,
@@ -211,39 +271,46 @@ namespace my
 
 		void OnDestroyDevice(void);
 
-		template <class ResourceType>
-		boost::shared_ptr<ResourceType> GetDeviceRelatedResource(const std::string & key, bool reload)
-		{
-			DeviceRelatedResourceSet::const_iterator res_iter = m_resourceSet.find(key);
-			if(m_resourceSet.end() != res_iter)
-			{
-				boost::shared_ptr<DeviceRelatedObjectBase> res = res_iter->second.lock();
-				if(res)
-				{
-					if(reload)
-						res->OnDestroyDevice();
+		__declspec(nothrow) HRESULT __stdcall Open(
+			D3DXINCLUDE_TYPE IncludeType,
+			LPCSTR pFileName,
+			LPCVOID pParentData,
+			LPCVOID * ppData,
+			UINT * pBytes);
 
-					boost::shared_ptr<ResourceType> ret = boost::dynamic_pointer_cast<ResourceType>(res); _ASSERT(ret); return ret;
-				}
-			}
+		__declspec(nothrow) HRESULT __stdcall Close(
+			LPCVOID pData);
 
-			boost::shared_ptr<ResourceType> res(new ResourceType());
-			m_resourceSet[key] = res;
-			return res;
-		}
+		IORequestPtr LoadResourceAsync(const std::string & key, IORequestPtr request);
 
-		TexturePtr LoadTexture(const std::string & path, bool reload = false);
+		void CheckResource(void);
 
-		CubeTexturePtr LoadCubeTexture(const std::string & path, bool reload = false);
+		bool CheckRequest(const std::string & key, IORequestPtr request, DWORD timeout);
 
-		OgreMeshPtr LoadMesh(const std::string & path, bool reload = false);
+		void LoadTextureAsync(const std::string & path, const ResourceCallback & callback);
 
-		OgreSkeletonAnimationPtr LoadSkeleton(const std::string & path, bool reload = false);
+		BaseTexturePtr LoadTexture(const std::string & path);
 
-		typedef std::vector<std::pair<std::string, std::string> > string_pair_list;
+		void LoadMeshAsync(const std::string & path, const ResourceCallback & callback);
 
-		EffectPtr LoadEffect(const std::string & path, const string_pair_list & macros, bool reload = false);
+		OgreMeshPtr LoadMesh(const std::string & path);
 
-		FontPtr LoadFont(const std::string & path, int height, bool reload = false);
+		void LoadSkeletonAsync(const std::string & path, const ResourceCallback & callback);
+
+		OgreSkeletonAnimationPtr LoadSkeleton(const std::string & path);
+
+		class EffectIORequest;
+
+		typedef std::pair<std::string, std::string> EffectMacroPair;
+
+		typedef std::vector<EffectMacroPair> EffectMacroPairList;
+
+		void LoadEffectAsync(const std::string & path, const EffectMacroPairList & macros, const ResourceCallback & callback);
+
+		EffectPtr LoadEffect(const std::string & path, const EffectMacroPairList & macros);
+
+		void LoadFontAsync(const std::string & path, int height, const ResourceCallback & callback);
+
+		FontPtr LoadFont(const std::string & path, int height);
 	};
 };
