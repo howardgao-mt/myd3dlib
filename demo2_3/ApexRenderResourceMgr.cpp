@@ -115,7 +115,7 @@ ApexRenderer::~ApexRenderer(void)
 void ApexRenderer::renderResource(const physx::apex::NxApexRenderContext& context)
 {
 	static_cast<ApexRenderResource *>(context.renderResource)->Draw(
-		Game::getSingleton().GetD3D9Device(), (my::Matrix4 &)context.local2world);
+		Game::getSingleton().GetD3D9Device(), (my::Matrix4 &)context.local2world, 0);
 }
 
 ApexRenderVertexBuffer::ApexRenderVertexBuffer(IDirect3DDevice9 * pd3dDevice, const physx::apex::NxUserRenderVertexBufferDesc& desc)
@@ -295,13 +295,43 @@ void ApexRenderBoneBuffer::writeBuffer(const physx::NxApexRenderBoneBufferData& 
 	{
 		for(unsigned int j = 0; j < numBones; j++)
 		{
-			m_bones[firstBone + j] = (my::Matrix4 &)physx::PxMat44(
-				*(const physx::general_shared3::PxMat34Legacy *)((unsigned char *)semanticData.data + j * semanticData.stride));
+			// ! physx matrix use column major
+			const physx::general_shared3::PxMat34Legacy & mat =
+				*(const physx::general_shared3::PxMat34Legacy *)((unsigned char *)semanticData.data + j * semanticData.stride);
+
+			m_bones[firstBone + j][0][0] = mat.M(0, 0);
+			m_bones[firstBone + j][0][1] = mat.M(1, 0);
+			m_bones[firstBone + j][0][2] = mat.M(2, 0);
+			m_bones[firstBone + j][0][3] = 0;
+
+			m_bones[firstBone + j][1][0] = mat.M(0, 1);
+			m_bones[firstBone + j][1][1] = mat.M(1, 1);
+			m_bones[firstBone + j][1][2] = mat.M(2, 1);
+			m_bones[firstBone + j][1][3] = 0;
+
+			m_bones[firstBone + j][2][0] = mat.M(0, 2);
+			m_bones[firstBone + j][2][1] = mat.M(1, 2);
+			m_bones[firstBone + j][2][2] = mat.M(2, 2);
+			m_bones[firstBone + j][2][3] = 0;
+
+			m_bones[firstBone + j][3][0] = mat.t[0];
+			m_bones[firstBone + j][3][1] = mat.t[1];
+			m_bones[firstBone + j][3][2] = mat.t[2];
+			m_bones[firstBone + j][3][3] = 0;
 		}
 	}
 }
 
 ApexRenderResource::ApexRenderResource(IDirect3DDevice9 * pd3dDevice, const physx::apex::NxUserRenderResourceDesc& desc)
+	: m_firstVertex(desc.firstVertex)
+	, m_numVerts(desc.numVerts)
+	, m_ApexIb(static_cast<ApexRenderIndexBuffer *>(desc.indexBuffer))
+	, m_firstIndex(desc.firstIndex)
+	, m_numIndices(desc.numIndices)
+	, m_ApexBb(static_cast<ApexRenderBoneBuffer *>(desc.boneBuffer))
+	, m_firstBone(desc.firstBone)
+	, m_numBones(desc.numBones)
+	, m_material(NULL)
 {
 	m_ApexVbs.resize(desc.numVertexBuffers);
 	std::vector<D3DVERTEXELEMENT9> velist;
@@ -315,43 +345,25 @@ ApexRenderResource::ApexRenderResource(IDirect3DDevice9 * pd3dDevice, const phys
 	D3DVERTEXELEMENT9 ve_end = D3DDECL_END();
 	velist.push_back(ve_end);
 
-	m_firstVertex = desc.firstVertex;
-
-	m_numVerts = desc.numVerts;
-
 	HRESULT hr;
 	if(FAILED(hr = pd3dDevice->CreateVertexDeclaration(&velist[0], &m_Decl)))
 	{
 		THROW_D3DEXCEPTION(hr);
 	}
-
-	m_ApexIb = static_cast<ApexRenderIndexBuffer *>(desc.indexBuffer);
-
-	m_firstIndex = desc.firstIndex;
-
-	m_numIndices = desc.numVerts;
-
-	m_ApexBb = static_cast<ApexRenderBoneBuffer *>(desc.boneBuffer);
-
-	m_firstBone = desc.firstBone;
-
-	m_numBones = desc.numBones;
-
-	m_material = NULL;
 }
 
 ApexRenderResource::~ApexRenderResource(void)
 {
 }
 
-void ApexRenderResource::Draw(IDirect3DDevice9 * pd3dDevice, const my::Matrix4 & World)
+void ApexRenderResource::Draw(IDirect3DDevice9 * pd3dDevice, const my::Matrix4 & World, UINT mi)
 {
 	(*m_material)[0].first->SetMatrix("g_World", World);
-	(*m_material)[0].first->SetMatrixArray("g_BoneMatrices", &m_ApexBb->m_bones[0], m_numBones);
-	m_material->ApplyParameterBlock(0);
+	(*m_material)[0].first->SetMatrixArray("g_BoneMatrices", &m_ApexBb->m_bones[m_firstBone], m_numBones);
+	m_material->ApplyParameterBlock(mi);
 
 	HRESULT hr;
-	UINT cPasses = m_material->Begin(0);
+	UINT cPasses = m_material->Begin(mi);
 	for(UINT p = 0; p < cPasses; p++)
 	{
 		m_material->BeginPass(0, p);
@@ -362,7 +374,7 @@ void ApexRenderResource::Draw(IDirect3DDevice9 * pd3dDevice, const my::Matrix4 &
 		}
 		V(pd3dDevice->SetIndices(m_ApexIb->m_ib.m_ptr));
 		V(pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, m_firstVertex, m_numVerts, m_firstIndex, m_numIndices / 3));
-		m_material->EndPass(0);
+		m_material->EndPass(mi);
 	}
-	m_material->End(0);
+	m_material->End(mi);
 }
