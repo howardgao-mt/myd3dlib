@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include "ApexRenderResourceMgr.h"
 #include "Game.h"
-#include "GameState.h"
 #include <rapidxml.hpp>
 #include <PxMat34Legacy.h>
 

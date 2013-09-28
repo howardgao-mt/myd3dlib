@@ -3,36 +3,34 @@
 #include "physx_ptr.hpp"
 #include "ApexRenderResourceMgr.h"
 
-class PhysxSampleAllocator : public PxAllocatorCallback
+class PhysXAllocator : public PxAllocatorCallback
 {
 public:
+	PhysXAllocator(void)
+	{
+	}
+
 	void * allocate(size_t size, const char * typeName, const char * filename, int line);
 
 	void deallocate(void * ptr);
 };
 
-class PhysxSampleErrorCallback : public PxErrorCallback
+class PhysXErrorCallback : public PxErrorCallback
 {
 public:
-	PhysxSampleErrorCallback(void)
-	{
-	}
-
-	~PhysxSampleErrorCallback(void)
+	PhysXErrorCallback(void)
 	{
 	}
 
 	virtual void reportError(PxErrorCode::Enum code, const char* message, const char* file, int line);
 };
 
-class PhysxSample
-	: public my::DxutApp
-	, public my::ResourceMgr
+class PhysXContext
 {
-public:
-	PhysxSampleAllocator m_Allocator;
+protected:
+	PhysXAllocator m_Allocator;
 
-	PhysxSampleErrorCallback m_ErrorCallback;
+	PhysXErrorCallback m_ErrorCallback;
 
 	ApexRenderer m_ApexRenderer;
 
@@ -53,42 +51,24 @@ public:
 	physx_ptr<physx::apex::NxModuleDestructible> m_ModuleDestructible;
 
 public:
-	PhysxSample(void)
+	PhysXContext(void)
 	{
 	}
 
-	static PhysxSample & getSingleton(void)
-	{
-		return *getSingletonPtr();
-	}
+	bool OnInit(void);
 
-	static PhysxSample * getSingletonPtr(void)
-	{
-		return static_cast<PhysxSample *>(DxutApp::getSingletonPtr());
-	}
-
-	virtual HRESULT OnCreateDevice(
-		IDirect3DDevice9 * pd3dDevice,
-		const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
-
-	virtual HRESULT OnResetDevice(
-		IDirect3DDevice9 * pd3dDevice,
-		const D3DSURFACE_DESC * pBackBufferSurfaceDesc);
-
-	virtual void OnLostDevice(void);
-
-	virtual void OnDestroyDevice(void);
+	void OnShutdown(void);
 };
 
-class PhysxScene;
+class PhysXSceneContext;
 
 class StepperTask
 	: public physx::pxtask::LightCpuTask
 {
 public:
-	PhysxScene * m_Scene;
+	PhysXSceneContext * m_Scene;
 
-	StepperTask(PhysxScene * Scene)
+	StepperTask(PhysXSceneContext * Scene)
 		: m_Scene(Scene)
 	{
 	}
@@ -98,10 +78,10 @@ public:
 	virtual const char * getName(void) const;
 };
 
-class PhysxScene
-	: public my::DrawHelper
+class PhysXSceneContext
+	: public PhysXContext
 {
-public:
+protected:
 	physx_ptr<PxScene> m_Scene;
 
 	physx_ptr<physx::apex::NxApexScene> m_ApexScene;
@@ -123,7 +103,7 @@ public:
 	physx::PxU32 m_ProjMatrixID;
 
 public:
-	PhysxScene(void)
+	PhysXSceneContext(void)
 		: m_Timer(1/60.0f,0)
 		, m_Completion0(this)
 		, m_Completion1(this)
@@ -133,19 +113,17 @@ public:
 	{
 	}
 
-	virtual ~PhysxScene(void)
-	{
-	}
-
 	bool OnInit(void);
 
 	void OnShutdown(void);
 
-	void SetProjParams(float nz, float fz, float fov, DWORD ViewportWidth, DWORD ViewportHeight);
-
 	void SetViewMatrix(const my::Matrix4 & View);
 
+	void SetViewParams(const my::Vector3 & EyePos, const my::Vector3 & EyeDir, const my::Vector3 & WorldUp = my::Vector3(0,1,0));
+
 	void SetProjMatrix(const my::Matrix4 & Proj);
+
+	void SetProjParams(float nz, float fz, float fov, DWORD ViewportWidth, DWORD ViewportHeight);
 
 	void OnTickPreRender(float dtime);
 
@@ -156,6 +134,4 @@ public:
 	void Substep(StepperTask & completionTask);
 
 	void SubstepDone(StepperTask * ownerTask);
-
-	void DrawRenderBuffer(IDirect3DDevice9 * pd3dDevice, const PxRenderBuffer & debugRenderable);
 };

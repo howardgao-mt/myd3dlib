@@ -3,6 +3,7 @@
 #include "myDxutApp.h"
 #include "libc.h"
 #include <strstream>
+#include <boost/bind.hpp>
 
 using namespace my;
 
@@ -275,9 +276,15 @@ ArchiveStreamPtr ArchiveDirMgr::OpenArchiveStream(const std::string & path)
 	THROW_CUSEXCEPTION(str_printf(_T("cannot find specified file: %s"), ms2ts(path).c_str()));
 }
 
-DWORD AsynchronousIOMgr::OnProc(void)
+AsynchronousIOMgr::AsynchronousIOMgr(void)
+	: m_bStopped(false)
+	, m_Thread(boost::bind(&AsynchronousIOMgr::IORequestProc, this))
 {
-	m_IORequestListSection.Enter();
+}
+
+DWORD AsynchronousIOMgr::IORequestProc(void)
+{
+	m_IORequestListMutex.Wait();
 	while(!m_bStopped)
 	{
 		IORequestPtrPairList::iterator req_iter = m_IORequestList.begin();
@@ -290,25 +297,25 @@ DWORD AsynchronousIOMgr::OnProc(void)
 		}
 		if(req_iter != m_IORequestList.end())
 		{
-			m_IORequestListSection.Leave();
+			m_IORequestListMutex.Release();
 			// ! havent handled any exception yet
 			req_iter->second->DoLoad();
 			req_iter->second->m_LoadEvent.SetEvent();
-			m_IORequestListSection.Enter();
+			m_IORequestListMutex.Wait();
 		}
 		else
 		{
-			m_IORequestListCondition.SleepCS(m_IORequestListSection, INFINITE);
+			m_IORequestListCondition.SleepMutex(m_IORequestListMutex, INFINITE);
 		}
 	}
-	m_IORequestListSection.Leave();
+	m_IORequestListMutex.Release();
 
 	return 0;
 }
 
 IORequestPtr AsynchronousIOMgr::PushIORequestResource(const std::string & key, my::IORequestPtr request)
 {
-	m_IORequestListSection.Enter();
+	m_IORequestListMutex.Wait();
 
 	IORequestPtrPairList::iterator req_iter = m_IORequestList.begin();
 	for(; req_iter != m_IORequestList.end(); req_iter++)
@@ -323,21 +330,27 @@ IORequestPtr AsynchronousIOMgr::PushIORequestResource(const std::string & key, m
 	{
 		req_iter->second->m_callbacks.insert(
 			req_iter->second->m_callbacks.end(), request->m_callbacks.begin(), request->m_callbacks.end());
-		m_IORequestListSection.Leave();
+		m_IORequestListMutex.Release();
 		return req_iter->second;
 	}
 
 	m_IORequestList.push_back(std::make_pair(key, request));
-	m_IORequestListSection.Leave();
+	m_IORequestListMutex.Release();
 	m_IORequestListCondition.Wake();
 	return request;
 }
 
+void AsynchronousIOMgr::StartIORequestProc(void)
+{
+	m_Thread.CreateThread();
+	m_Thread.ResumeThread();
+}
+
 void AsynchronousIOMgr::StopIORequestProc(void)
 {
-	m_IORequestListSection.Enter();
+	m_IORequestListMutex.Wait();
 	m_bStopped = true;
-	m_IORequestListSection.Leave();
+	m_IORequestListMutex.Release();
 	m_IORequestListCondition.Wake();
 }
 
@@ -416,9 +429,7 @@ HRESULT AsynchronousResourceMgr::OnCreateDevice(
 		return hr;
 	}
 
-	CreateThread();
-
-	ResumeThread();
+	StartIORequestProc();
 
 	return S_OK;
 }
@@ -448,7 +459,7 @@ void AsynchronousResourceMgr::OnDestroyDevice(void)
 
 	m_EffectPool.Release();
 
-	WaitForThreadStopped();
+	AsynchronousIOMgr::m_Thread.WaitForThreadStopped(INFINITE);
 }
 
 HRESULT AsynchronousResourceMgr::Open(
@@ -506,7 +517,7 @@ IORequestPtr AsynchronousResourceMgr::LoadResourceAsync(const std::string & key,
 
 void AsynchronousResourceMgr::CheckResource(void)
 {
-	m_IORequestListSection.Enter();
+	m_IORequestListMutex.Wait();
 	IORequestPtrPairList::iterator req_iter = m_IORequestList.begin();
 	for(; req_iter != m_IORequestList.end(); )
 	{
@@ -519,7 +530,7 @@ void AsynchronousResourceMgr::CheckResource(void)
 			break;
 		}
 	}
-	m_IORequestListSection.Leave();
+	m_IORequestListMutex.Release();
 }
 
 bool AsynchronousResourceMgr::CheckRequest(const std::string & key, IORequestPtr request, DWORD timeout)

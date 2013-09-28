@@ -199,10 +199,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GameState.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\LuaExtension.cpp"
 				>
 			</File>
@@ -211,7 +207,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\PhysxSample.cpp"
+				RelativePath=".\PhysXContext.cpp"
 				>
 			</File>
 			<File
@@ -257,10 +253,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GameState.h"
-				>
-			</File>
-			<File
 				RelativePath=".\LuaExtension.h"
 				>
 			</File>
@@ -269,7 +261,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\PhysxSample.h"
+				RelativePath=".\PhysXContext.h"
 				>
 			</File>
 			<File

@@ -1,7 +1,9 @@
 ﻿#include <myD3dLib.h>
+#include <boost/bind.hpp>
 
 class MyDemo
 	: public my::DxutApp
+	, public my::ResourceMgr
 {
 protected:
 	CComPtr<ID3DXFont> m_font;
@@ -24,6 +26,21 @@ public:
 		return true;
 	}
 
+	void foo(my::DeviceRelatedObjectBasePtr res)
+	{
+		//my::Texture2DPtr tex = boost::dynamic_pointer_cast<my::Texture2D>(res);
+
+		//my::OgreMeshPtr mesh = boost::dynamic_pointer_cast<my::OgreMesh>(res);
+
+		//my::OgreSkeletonAnimationPtr skel = boost::dynamic_pointer_cast<my::OgreSkeletonAnimation>(res);
+
+		//my::EffectPtr eff = boost::dynamic_pointer_cast<my::Effect>(res);
+
+		//my::FontPtr fnt = boost::dynamic_pointer_cast<my::Font>(res);
+
+		my::DeviceRelatedObjectBasePtr m_res = res;
+	}
+
 	virtual HRESULT OnCreateDevice(
 		IDirect3DDevice9 * pd3dDevice,
 		const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
@@ -33,6 +50,25 @@ public:
 		{
 			return hr;
 		}
+
+		ResourceMgr::RegisterFileDir("../demo2_3/Media");
+
+		ResourceMgr::OnCreateDevice(pd3dDevice, pBackBufferSurfaceDesc);
+
+		LoadTextureAsync("texture/galileo_cross.dds", boost::bind(&MyDemo::foo, this, _1));
+
+		//my::BaseTexturePtr tex = LoadTexture("texture/galileo_cross.dds");
+
+		LoadMeshAsync("mesh/sportive03_f.mesh.xml", boost::bind(&MyDemo::foo, this, _1));
+
+		LoadSkeletonAsync("mesh/sportive03_f.skeleton.xml", boost::bind(&MyDemo::foo, this, _1));
+
+		//my::EffectPtr eff = LoadEffect("shader/SimpleSample.fx", EffectMacroPairList());
+
+		LoadFontAsync("font/wqy-microhei.ttc", 13, boost::bind(&MyDemo::foo, this, _1));
+
+		//my::MaterialPtr mat = LoadMaterial("material/lambert1.xml");
+
 		return S_OK;
 	}
 
@@ -46,6 +82,9 @@ public:
 		{
 			return hr;
 		}
+
+		ResourceMgr::OnResetDevice(pd3dDevice, pBackBufferSurfaceDesc);
+
 		return S_OK;
 	}
 
@@ -54,17 +93,22 @@ public:
 		m_font->OnLostDevice();
 
 		m_sprite.Release();
+
+		ResourceMgr::OnLostDevice();
 	}
 
 	virtual void OnDestroyDevice(void)
 	{
 		m_font.Release();
+
+		ResourceMgr::OnDestroyDevice();
 	}
 
 	virtual void OnFrameMove(
 		double fTime,
 		float fElapsedTime)
 	{
+		CheckResource();
 	}
 
 	virtual void OnFrameRender(

@@ -1,9 +1,8 @@
 #include "StdAfx.h"
-#include "PhysxSample.h"
+#include "PhysXContext.h"
+#include "Game.h"
 
-using namespace my;
-
-void * PhysxSampleAllocator::allocate(size_t size, const char * typeName, const char * filename, int line)
+void * PhysXAllocator::allocate(size_t size, const char * typeName, const char * filename, int line)
 {
 #ifdef _DEBUG
 	return _aligned_malloc_dbg(size, 16, filename, line);
@@ -12,7 +11,7 @@ void * PhysxSampleAllocator::allocate(size_t size, const char * typeName, const 
 #endif
 }
 
-void PhysxSampleAllocator::deallocate(void * ptr)
+void PhysXAllocator::deallocate(void * ptr)
 {
 #ifdef _DEBUG
 	_aligned_free_dbg(ptr);
@@ -21,39 +20,28 @@ void PhysxSampleAllocator::deallocate(void * ptr)
 #endif
 }
 
-void PhysxSampleErrorCallback::reportError(PxErrorCode::Enum code, const char* message, const char* file, int line)
+void PhysXErrorCallback::reportError(PxErrorCode::Enum code, const char* message, const char* file, int line)
 {
 	switch(code)
 	{
 	case PxErrorCode::eDEBUG_INFO:
-		OutputDebugStringA(str_printf("%s (%d) : info: %s\n", file, line, message).c_str());
+		Game::getSingleton().AddLine(ms2ws(str_printf("%s (%d) : info: %s", file, line, message)));
 		break;
 
 	case PxErrorCode::eDEBUG_WARNING:
 	case PxErrorCode::ePERF_WARNING:
-		OutputDebugStringA(str_printf("%s (%d) : warning: %s\n", file, line, message).c_str());
+		Game::getSingleton().AddLine(ms2ws(str_printf("%s (%d) : warning: %s", file, line, message)), D3DCOLOR_ARGB(255,255,255,0));
 		break;
 
 	default:
 		OutputDebugStringA(str_printf("%s (%d) : error: %s\n", file, line, message).c_str());
+		Game::getSingleton().AddLine(ms2ws(str_printf("%s, (%d) : error: %s", file, line, message)), D3DCOLOR_ARGB(255,255,0,0));
 		break;
 	}
 }
 
-HRESULT PhysxSample::OnCreateDevice(
-	IDirect3DDevice9 * pd3dDevice,
-	const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
+bool PhysXContext::OnInit(void)
 {
-	if(FAILED(hr = DxutApp::OnCreateDevice(pd3dDevice, pBackBufferSurfaceDesc)))
-	{
-		return hr;
-	}
-
-	if(FAILED(hr = ResourceMgr::OnCreateDevice(pd3dDevice, pBackBufferSurfaceDesc)))
-	{
-		return hr;
-	}
-
 	if(!(m_Foundation.reset(PxCreateFoundation(PX_PHYSICS_VERSION, m_Allocator, m_ErrorCallback)), m_Foundation))
 	{
 		THROW_CUSEXCEPTION(_T("PxCreateFoundation failed"));
@@ -107,33 +95,10 @@ HRESULT PhysxSample::OnCreateDevice(
 	{
 		THROW_CUSEXCEPTION(_T("PxInitExtensions failed"));
 	}
-	return S_OK;
+	return true;
 }
 
-HRESULT PhysxSample::OnResetDevice(
-	IDirect3DDevice9 * pd3dDevice,
-	const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
-{
-	if(FAILED(hr = DxutApp::OnResetDevice(pd3dDevice, pBackBufferSurfaceDesc)))
-	{
-		return hr;
-	}
-
-	if(FAILED(hr = ResourceMgr::OnResetDevice(pd3dDevice, pBackBufferSurfaceDesc)))
-	{
-		return hr;
-	}
-	return S_OK;
-}
-
-void PhysxSample::OnLostDevice(void)
-{
-	ResourceMgr::OnLostDevice();
-
-	DxutApp::OnLostDevice();
-}
-
-void PhysxSample::OnDestroyDevice(void)
+void PhysXContext::OnShutdown(void)
 {
 	if(m_Physics)
 		PxCloseExtensions();
@@ -149,10 +114,6 @@ void PhysxSample::OnDestroyDevice(void)
 	m_Physics.reset();
 
 	m_Foundation.reset();
-
-	ResourceMgr::OnDestroyDevice();
-
-	DxutApp::OnDestroyDevice();
 }
 
 void StepperTask::run(void)
@@ -166,15 +127,20 @@ const char * StepperTask::getName(void) const
 	return "Stepper Task";
 }
 
-bool PhysxScene::OnInit(void)
+bool PhysXSceneContext::OnInit(void)
 {
-	PxSceneDesc sceneDesc(PhysxSample::getSingleton().m_Physics->getTolerancesScale());
-	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
-	sceneDesc.cpuDispatcher = PhysxSample::getSingleton().m_CpuDispatcher.get();
-	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
-	if(!(m_Scene.reset(PhysxSample::getSingleton().m_Physics->createScene(sceneDesc)), m_Scene))
+	if(!PhysXContext::OnInit())
 	{
-		THROW_CUSEXCEPTION(_T("PhysxSample::getSingleton().m_Physics->createScene failed"));
+		return false;
+	}
+
+	PxSceneDesc sceneDesc(m_Physics->getTolerancesScale());
+	sceneDesc.gravity = PxVec3(0.0f, -9.81f, 0.0f);
+	sceneDesc.cpuDispatcher = m_CpuDispatcher.get();
+	sceneDesc.filterShader = PxDefaultSimulationFilterShader;
+	if(!(m_Scene.reset(m_Physics->createScene(sceneDesc)), m_Scene))
+	{
+		THROW_CUSEXCEPTION(_T("m_Physics->createScene failed"));
 	}
 
 	//m_Scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
@@ -184,7 +150,7 @@ bool PhysxScene::OnInit(void)
 
 	physx::apex::NxApexSceneDesc apexSceneDesc;
 	apexSceneDesc.scene = m_Scene.get();
-	if(!(m_ApexScene.reset(PhysxSample::getSingleton().m_ApexSDK->createScene(apexSceneDesc)), m_ApexScene))
+	if(!(m_ApexScene.reset(m_ApexSDK->createScene(apexSceneDesc)), m_ApexScene))
 	{
 		THROW_CUSEXCEPTION(_T("m_ApexSDK->createScene failed"));
 	}
@@ -200,46 +166,55 @@ bool PhysxScene::OnInit(void)
 	//NxParameterized::setParamF32(*params, "Destructible/VISUALIZE_DESTRUCTIBLE_ACTOR", 1.0f);
 	//NxParameterized::setParamF32(*params, "Destructible/VISUALIZE_DESTRUCTIBLE_SUPPORT", 1.0f);
 
-	if(!(m_Material.reset(PhysxSample::getSingleton().m_Physics->createMaterial(0.5f, 0.5f, 0.1f)), m_Material))
+	if(!(m_Material.reset(m_Physics->createMaterial(0.5f, 0.5f, 0.1f)), m_Material))
 	{
-		THROW_CUSEXCEPTION(_T("PhysxSample::getSingleton().m_Physics->createMaterial failed"));
+		THROW_CUSEXCEPTION(_T("m_Physics->createMaterial failed"));
 	}
 
 	return true;
 }
 
-void PhysxScene::OnShutdown(void)
+void PhysXSceneContext::OnShutdown(void)
 {
 	_ASSERT(0 == m_Scene->getNbActors(PxActorTypeSelectionFlags(0xff)));
+
+	m_Material.reset();
 
 	m_ApexScene.reset();
 
 	m_Scene.reset();
+
+	PhysXContext::OnShutdown();
 }
 
-void PhysxScene::SetProjParams(float nz, float fz, float fov, DWORD ViewportWidth, DWORD ViewportHeight)
+void PhysXSceneContext::SetViewMatrix(const my::Matrix4 & View)
+{
+	m_ApexScene->setViewMatrix((PxMat44&)View, m_ViewMatrixID);
+}
+
+void PhysXSceneContext::SetViewParams(const my::Vector3 & EyePos, const my::Vector3 & EyeDir, const my::Vector3 & WorldUp)
+{
+	m_ApexScene->setViewParams((PxVec3&)EyePos, (PxVec3&)EyeDir, (PxVec3&)WorldUp, m_ViewMatrixID);
+}
+
+void PhysXSceneContext::SetProjMatrix(const my::Matrix4 & Proj)
+{
+	m_ApexScene->setProjMatrix((PxMat44&)Proj, m_ProjMatrixID);
+}
+
+void PhysXSceneContext::SetProjParams(float nz, float fz, float fov, DWORD ViewportWidth, DWORD ViewportHeight)
 {
 	m_ApexScene->setProjParams(nz, fz, D3DXToDegree(fov), ViewportWidth, ViewportHeight, m_ProjMatrixID);
 }
 
-void PhysxScene::SetViewMatrix(const my::Matrix4 & View)
-{
-	m_ApexScene->setViewMatrix(PxMat44(&const_cast<my::Matrix4 &>(View)._11));
-}
-
-void PhysxScene::SetProjMatrix(const my::Matrix4 & Proj)
-{
-	m_ApexScene->setProjMatrix(PxMat44(&const_cast<my::Matrix4 &>(Proj)._11));
-}
-
-void PhysxScene::OnTickPreRender(float dtime)
+void PhysXSceneContext::OnTickPreRender(float dtime)
 {
 	m_Sync.ResetEvent();
 
 	m_WaitForResults = Advance(dtime);
 }
 
-void PhysxScene::OnTickPostRender(float dtime)
+void PhysXSceneContext::OnTickPostRender(float dtime)
 {
 	if(m_WaitForResults)
 	{
@@ -247,9 +222,9 @@ void PhysxScene::OnTickPostRender(float dtime)
 	}
 }
 
-bool PhysxScene::Advance(float dtime)
+bool PhysXSceneContext::Advance(float dtime)
 {
-	m_Timer.m_RemainingTime = Min(0.1f, m_Timer.m_RemainingTime + dtime);
+	m_Timer.m_RemainingTime = my::Min(0.1f, m_Timer.m_RemainingTime + dtime);
 
 	if(m_Timer.m_RemainingTime < m_Timer.m_Interval)
 	{
@@ -267,12 +242,12 @@ bool PhysxScene::Advance(float dtime)
 	return true;
 }
 
-void PhysxScene::Substep(StepperTask & completionTask)
+void PhysXSceneContext::Substep(StepperTask & completionTask)
 {
 	m_ApexScene->simulate(m_Timer.m_Interval, true, &completionTask, 0, 0);
 }
 
-void PhysxScene::SubstepDone(StepperTask * ownerTask)
+void PhysXSceneContext::SubstepDone(StepperTask * ownerTask)
 {
 	m_ApexScene->fetchResults(true, &m_ErrorState);
 
@@ -293,39 +268,4 @@ void PhysxScene::SubstepDone(StepperTask * ownerTask)
 	Substep(task);
 
 	task.removeReference();
-}
-
-void PhysxScene::DrawRenderBuffer(IDirect3DDevice9 * pd3dDevice, const PxRenderBuffer & debugRenderable)
-{
-	const PxU32 numPoints = debugRenderable.getNbPoints();
-	if(numPoints)
-	{
-		const PxDebugPoint* PX_RESTRICT points = debugRenderable.getPoints();
-		for(PxU32 i=0; i<numPoints; i++)
-		{
-			const PxDebugPoint& point = points[i];
-		}
-	}
-
-	const PxU32 numLines = debugRenderable.getNbLines();
-	if(numLines)
-	{
-		const PxDebugLine* PX_RESTRICT lines = debugRenderable.getLines();
-		for(PxU32 i=0; i<numLines; i++)
-		{
-			const PxDebugLine& line = lines[i];
-			DrawLine(pd3dDevice, (Vector3 &)line.pos0, (Vector3 &)line.pos1, line.color0);
-		}
-	}
-
-	const PxU32 numTriangles = debugRenderable.getNbTriangles();
-	if(numTriangles)
-	{
-		const PxDebugTriangle* PX_RESTRICT triangles = debugRenderable.getTriangles();
-		for(PxU32 i=0; i<numTriangles; i++)
-		{
-			const PxDebugTriangle& triangle = triangles[i];
-			DrawTriangle(pd3dDevice, (Vector3 &)triangle.pos0, (Vector3 &)triangle.pos1, (Vector3 &)triangle.pos2, triangle.color0);
-		}
-	}
 }
