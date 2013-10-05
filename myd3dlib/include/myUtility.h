@@ -345,7 +345,22 @@ namespace my
 	class EffectParameterBase
 	{
 	public:
-		EffectParameterBase(void)
+		enum EffectParameterType
+		{
+			EffectParameterTypeBool,
+			EffectParameterTypeFloat,
+			EffectParameterTypeInt,
+			EffectParameterTypeVector,
+			EffectParameterTypeMatrix,
+			EffectParameterTypeString,
+			EffectParameterTypeTexture,
+		};
+
+		const EffectParameterType m_Type;
+
+	public:
+		EffectParameterBase(EffectParameterType Type)
+			: m_Type(Type)
 		{
 		}
 
@@ -362,8 +377,9 @@ namespace my
 	public:
 		T m_Value;
 
-		EffectParameter(const T & Value)
-			: m_Value(Value)
+		EffectParameter(EffectParameterType Type, const T & Value)
+			: EffectParameterBase(Type)
+			, m_Value(Value)
 		{
 		}
 
@@ -416,25 +432,6 @@ namespace my
 
 	typedef boost::shared_ptr<Material> MaterialPtr;
 
-	class MaterialMgr
-	{
-	public:
-		typedef boost::unordered_map<std::string, MaterialPtr> MaterialPtrMap;
-
-		MaterialPtrMap m_MaterialMap;
-
-	public:
-		MaterialMgr(void)
-		{
-		}
-
-		void InsertMaterial(const std::string & key, MaterialPtr material);
-
-		void RemoveMaterial(const std::string & key);
-
-		void RemoveAllMaterial(void);
-	};
-
 	class ResourceMgr : public AsynchronousResourceMgr
 	{
 	protected:
@@ -475,5 +472,15 @@ namespace my
 		void LoadMaterialAsync(const std::string & path, const ResourceCallback & callback);
 
 		MaterialPtr LoadMaterial(const std::string & path);
+
+		void SaveMaterial(const std::string & path, MaterialPtr material);
+
+		class EmitterIORequest;
+
+		void LoadEmitterAsync(const std::string & path, const ResourceCallback & callback);
+
+		EmitterPtr LoadEmitter(const std::string & path);
+
+		void SaveEmitter(const std::string & path, EmitterPtr emitter);
 	};
 }
