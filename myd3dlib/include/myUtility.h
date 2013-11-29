@@ -345,22 +345,7 @@ namespace my
 	class EffectParameterBase
 	{
 	public:
-		enum EffectParameterType
-		{
-			EffectParameterTypeBool,
-			EffectParameterTypeFloat,
-			EffectParameterTypeInt,
-			EffectParameterTypeVector,
-			EffectParameterTypeMatrix,
-			EffectParameterTypeString,
-			EffectParameterTypeTexture,
-		};
-
-		const EffectParameterType m_Type;
-
-	public:
-		EffectParameterBase(EffectParameterType Type)
-			: m_Type(Type)
+		EffectParameterBase(void)
 		{
 		}
 
@@ -377,9 +362,8 @@ namespace my
 	public:
 		T m_Value;
 
-		EffectParameter(EffectParameterType Type, const T & Value)
-			: EffectParameterBase(Type)
-			, m_Value(Value)
+		EffectParameter(const T & Value)
+			: m_Value(Value)
 		{
 		}
 
@@ -404,86 +388,88 @@ namespace my
 		void SetTexture(const std::string & Name, BaseTexturePtr Value);
 	};
 
-	//class Material : public DeviceRelatedObjectBase, public EffectParameterMap
-	//{
-	//public:
-	//	EffectPtr m_Effect;
+	class Material : public DeviceRelatedObjectBase
+	{
+	public:
+		BaseTexturePtr m_DiffuseTexture;
 
-	//public:
-	//	Material(void)
-	//	{
-	//	}
+		BaseTexturePtr m_NormalTexture;
 
-	//	void OnResetDevice(void);
+		BaseTexturePtr m_SpecularTexture;
 
-	//	void OnLostDevice(void);
+	public:
+		Material(void)
+		{
+		}
 
-	//	void OnDestroyDevice(void);
+		void OnResetDevice(void);
 
-	//	void ApplyParameterBlock(void);
+		void OnLostDevice(void);
 
-	//	UINT Begin(DWORD Flags = 0);
+		void OnDestroyDevice(void);
+	};
 
-	//	void BeginPass(UINT Pass);
+	typedef boost::shared_ptr<Material> MaterialPtr;
 
-	//	void EndPass(void);
+	class ResourceMgr : public AsynchronousResourceMgr
+	{
+	protected:
+		class membuf : public std::streambuf
+		{
+		public:
+			membuf(const char * buff, size_t size)
+			{
+				char * p = const_cast<char *>(buff);
+				setg(p, p, p + size);
+			}
+		};
 
-	//	void End(void);
+		class ResourceCallbackBoundle
+		{
+		public:
+			DeviceRelatedObjectBasePtr m_res;
 
-	//	void DrawMeshSubset(Mesh * pMesh, DWORD AttribId);
-	//};
+			IORequest::ResourceCallbackList m_callbacks;
 
-	//typedef boost::shared_ptr<Material> MaterialPtr;
+			ResourceCallbackBoundle(DeviceRelatedObjectBasePtr res)
+				: m_res(res)
+			{
+			}
 
-	//class ResourceMgr : public AsynchronousResourceMgr
-	//{
-	//protected:
-	//	class ResourceCallbackBoundle
-	//	{
-	//	public:
-	//		DeviceRelatedObjectBasePtr m_res;
+			~ResourceCallbackBoundle(void)
+			{
+				IORequest::ResourceCallbackList::const_iterator callback_iter = m_callbacks.begin();
+				for(; callback_iter != m_callbacks.end(); callback_iter++)
+				{
+					if(*callback_iter)
+					{
+						(*callback_iter)(m_res);
+					}
+				}
+			}
+		};
 
-	//		IORequest::ResourceCallbackList m_callbacks;
+		typedef boost::shared_ptr<ResourceCallbackBoundle> ResourceCallbackBoundlePtr;
 
-	//		ResourceCallbackBoundle(DeviceRelatedObjectBasePtr res)
-	//			: m_res(res)
-	//		{
-	//		}
+	public:
+		ResourceMgr(void)
+		{
+		}
 
-	//		~ResourceCallbackBoundle(void)
-	//		{
-	//			IORequest::ResourceCallbackList::const_iterator callback_iter = m_callbacks.begin();
-	//			for(; callback_iter != m_callbacks.end(); callback_iter++)
-	//			{
-	//				if(*callback_iter)
-	//				{
-	//					(*callback_iter)(m_res);
-	//				}
-	//			}
-	//		}
-	//	};
+		class MaterialIORequest;
 
-	//	typedef boost::shared_ptr<ResourceCallbackBoundle> ResourceCallbackBoundlePtr;
+		void LoadMaterialAsync(const std::string & path, const ResourceCallback & callback);
 
-	//public:
-	//	ResourceMgr(void)
-	//	{
-	//	}
+		MaterialPtr LoadMaterial(const std::string & path);
 
-	//	class MaterialIORequest;
+		void SaveMaterial(const std::string & path, MaterialPtr material);
 
-	//	void LoadMaterialAsync(const std::string & path, const ResourceCallback & callback);
+		class EmitterIORequest;
 
-	//	MaterialPtr LoadMaterial(const std::string & path);
+		void LoadEmitterAsync(const std::string & path, const ResourceCallback & callback);
 
-	//	void SaveMaterial(const std::string & path, MaterialPtr material);
+		EmitterPtr LoadEmitter(const std::string & path);
 
-	//	class EmitterIORequest;
-
-	//	void LoadEmitterAsync(const std::string & path, const ResourceCallback & callback);
-
-	//	EmitterPtr LoadEmitter(const std::string & path);
-
-	//	void SaveEmitter(const std::string & path, EmitterPtr emitter);
-	//};
+		void SaveEmitter(const std::string & path, EmitterPtr emitter);
+	};
 }
