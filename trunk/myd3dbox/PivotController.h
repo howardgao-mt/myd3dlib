@@ -29,7 +29,7 @@ public:
 
 	my::Quaternion m_Rotation;
 
-	my::Matrix4 m_World;
+	my::Matrix4 m_ViewTranslation;
 
 	enum PivotMode
 	{
@@ -51,6 +51,8 @@ public:
 
 	my::Vector3 m_DragPos;
 
+	my::Quaternion m_DragRot;
+
 	my::Vector3 m_DragPt;
 
 	my::Vector3 m_DragNormal;
@@ -63,7 +65,7 @@ public:
 		, m_DragAxis(DragAxisNone)
 		, m_Position(0,0,0)
 		, m_Rotation(my::Quaternion::Identity())
-		, m_World(my::Matrix4::Identity())
+		, m_ViewTranslation(my::Matrix4::Identity())
 	{
 	}
 
@@ -91,7 +93,7 @@ public:
 
 	void BuildCircleVertices(VertexList & vertex_list, const float radius, const D3DCOLOR color, const my::Matrix4 & Transform, const my::Vector3 & ViewPos, const float discrm);
 
-	void UpdateWorld(const my::Matrix4 & ViewProj, UINT ViewWidth);
+	void UpdateViewTranslation(const my::Matrix4 & ViewProj, UINT ViewWidth);
 
 	void DrawMoveController(IDirect3DDevice9 * pd3dDevice, const my::Camera * camera);
 
@@ -102,6 +104,8 @@ public:
 	BOOL OnRotationControllerButtonDown(const std::pair<my::Vector3, my::Vector3> & ray);
 
 	BOOL OnMoveControllerMouseMove(const std::pair<my::Vector3, my::Vector3> & ray);
+
+	BOOL OnRotationControllerMouseMove(const std::pair<my::Vector3, my::Vector3> & ray);
 
 	virtual void Draw(IDirect3DDevice9 * pd3dDevice, const my::Camera * camera);
 
