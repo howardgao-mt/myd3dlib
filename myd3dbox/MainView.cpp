@@ -85,6 +85,10 @@ BEGIN_MESSAGE_MAP(CMainView, CView)
 	ON_WM_RBUTTONUP()
 	ON_WM_MOUSEMOVE()
 	ON_WM_KEYDOWN()
+	ON_COMMAND(ID_TRANSFORM_MOVE, &CMainView::OnTransformMove)
+	ON_UPDATE_COMMAND_UI(ID_TRANSFORM_MOVE, &CMainView::OnUpdateTransformMove)
+	ON_COMMAND(ID_TRANSFORM_ROTATE, &CMainView::OnTransformRotate)
+	ON_UPDATE_COMMAND_UI(ID_TRANSFORM_ROTATE, &CMainView::OnUpdateTransformRotate)
 END_MESSAGE_MAP()
 
 void CMainView::DrawTextAtWorld(const Vector3 & pos, LPCWSTR lpszText, D3DCOLOR Color, my::Font::Align align)
@@ -149,7 +153,7 @@ void CMainView::OnFrameRender(
 	V(m_d3dSwapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &BackBuffer.m_ptr));
 	V(pd3dDevice->SetRenderTarget(0, BackBuffer.m_ptr));
 	V(pd3dDevice->SetDepthStencilSurface(m_DepthStencil.m_ptr));
-	V(pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_ARGB(0,45,50,170), 1.0f, 0));
+	V(pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_ARGB(0,161,161,161), 1.0f, 0));
 
 	if(SUCCEEDED(hr = pd3dDevice->BeginScene()))
 	{
@@ -442,4 +446,26 @@ void CMainView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	}
 
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
+}
+
+void CMainView::OnTransformMove()
+{
+	m_PivotController.m_PovitMode = PivotController::PivotModeMove;
+	Invalidate();
+}
+
+void CMainView::OnUpdateTransformMove(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(m_PivotController.m_PovitMode == PivotController::PivotModeMove ? 1 : 0);
+}
+
+void CMainView::OnTransformRotate()
+{
+	m_PivotController.m_PovitMode = PivotController::PivotModeRotation;
+	Invalidate();
+}
+
+void CMainView::OnUpdateTransformRotate(CCmdUI *pCmdUI)
+{
+	pCmdUI->SetCheck(m_PivotController.m_PovitMode == PivotController::PivotModeRotation ? 1 : 0);
 }
