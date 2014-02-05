@@ -6,31 +6,6 @@
 
 using namespace my;
 
-StaticMeshTreeNode::~StaticMeshTreeNode(void)
-{
-}
-
-void StaticMeshTreeNode::Draw(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const Matrix4 & ParentWorld)
-{
-	Matrix4 World = m_World * ParentWorld;
-	for(DWORD i = 0; i < m_Materials.size(); i++)
-	{
-		MaterialPairList::reference mat_pair = m_Materials[i];
-		_ASSERT(mat_pair.second);
-		mat_pair.second->SetMatrix("g_World", World);
-		mat_pair.second->SetTexture("g_MeshTexture", mat_pair.first->m_DiffuseTexture);
-		mat_pair.second->SetTechnique("RenderScene");
-		UINT passes = mat_pair.second->Begin();
-		for(UINT p = 0; p < passes; p++)
-		{
-			mat_pair.second->BeginPass(p);
-			m_Mesh->DrawSubset(i);
-			mat_pair.second->EndPass();
-		}
-		mat_pair.second->End();
-	}
-}
-
 void CDocHistory::Do(void)
 {
 	const_iterator hist_iter = begin();
@@ -71,7 +46,7 @@ void CDeleteTreeNodeStep::Do(void)
 	ASSERT(!m_strItem.empty() && pOutliner->m_ItemMap.end() != pOutliner->m_ItemMap.find(m_strItem));
 	HTREEITEM hItem = pOutliner->m_ItemMap[m_strItem];
 
-	m_node = boost::dynamic_pointer_cast<StaticMeshTreeNode>(pOutliner->GetItemNode(hItem));
+	m_node = boost::dynamic_pointer_cast<MeshTreeNode>(pOutliner->GetItemNode(hItem));
 	ASSERT(m_node);
 
 	pOutliner->m_TreeCtrl.DeleteItem(hItem);
@@ -137,9 +112,9 @@ void CDocHistoryMgr::DeleteTreeNode(HTREEITEM hItem)
 	m_nStep++;
 }
 
-void CDocHistoryMgr::AddStaticMeshTreeNode(LPCTSTR lpszMesh)
+void CDocHistoryMgr::AddMeshTreeNode(LPCTSTR lpszMesh)
 {
-	StaticMeshTreeNodePtr node(new StaticMeshTreeNode);
+	MeshTreeNodePtr node(new MeshTreeNode);
 	node->m_Mesh = theApp.LoadMesh(ts2ms(lpszMesh));
 	if(node->m_Mesh)
 	{
@@ -148,7 +123,7 @@ void CDocHistoryMgr::AddStaticMeshTreeNode(LPCTSTR lpszMesh)
 		{
 			MaterialPtr mat = theApp.LoadMaterial(str_printf("material/%s.txt", mat_name_iter->c_str()));
 			mat = mat ? mat : theApp.m_DefaultMat;
-			node->m_Materials.push_back(StaticMeshTreeNode::MaterialPair(mat, theApp.LoadEffect("shader/SimpleSample.fx", EffectMacroPairList())));
+			node->m_Materials.push_back(MeshTreeNode::MaterialPair(mat, theApp.LoadEffect("shader/SimpleSample.fx", EffectMacroPairList())));
 		}
 
 		static unsigned int i = 0;

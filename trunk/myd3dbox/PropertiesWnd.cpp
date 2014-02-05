@@ -1,8 +1,44 @@
-
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertiesWnd.h"
 #include "MainApp.h"
 #include "MainFrm.h"
+#include "MainView.h"
+
+IMPLEMENT_DYNAMIC(CSimpleProp, CMFCPropertyGridProperty)
+
+void CSimpleProp::OnEventChanged(void)
+{
+	if(m_EventChanged)
+	{
+		m_EventChanged();
+	}
+	else
+	{
+		for (POSITION pos = m_lstSubItems.GetHeadPosition(); pos != NULL;)
+		{
+			CSimpleProp * pProp = DYNAMIC_DOWNCAST(CSimpleProp, m_lstSubItems.GetNext(pos));
+			ASSERT_VALID(pProp);
+			pProp->OnEventChanged();
+		}
+	}
+}
+
+void CSimpleProp::OnEventUpdated(void)
+{
+	if(m_EventUpdated)
+	{
+		m_EventUpdated();
+	}
+	else
+	{
+		for (POSITION pos = m_lstSubItems.GetHeadPosition(); pos != NULL;)
+		{
+			CSimpleProp * pProp = DYNAMIC_DOWNCAST(CSimpleProp, m_lstSubItems.GetNext(pos));
+			ASSERT_VALID(pProp);
+			pProp->OnEventUpdated();
+		}
+	}
+}
 
 void CSimpleProp::SetValue(const COleVariant& varValue)
 {
@@ -279,6 +315,7 @@ BEGIN_MESSAGE_MAP(CPropertiesWnd, CDockablePane)
 	ON_WM_SIZE()
 	ON_WM_SETFOCUS()
 	ON_REGISTERED_MESSAGE(AFX_WM_PROPERTY_CHANGED, OnPropertyChanged)
+	ON_MESSAGE(WM_IDLEUPDATECMDUI, &CPropertiesWnd::OnIdleUpdateCmdUI)
 END_MESSAGE_MAP()
 
 void CPropertiesWnd::AdjustLayout()
@@ -340,5 +377,64 @@ void CPropertiesWnd::OnSetFocus(CWnd* pOldWnd)
 
 LRESULT CPropertiesWnd::OnPropertyChanged(WPARAM wParam, LPARAM lParam)
 {
+	CSimpleProp * pProp = DYNAMIC_DOWNCAST(CSimpleProp, (CMFCPropertyGridProperty *)lParam);
+	_ASSERT(pProp);
+	pProp->OnEventChanged();
+
+	TreeNodeBasePtr node = COutlinerView::getSingleton().GetSelectedNode();
+	if(node)
+	{
+		CMainView::getSingleton().m_PivotController.m_Position = node->m_Position;
+		CMainView::getSingleton().m_PivotController.m_Rotation = node->m_Rotation;
+		CMainView::getSingleton().m_PivotController.UpdateViewTransform(CMainView::getSingleton().m_Camera.m_ViewProj, CMainView::getSingleton().m_SwapChainBufferDesc.Width);
+		CMainView::getSingleton().Invalidate();
+	}
+	return 0;
+}
+
+LRESULT CPropertiesWnd::OnIdleUpdateCmdUI(WPARAM wParam, LPARAM lParam)
+{
+	CDockablePane::OnIdleUpdateCmdUI(wParam, lParam);
+
+	TreeNodeBasePtr node = COutlinerView::getSingleton().GetSelectedNode();
+	if(!node)
+	{
+		if(m_wndPropList.GetPropertyCount() > 0)
+		{
+			m_wndPropList.RemoveAll();
+
+			m_wndPropList.Invalidate();
+
+			m_SelectedNode.reset();
+		}
+	}
+	else if(node == m_SelectedNode.lock())
+	{
+		if(m_bIsPropInvalid)
+		{
+			for(int i = 0; i < m_wndPropList.GetPropertyCount(); i++)
+			{
+				CSimpleProp * pProp = DYNAMIC_DOWNCAST(CSimpleProp, m_wndPropList.GetProperty(i));
+				_ASSERT(pProp);
+				pProp->OnEventUpdated();
+			}
+
+			m_bIsPropInvalid = FALSE;
+
+			m_wndPropList.Invalidate();
+		}
+	}
+	else
+	{
+		m_wndPropList.RemoveAll();
+
+		m_wndPropList.Invalidate();
+
+		node->SetupProperties(&m_wndPropList);
+
+		m_bIsPropInvalid = TRUE;
+
+		m_SelectedNode = node;
+	}
 	return 0;
 }

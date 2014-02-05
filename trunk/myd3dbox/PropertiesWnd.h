@@ -1,8 +1,17 @@
 
 #pragma once
 
+typedef boost::function<void (void)> PropertyEvent;
+
 class CSimpleProp : public CMFCPropertyGridProperty
 {
+public:
+	DECLARE_DYNAMIC(CSimpleProp)
+
+	PropertyEvent m_EventChanged;
+
+	PropertyEvent m_EventUpdated;
+
 public:
 	CSimpleProp(const CString& strGroupName, DWORD_PTR dwData = 0, BOOL bIsValueList = FALSE)
 		: CMFCPropertyGridProperty(strGroupName, dwData, bIsValueList)
@@ -14,6 +23,10 @@ public:
 		: CMFCPropertyGridProperty(strName, varValue, lpszDescr, dwData, lpszEditMask, lpszEditTemplate, lpszValidChars)
 	{
 	}
+
+	void OnEventChanged(void);
+
+	void OnEventUpdated(void);
 
 	virtual void SetValue(const COleVariant& varValue);
 };
@@ -114,18 +127,27 @@ protected:
 	CRect m_rectCheck;
 };
 
-class CPropertiesWnd : public CDockablePane
+class TreeNodeBase;
+
+class CPropertiesWnd
+	: public CDockablePane
+	, public my::SingleInstance<CPropertiesWnd>
 {
 public:
 	CPropertiesWnd()
+		: m_bIsPropInvalid(TRUE)
 	{
 	}
 
 	DECLARE_MESSAGE_MAP()
-
+public:
 	CMFCToolBar m_wndToolBar;
 
 	CMFCPropertyGridCtrl m_wndPropList;
+
+	boost::weak_ptr<TreeNodeBase> m_SelectedNode;
+
+	BOOL m_bIsPropInvalid;
 
 	void AdjustLayout();
 
@@ -136,4 +158,6 @@ public:
 	afx_msg void OnSetFocus(CWnd* pOldWnd);
 
 	afx_msg LRESULT OnPropertyChanged(WPARAM wParam, LPARAM lParam);
+
+	afx_msg LRESULT OnIdleUpdateCmdUI(WPARAM wParam, LPARAM lParam);
 };
