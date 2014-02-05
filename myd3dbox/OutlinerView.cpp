@@ -3,6 +3,9 @@
 #include "OutlinerView.h"
 #include "MainFrm.h"
 #include "MainDoc.h"
+#include "MainView.h"
+
+using namespace my;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -334,9 +337,18 @@ void COutlinerView::OnSize(UINT nType, int cx, int cy)
 
 void COutlinerView::OnTvnSelchangedTree(NMHDR *pNMHDR, LRESULT *pResult)
 {
-	LPNMTREEVIEW pNMTreeView = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
-	// TODO: Add your control notification handler code here
-	*pResult = 0;
+	LPNMTREEVIEW ptv = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
+	if(ptv->action != TVC_UNKNOWN)
+	{
+		if(ptv->itemNew.hItem)
+		{
+			TreeNodeBasePtr node = GetItemNode(ptv->itemNew.hItem);
+			ASSERT(node);
+			CMainView::getSingleton().m_PivotController.m_Position = node->m_Position;
+			CMainView::getSingleton().m_PivotController.m_Rotation = node->m_Rotation;
+			CMainView::getSingleton().m_PivotController.UpdateViewTransform(CMainView::getSingleton().m_Camera.m_ViewProj, CMainView::getSingleton().m_SwapChainBufferDesc.Width);
+		}
+	}
 
 	CMainDoc * pDoc = CMainDoc::getSingletonPtr();
 	ASSERT(pDoc);
@@ -406,16 +418,27 @@ TreeNodeBasePtr COutlinerView::GetItemNode(HTREEITEM hItem)
 	return *(TreeNodeBasePtr *)m_TreeCtrl.GetItemData(hItem);
 }
 
-void COutlinerView::DrawItemNode(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, HTREEITEM hItem, const my::Matrix4 & World)
+TreeNodeBasePtr COutlinerView::GetSelectedNode(void)
 {
-	if(hItem)
+	HTREEITEM hSelected = m_TreeCtrl.GetSelectedItem();
+	return hSelected ? GetItemNode(hSelected) : TreeNodeBasePtr();
+}
+
+void COutlinerView::DrawItemNode(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, HTREEITEM hItem, const Matrix4 & World)
+{
+	_ASSERT(hItem);
+
+	TreeNodeBasePtr node = GetItemNode(hItem);
+
+	node->Draw(pd3dDevice, fElapsedTime, World);
+
+	if(m_TreeCtrl.GetChildItem(hItem))
 	{
-		TreeNodeBasePtr node = GetItemNode(hItem);
-		
-		node->Draw(pd3dDevice, fElapsedTime, World);
+		DrawItemNode(pd3dDevice, fElapsedTime, m_TreeCtrl.GetChildItem(hItem), Matrix4::Compose(node->m_Scale, node->m_Rotation, node->m_Position) * World);
+	}
 
-		DrawItemNode(pd3dDevice, fElapsedTime, m_TreeCtrl.GetChildItem(hItem), node->m_World * World);
-
-		DrawItemNode(pd3dDevice, fElapsedTime, m_TreeCtrl.GetNextSiblingItem(hItem), node->m_World * World);
+	if(m_TreeCtrl.GetNextSiblingItem(hItem))
+	{
+		DrawItemNode(pd3dDevice, fElapsedTime, m_TreeCtrl.GetNextSiblingItem(hItem), World);
 	}
 }

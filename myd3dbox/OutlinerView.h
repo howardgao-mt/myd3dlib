@@ -1,24 +1,6 @@
 #pragma once
 
-class TreeNodeBase
-{
-public:
-	my::Matrix4 m_World;
-
-public:
-	TreeNodeBase(void)
-		: m_World(my::Matrix4::Identity())
-	{
-	}
-
-	virtual ~TreeNodeBase(void)
-	{
-	}
-
-	virtual void Draw(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const my::Matrix4 & World) = 0;
-};
-
-typedef boost::shared_ptr<TreeNodeBase> TreeNodeBasePtr;
+#include "TreeNode.h"
 
 class COutlinerTreeCtrl : public CTreeCtrl
 {
@@ -108,6 +90,8 @@ public:
 	void InsertItem(const std::basic_string<TCHAR> & strItem, TreeNodeBasePtr node, HTREEITEM hParent = TVI_ROOT, HTREEITEM hInsertAfter = TVI_LAST);
 
 	TreeNodeBasePtr GetItemNode(HTREEITEM hItem);
+
+	TreeNodeBasePtr GetSelectedNode(void);
 
 	void DrawItemNode(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, HTREEITEM hItem, const my::Matrix4 & World);
 };
