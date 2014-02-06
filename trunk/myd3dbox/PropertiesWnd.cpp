@@ -28,6 +28,8 @@ void CSimpleProp::OnEventUpdated(void)
 	if(m_EventUpdated)
 	{
 		m_EventUpdated();
+
+		SetModifiedFlag();
 	}
 	else
 	{
@@ -379,16 +381,11 @@ LRESULT CPropertiesWnd::OnPropertyChanged(WPARAM wParam, LPARAM lParam)
 {
 	CSimpleProp * pProp = DYNAMIC_DOWNCAST(CSimpleProp, (CMFCPropertyGridProperty *)lParam);
 	_ASSERT(pProp);
+
 	pProp->OnEventChanged();
 
-	TreeNodeBasePtr node = COutlinerView::getSingleton().GetSelectedNode();
-	if(node)
-	{
-		CMainView::getSingleton().m_PivotController.m_Position = node->m_Position;
-		CMainView::getSingleton().m_PivotController.m_Rotation = node->m_Rotation;
-		CMainView::getSingleton().m_PivotController.UpdateViewTransform(CMainView::getSingleton().m_Camera.m_ViewProj, CMainView::getSingleton().m_SwapChainBufferDesc.Width);
-		CMainView::getSingleton().Invalidate();
-	}
+	CMainView::getSingleton().SendMessage(WM_UPDATE_PIVOTCONTROLLER);
+
 	return 0;
 }
 
@@ -416,6 +413,7 @@ LRESULT CPropertiesWnd::OnIdleUpdateCmdUI(WPARAM wParam, LPARAM lParam)
 			{
 				CSimpleProp * pProp = DYNAMIC_DOWNCAST(CSimpleProp, m_wndPropList.GetProperty(i));
 				_ASSERT(pProp);
+
 				pProp->OnEventUpdated();
 			}
 
@@ -431,8 +429,6 @@ LRESULT CPropertiesWnd::OnIdleUpdateCmdUI(WPARAM wParam, LPARAM lParam)
 		m_wndPropList.Invalidate();
 
 		node->SetupProperties(&m_wndPropList);
-
-		m_bIsPropInvalid = TRUE;
 
 		m_SelectedNode = node;
 	}

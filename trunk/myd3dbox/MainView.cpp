@@ -89,6 +89,7 @@ BEGIN_MESSAGE_MAP(CMainView, CView)
 	ON_UPDATE_COMMAND_UI(ID_TRANSFORM_MOVE, &CMainView::OnUpdateTransformMove)
 	ON_COMMAND(ID_TRANSFORM_ROTATE, &CMainView::OnTransformRotate)
 	ON_UPDATE_COMMAND_UI(ID_TRANSFORM_ROTATE, &CMainView::OnUpdateTransformRotate)
+	ON_MESSAGE(WM_UPDATE_PIVOTCONTROLLER, &CMainView::OnUpdatePivotController)
 END_MESSAGE_MAP()
 
 void CMainView::DrawTextAtWorld(const Vector3 & pos, LPCWSTR lpszText, D3DCOLOR Color, my::Font::Align align)
@@ -205,34 +206,19 @@ CMainDoc * CMainView::GetDocument() const
 	return (CMainDoc *)m_pDocument;
 }
 
+void CMainView::OnDraw(CDC* pDC)
+{
+}
+
 BOOL CMainView::PreTranslateMessage(MSG* pMsg)
 {
 	switch(pMsg->message)
 	{
-	case WM_SYSKEYDOWN:
-		if(pMsg->wParam == VK_MENU)
-		{
-			m_bAltDown = TRUE;
-		}
-		break;
-
 	case WM_SYSKEYUP:
-		if(pMsg->wParam == VK_MENU && m_bAltDown)
+		if(pMsg->wParam == VK_MENU && m_bEatAltUp)
 		{
-			m_bAltDown = FALSE;
-
-			if(m_bEatAltUp)
-			{
-				m_bEatAltUp = FALSE;
-				return TRUE;
-			}
-		}
-		break;
-
-	case WM_KEYUP:
-		if(pMsg->wParam == VK_MENU && m_bAltDown)
-		{
-			m_bAltDown = FALSE;
+			m_bEatAltUp = FALSE;
+			return TRUE;
 		}
 		break;
 	}
@@ -300,13 +286,11 @@ BOOL CMainView::OnEraseBkgnd(CDC* pDC)
 void CMainView::OnKillFocus(CWnd* pNewWnd)
 {
 	CView::OnKillFocus(pNewWnd);
-
-	m_bAltDown = FALSE;
 }
 
 void CMainView::OnLButtonDown(UINT nFlags, CPoint point)
 {
-	if(m_bAltDown && DragModeCameraNone == m_DragMode)
+	if((GetKeyState(VK_MENU) & 0x8000) && (DragModeCameraNone == m_DragMode || DragModeCameraRotate == m_DragMode || DragModeCameraTrack == m_DragMode || DragModeCameraZoom == m_DragMode))
 	{
 		m_bEatAltUp = TRUE;
 		m_DragMode = DragModeCameraRotate;
@@ -340,7 +324,7 @@ void CMainView::OnLButtonUp(UINT nFlags, CPoint point)
 
 void CMainView::OnMButtonDown(UINT nFlags, CPoint point)
 {
-	if(m_bAltDown && DragModeCameraNone == m_DragMode)
+	if((GetKeyState(VK_MENU) & 0x8000) && (DragModeCameraNone == m_DragMode || DragModeCameraRotate == m_DragMode || DragModeCameraTrack == m_DragMode || DragModeCameraZoom == m_DragMode))
 	{
 		m_bEatAltUp = TRUE;
 		m_DragMode = DragModeCameraTrack;
@@ -360,7 +344,7 @@ void CMainView::OnMButtonUp(UINT nFlags, CPoint point)
 
 void CMainView::OnRButtonDown(UINT nFlags, CPoint point)
 {
-	if(m_bAltDown && DragModeCameraNone == m_DragMode)
+	if((GetKeyState(VK_MENU) & 0x8000) && (DragModeCameraNone == m_DragMode || DragModeCameraRotate == m_DragMode || DragModeCameraTrack == m_DragMode || DragModeCameraZoom == m_DragMode))
 	{
 		m_bEatAltUp = TRUE;
 		m_DragMode = DragModeCameraZoom;
@@ -436,6 +420,14 @@ void CMainView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	switch(nChar)
 	{
+	case 'W':
+		OnTransformMove();
+		break;
+
+	case 'E':
+		OnTransformRotate();
+		break;
+
 	case VK_DELETE:
 		{
 			COutlinerView * pOutliner = COutlinerView::getSingletonPtr();
@@ -476,4 +468,15 @@ void CMainView::OnTransformRotate()
 void CMainView::OnUpdateTransformRotate(CCmdUI *pCmdUI)
 {
 	pCmdUI->SetCheck(m_PivotController.m_PovitMode == PivotController::PivotModeRotation ? 1 : 0);
+}
+
+LRESULT CMainView::OnUpdatePivotController(WPARAM wParam, LPARAM lParam)
+{
+	TreeNodeBasePtr node = COutlinerView::getSingleton().GetSelectedNode();
+	ASSERT(node);
+	m_PivotController.m_Position = node->m_Position;
+	m_PivotController.m_Rotation = node->m_Rotation;
+	m_PivotController.UpdateViewTransform(m_Camera.m_ViewProj, m_SwapChainBufferDesc.Width);
+	Invalidate();
+	return 0;
 }
