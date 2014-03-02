@@ -1,6 +1,6 @@
 #pragma once
 
-class PivotController
+class PivotControllerBase
 {
 public:
 	static const float MovePivotRadius;
@@ -17,61 +17,13 @@ public:
 
 	static const D3DCOLOR PivotAxisZColor;
 
-	static const D3DCOLOR PivotDragAxisColor;
+	static const D3DCOLOR PivotHighLightAxisColor;
 
 	static const D3DCOLOR PivotGrayAxisColor;
 
 	static const my::Matrix4 mat_to_y;
 
 	static const my::Matrix4 mat_to_z;
-
-	my::Vector3 m_Position;
-
-	my::Quaternion m_Rotation;
-
-	my::Matrix4 m_ViewTranslation;
-
-	enum PivotMode
-	{
-		PivotModeMove,
-		PivotModeRotation,
-	};
-
-	PivotMode m_PovitMode;
-
-	enum DragAxis
-	{
-		DragAxisNone,
-		DragAxisX,
-		DragAxisY,
-		DragAxisZ,
-	};
-
-	DragAxis m_DragAxis;
-
-	my::Vector3 m_DragPos;
-
-	my::Quaternion m_DragRot;
-
-	my::Vector3 m_DragPt;
-
-	my::Vector3 m_DragNormal;
-
-	float m_DragDist;
-
-public:
-	PivotController(void)
-		: m_PovitMode(PivotModeMove)
-		, m_DragAxis(DragAxisNone)
-		, m_Position(0,0,0)
-		, m_Rotation(my::Quaternion::Identity())
-		, m_ViewTranslation(my::Matrix4::Identity())
-	{
-	}
-
-	~PivotController(void)
-	{
-	}
 
 	struct Vertex
 	{
@@ -89,15 +41,67 @@ public:
 
 	typedef std::vector<Vertex> VertexList;
 
-	void BuildConeVertices(VertexList & vertex_list, const float radius, const float height, const float offset, const D3DCOLOR color, const my::Matrix4 & Transform);
+	enum HighLightAxis
+	{
+		HighLightAxisNone,
+		HighLightAxisX,
+		HighLightAxisY,
+		HighLightAxisZ,
+	};
 
-	void BuildCircleVertices(VertexList & vertex_list, const float radius, const D3DCOLOR color, const my::Matrix4 & Transform, const my::Vector3 & ViewPos, const float discrm);
+	my::Vector3 m_Position;
+
+	my::Quaternion m_Rotation;
+
+	my::Matrix4 m_ViewTransform;
+
+	PivotControllerBase(void)
+		: m_Position(0,0,0)
+		, m_Rotation(my::Quaternion::Identity())
+		, m_ViewTransform(my::Matrix4::Identity())
+	{
+	}
 
 	void UpdateViewTransform(const my::Matrix4 & ViewProj, UINT ViewWidth);
 
-	void DrawMoveController(IDirect3DDevice9 * pd3dDevice, const my::Camera * camera);
+	void DrawMoveController(IDirect3DDevice9 * pd3dDevice, const my::Camera * camera, HighLightAxis high_light_axis);
 
-	void DrawRotationController(IDirect3DDevice9 * pd3dDevice, const my::Camera * camera);
+	void DrawRotationController(IDirect3DDevice9 * pd3dDevice, const my::Camera * camera, HighLightAxis high_light_axis);
+};
+
+class PivotController : public PivotControllerBase
+{
+public:
+	enum PivotMode
+	{
+		PivotModeMove,
+		PivotModeRotation,
+	};
+
+	PivotMode m_PovitMode;
+
+	HighLightAxis m_HighLightAxis;
+
+	my::Vector3 m_DragPos;
+
+	my::Quaternion m_DragRot;
+
+	my::Vector3 m_DragPt;
+
+	my::Vector3 m_DragNormal;
+
+	float m_DragDist;
+
+public:
+	PivotController(void)
+		: m_PovitMode(PivotModeMove)
+		, m_HighLightAxis(HighLightAxisNone)
+	{
+	}
+
+	~PivotController(void)
+	{
+	}
 
 	BOOL OnMoveControllerLButtonDown(const std::pair<my::Vector3, my::Vector3> & ray);
 
