@@ -2,8 +2,31 @@
 
 class CMFCPropertyGridCtrl;
 
+class CSimpleProp;
+
 class TreeNodeBase : public CObject
 {
+protected:
+	static void SetPropertyFloat(CSimpleProp * pProp, const float * pValue);
+
+	static void GetPropertyFloat(const CSimpleProp * pProp, float * pValue);
+
+	static void SetPropertyString(CSimpleProp * pProp, const CString * pValue);
+
+	static void GetPropertyString(const CSimpleProp * pProp, CString * pValue);
+
+	static void SetPropertyQuatX(CSimpleProp * pProp, const my::Quaternion * pValue);
+
+	static void GetPropertyQuatX(const CSimpleProp * pProp, my::Quaternion * pValue);
+
+	static void SetPropertyQuatY(CSimpleProp * pProp, const my::Quaternion * pValue);
+
+	static void GetPropertyQuatY(const CSimpleProp * pProp, my::Quaternion * pValue);
+
+	static void SetPropertyQuatZ(CSimpleProp * pProp, const my::Quaternion * pValue);
+
+	static void GetPropertyQuatZ(const CSimpleProp * pProp, my::Quaternion * pValue);
+
 public:
 	my::Vector3 m_Position;
 
@@ -90,7 +113,22 @@ public:
 
 typedef boost::shared_ptr<TreeNodeMesh> TreeNodeMeshPtr;
 
-class TreeNodeCollisionCapsule : public TreeNodeBase
+class TreeNodeCollision : public TreeNodeBase
+{
+public:
+	CString m_BindBone;
+
+public:
+	TreeNodeCollision(void)
+	{
+	}
+
+	virtual void Serialize(CArchive & ar);
+
+	virtual void SetupProperties(CMFCPropertyGridCtrl * pPropertyGridCtrl);
+};
+
+class TreeNodeCollisionCapsule : public TreeNodeCollision
 {
 public:
 	float m_Radius;
@@ -120,3 +158,27 @@ public:
 };
 
 typedef boost::shared_ptr<TreeNodeCollisionCapsule> TreeNodeCollisionCapsulePtr;
+
+class TreeNodeCollisionBox : public TreeNodeCollision
+{
+public:
+	IceMaths::OBB m_Box;
+
+public:
+	TreeNodeCollisionBox(void)
+		: m_Box(IceMaths::Point(0,0,0), IceMaths::Point(1,1,1), IceMaths::Matrix3x3(1,0,0,0,1,0,0,0,1))
+	{
+	}
+
+	virtual void Serialize(CArchive & ar);
+
+	virtual void SetupProperties(CMFCPropertyGridCtrl * pPropertyGridCtrl);
+
+	virtual void Draw(IDirect3DDevice9 * pd3dDevice, float fElapsedTime, const my::Matrix4 & World);
+
+	virtual bool RayTest(const std::pair<my::Vector3, my::Vector3> & ray, const my::Matrix4 & World);
+
+	DECLARE_SERIAL(TreeNodeCollisionBox)
+};
+
+typedef boost::shared_ptr<TreeNodeCollisionBox> TreeNodeCollisionBoxPtr;
