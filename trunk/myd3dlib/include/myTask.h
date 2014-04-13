@@ -6,22 +6,26 @@
 
 namespace my
 {
-	class Task
+	class ParallelTask
 	{
 	public:
 		virtual void DoTask(void) = 0;
 	};
 
-	typedef boost::shared_ptr<Task> TaskPtr;
+	typedef boost::shared_ptr<ParallelTask> ParallelTaskPtr;
 
 	class ParallelTaskManager
 	{
-	protected:
+	public:
 		typedef std::vector<ThreadPtr> ThreadPtrList;
 
 		ThreadPtrList m_Threads;
 
-		typedef std::vector<Task *> TaskList;
+		typedef std::vector<HANDLE> HANDLEList;
+
+		HANDLEList m_Handles;
+
+		typedef std::vector<ParallelTask *> TaskList;
 
 		TaskList m_Tasks;
 
@@ -36,14 +40,14 @@ namespace my
 
 		bool ParallelThreadDoTask(void);
 
-		DWORD ParallelThreadFunc(void);
+		DWORD ParallelThreadFunc(int i);
 
 		void StartParallelThread(void);
 
 		void StopParallelThread(void);
 
-		void PushTask(Task * task);
+		void PushTask(ParallelTask * task);
 
-		void DoAllTasks(void);
+		void DoAllParallelTasks(void);
 	};
 }

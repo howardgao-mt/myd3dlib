@@ -7,11 +7,12 @@ using namespace my;
 ParallelTaskManager::ParallelTaskManager(LONG lMaximumCount)
 	: m_bStopped(false)
 {
-	_ASSERT(lMaximumCount >= 2);
+	_ASSERT(lMaximumCount > 0);
 
-	for(LONG i = 0; i < (lMaximumCount - 1); i++)
+	for(LONG i = 0; i < lMaximumCount; i++)
 	{
-		m_Threads.push_back(ThreadPtr(new Thread(boost::bind(&ParallelTaskManager::ParallelThreadFunc, this))));
+		m_Threads.push_back(ThreadPtr(new Thread(boost::bind(&ParallelTaskManager::ParallelThreadFunc, this, i))));
+		m_Handles.push_back(::CreateEvent(NULL, TRUE, FALSE, NULL));
 	}
 }
 
@@ -19,7 +20,7 @@ bool ParallelTaskManager::ParallelThreadDoTask(void)
 {
 	if(!m_Tasks.empty())
 	{
-		Task * task = m_Tasks.back();
+		ParallelTask * task = m_Tasks.back();
 
 		m_Tasks.pop_back();
 
@@ -32,7 +33,7 @@ bool ParallelTaskManager::ParallelThreadDoTask(void)
 	return false;
 }
 
-DWORD ParallelTaskManager::ParallelThreadFunc(void)
+DWORD ParallelTaskManager::ParallelThreadFunc(int i)
 {
 	m_TasksMutex.Wait(INFINITE);
 	while(!m_bStopped)
@@ -43,7 +44,9 @@ DWORD ParallelTaskManager::ParallelThreadFunc(void)
 		}
 		else
 		{
+			::SetEvent(m_Handles[i]);
 			m_TasksCondition.Sleep(m_TasksMutex, INFINITE);
+			::ResetEvent(m_Handles[i]);
 		}
 	}
 	return 0;
@@ -52,7 +55,7 @@ DWORD ParallelTaskManager::ParallelThreadFunc(void)
 void ParallelTaskManager::StartParallelThread(void)
 {
 	m_bStopped = false;
-	for(LONG i = 0; i < m_Threads.size(); i++)
+	for(size_t i = 0; i < m_Threads.size(); i++)
 	{
 		m_Threads[i]->CreateThread();
 		m_Threads[i]->ResumeThread();
@@ -63,19 +66,24 @@ void ParallelTaskManager::StopParallelThread(void)
 {
 	m_TasksMutex.Wait(INFINITE);
 	m_bStopped = true;
-	m_TasksCondition.Wake();
 	m_TasksMutex.Release();
+	m_TasksCondition.Wake(m_Threads.size());
+
+	for(size_t i = 0; i < m_Threads.size(); i++)
+	{
+		m_Threads[i]->WaitForThreadStopped(INFINITE);
+	}
 }
 
-void ParallelTaskManager::PushTask(Task * task)
+void ParallelTaskManager::PushTask(ParallelTask * task)
 {
 	m_TasksMutex.Wait(INFINITE);
 	m_Tasks.push_back(task);
-	m_TasksCondition.Wake();
 	m_TasksMutex.Release();
+	m_TasksCondition.Wake(1);
 }
 
-void ParallelTaskManager::DoAllTasks(void)
+void ParallelTaskManager::DoAllParallelTasks(void)
 {
 	m_TasksMutex.Wait();
 	while(ParallelThreadDoTask())
@@ -83,4 +91,6 @@ void ParallelTaskManager::DoAllTasks(void)
 		m_TasksMutex.Wait(INFINITE);
 	}
 	m_TasksMutex.Release();
+
+	::WaitForMultipleObjects(m_Handles.size(), &m_Handles[0], TRUE, INFINITE);
 }
