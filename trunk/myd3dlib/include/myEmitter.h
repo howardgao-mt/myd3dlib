@@ -9,40 +9,30 @@
 
 namespace my
 {
-	class EmitterInstance;
-
-	template <typename T>
-	class EmitterParameter
-		: public Spline
+	class EmitterParticle : public Particle
 	{
 	public:
-		T m_Value;
+		D3DCOLOR m_Color;
 
-		EmitterParameter(void)
-			: m_Value(0)
+		Vector4 m_Texcoord1;
+
+		Vector4 m_Texcoord2;
+
+	public:
+		EmitterParticle(
+			const Vector3 & position,
+			const Vector3 & velocity)
+			: Particle(position, velocity, Vector3::zero, Vector3::zero, 1, 1)
+			, m_Color(D3DCOLOR_ARGB(255,255,255,255))
+			, m_Texcoord1(1,1,0,1)
+			, m_Texcoord2(0,0,0,0)
 		{
-		}
-
-		EmitterParameter(const T & Value)
-			: m_Value(Value)
-		{
-		}
-
-		template <class Archive>
-		void serialize(Archive & ar, const unsigned int version)
-		{
-			ar & boost::serialization::base_object<Spline>(*this);
-			ar & m_Value;
-		}
-
-		T Interpolate(float s) const
-		{
-			if(empty())
-				return m_Value;
-
-			return (T)Spline::Interpolate(s, 0, size());
 		}
 	};
+
+	typedef boost::shared_ptr<EmitterParticle> EmitterParticlePtr;
+
+	class EmitterInstance;
 
 	class Emitter
 		: public DeviceRelatedObjectBase
@@ -71,19 +61,19 @@ namespace my
 
 		float m_ParticleLifeTime;
 
-		EmitterParameter<int> m_ParticleColorA;
+		Spline m_ParticleColorA;
 
-		EmitterParameter<int> m_ParticleColorR;
+		Spline m_ParticleColorR;
 
-		EmitterParameter<int> m_ParticleColorG;
+		Spline m_ParticleColorG;
 
-		EmitterParameter<int> m_ParticleColorB;
+		Spline m_ParticleColorB;
 
-		EmitterParameter<float> m_ParticleSizeX;
+		Spline m_ParticleSizeX;
 
-		EmitterParameter<float> m_ParticleSizeY;
+		Spline m_ParticleSizeY;
 
-		EmitterParameter<float> m_ParticleAngle;
+		Spline m_ParticleAngle;
 
 		float m_ParticleAnimFPS;
 
@@ -93,7 +83,7 @@ namespace my
 
 		BaseTexturePtr m_Texture;
 
-		typedef std::deque<std::pair<ParticlePtr, float> > ParticlePtrPairList;
+		typedef std::deque<std::pair<EmitterParticlePtr, float> > ParticlePtrPairList;
 
 		ParticlePtrPairList m_ParticleList;
 
@@ -104,13 +94,6 @@ namespace my
 			, m_Position(0,0,0)
 			, m_Orientation(Quaternion::Identity())
 			, m_ParticleLifeTime(10)
-			, m_ParticleColorA(255)
-			, m_ParticleColorR(255)
-			, m_ParticleColorG(255)
-			, m_ParticleColorB(255)
-			, m_ParticleSizeX(1)
-			, m_ParticleSizeY(1)
-			, m_ParticleAngle(0)
 			, m_ParticleAnimFPS(1)
 			, m_ParticleAnimColumn(1)
 			, m_ParticleAnimRow(1)
@@ -149,15 +132,18 @@ namespace my
 
 		void Spawn(const Vector3 & Position, const Vector3 & Velocity);
 
+		void UpdateParticle(EmitterParticle * particle, float time, float fElapsedTime);
+
 		virtual void Update(double fTime, float fElapsedTime);
 
 		DWORD BuildInstance(
-			EmitterInstance * pEmitterInstance,
+			EmitterInstance * pInstance,
 			double fTime,
 			float fElapsedTime);
 
 		void Draw(
-			EmitterInstance * pEmitterInstance,
+			EmitterInstance * pInstance,
+			const Quaternion & ViewOrientation,
 			double fTime,
 			float fElapsedTime);
 	};
@@ -178,9 +164,9 @@ namespace my
 
 		float m_SpawnSpeed;
 
-		EmitterParameter<float> m_SpawnInclination;
+		Spline m_SpawnInclination;
 
-		EmitterParameter<float> m_SpawnAzimuth;
+		Spline m_SpawnAzimuth;
 
 		float m_SpawnLoopTime;
 
@@ -191,8 +177,6 @@ namespace my
 			, m_RemainingSpawnTime(0)
 			, m_HalfSpawnArea(0,0,0)
 			, m_SpawnSpeed(0)
-			, m_SpawnInclination(D3DXToRadian(0))
-			, m_SpawnAzimuth(D3DXToRadian(0))
 			, m_SpawnLoopTime(5)
 		{
 		}
@@ -288,34 +272,4 @@ namespace my
 	};
 
 	typedef boost::shared_ptr<EmitterInstance> EmitterInstancePtr;
-
-	class EmitterMgr
-	{
-	public:
-		typedef std::set<EmitterPtr> EmitterPtrSet;
-
-		EmitterPtrSet m_EmitterSet;
-
-	public:
-		EmitterMgr(void)
-		{
-		}
-
-		void Update(
-			double fTime,
-			float fElapsedTime);
-
-		void Draw(
-			EmitterInstance * pInstance,
-			const Matrix4 & ViewProj,
-			const Quaternion & ViewOrientation,
-			double fTime,
-			float fElapsedTime);
-
-		void InsertEmitter(EmitterPtr emitter);
-
-		void RemoveEmitter(EmitterPtr emitter);
-
-		void RemoveAllEmitter(void);
-	};
 }
