@@ -345,21 +345,13 @@ ApexRenderResource::~ApexRenderResource(void)
 {
 }
 
-void ApexRenderResource::Draw(DrawState State, const my::Matrix4 & ParentWorld)
+void ApexRenderResource::Draw(void)
 {
-	m_matPair->second->SetMatrix("g_World", ParentWorld);
+	HRESULT hr;
+	m_matPair->second->SetMatrix("g_World", my::Matrix4::identity);
 	m_matPair->second->SetTexture("g_MeshTexture", m_matPair->first->m_DiffuseTexture);
 	m_matPair->second->SetMatrixArray("g_BoneMatrices", &m_ApexBb->m_bones[m_firstBone], m_numBones);
-	switch(State)
-	{
-	case DrawStateShadow:
-		m_matPair->second->SetTechnique("RenderShadow");
-		break;
-	case DrawStateOpaque:
-		m_matPair->second->SetTechnique("RenderScene");
-		break;
-	}
-	HRESULT hr;
+	m_matPair->second->SetTechnique("RenderScene");
 	UINT passes = m_matPair->second->Begin();
 	for(UINT p = 0; p < passes; p++)
 	{

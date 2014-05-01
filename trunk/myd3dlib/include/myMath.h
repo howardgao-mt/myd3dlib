@@ -10,6 +10,10 @@
 
 #define cot(x)	tan(D3DX_PI / 2 - (x))
 
+#define IS_UNITED(v) (abs((float)(v) - 1) < EPSILON_E6)
+
+#define IS_NORMALIZED(v) (IS_UNITED((v).magnitude()))
+
 namespace my
 {
 	//inline int _ftoi(double dval)
@@ -2387,8 +2391,118 @@ namespace my
 	public:
 		static const Matrix4 identity;
 	};
+
+	class Plane
+	{
+	public:
+		union
+		{
+			struct 
+			{
+				float a, b, c;
+			};
+
+			struct 
+			{
+				Vector3 normal;
+			};
+		};
+
+		float d;
+
+	public:
+		Plane(void)
+			//: a(1)
+			//, b(0)
+			//, c(0)
+			//, d(0)
+		{
+		}
+
+		Plane(float _a, float _b, float _c, float _d)
+			: a(_a)
+			, b(_b)
+			, c(_c)
+			, d(_d)
+		{
+		}
+
+		static Plane FromNormalDistance(const Vector3 & normal, float distance)
+		{
+			_ASSERT(IS_NORMALIZED(normal));
+
+			return Plane(normal.x, normal.y, normal.z, -distance);
+		}
+
+		float magnitude(void) const
+		{
+			return sqrt(magnitudeSq());
+		}
+
+		float magnitudeSq(void) const
+		{
+			return a * a + b * b + c * c;
+		}
+
+		Plane normalize(void) const
+		{
+			float invLength = 1 / magnitude();
+
+			return Plane(a * invLength, b * invLength, c * invLength, d * invLength);
+		}
+
+		Plane & normalizeSelf(void)
+		{
+			float invLength = 1 / magnitude();
+			a *= invLength;
+			b *= invLength;
+			c *= invLength;
+			d *= invLength;
+			return *this;
+		}
+
+		float DistanceToPoint(const Vector3 & pt) const
+		{
+			return a * pt.x + b * pt.y + c * pt.z + d;
+		}
+	};
+
+	class Frustum
+	{
+	public:
+		Plane Up, Down, Left, Right, Near, Far;
+
+	public:
+		Frustum(void)
+			//: Up()
+			//, Down()
+			//, Left()
+			//, Right()
+			//, Near()
+			//, Far()
+		{
+		}
+
+		Frustum(const Plane & _Up, const Plane & _Down, const Plane & _Left, const Plane & _Right, const Plane & _Near, const Plane & _Far)
+			: Up(_Up)
+			, Down(_Down)
+			, Left(_Left)
+			, Right(_Right)
+			, Near(_Near)
+			, Far(_Far)
+		{
+		}
+
+		static Frustum FromMatrix(const Matrix4 & m)
+		{
+			// ! need normalize ?
+			return Frustum(
+				Plane(m._14 - m._12, m._24 - m._22, m._34 - m._32, m._44 - m._42),
+				Plane(m._14 + m._12, m._24 + m._22, m._34 + m._32, m._44 + m._42),
+				Plane(m._14 + m._11, m._24 + m._21, m._34 + m._31, m._44 + m._41),
+				Plane(m._14 - m._11, m._24 - m._21, m._34 - m._31, m._44 - m._41),
+				Plane(m._13, m._23, m._33, m._43),
+				Plane(m._14 - m._13, m._24 - m._23, m._34 - m._33, m._44 - m._43));
+		}
+	};
 };
-
-#define IS_UNITED(v) (abs((float)(v) - 1) < EPSILON_E6)
-
-#define IS_NORMALIZED(v) (IS_UNITED((v).magnitude()))

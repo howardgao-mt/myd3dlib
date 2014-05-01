@@ -9,6 +9,32 @@
 namespace my
 {
 	// /////////////////////////////////////////////////////////////////////////////////////
+	// AABB
+	// /////////////////////////////////////////////////////////////////////////////////////
+
+	class AABB
+	{
+	public:
+		Vector3 Min;
+
+		Vector3 Max;
+
+	public:
+		AABB(void)
+			//: Min(FLT_MIN,FLT_MIN,FLT_MIN)
+			//, Max(FLT_MAX,FLT_MAX,FLT_MAX)
+		{
+		}
+
+		AABB(const Vector3 & _Min, const Vector3 & _Max)
+			: Min(_Min)
+			, Max(_Max)
+		{
+			_ASSERT(Min.x <= Max.x && Min.y <= Max.y && Min.z <= Max.z);
+		}
+	};
+
+	// /////////////////////////////////////////////////////////////////////////////////////
 	// BoundingSphere
 	// /////////////////////////////////////////////////////////////////////////////////////
 
@@ -337,8 +363,7 @@ namespace my
 			unsigned limits) const = 0;
 
 		virtual unsigned collideHalfSpace(
-			const Vector3 & planeNormal,
-			float planeDist,
+			const Plane & plane,
 			float planeFriction,
 			float planeRestitution,
 			Contact * contacts,
@@ -399,8 +424,7 @@ namespace my
 			unsigned limits) const;
 
 		virtual unsigned collideHalfSpace(
-			const Vector3 & planeNormal,
-			float planeDist,
+			const Plane & plane,
 			float planeFriction,
 			float planeRestitution,
 			Contact * contacts,
@@ -459,8 +483,7 @@ namespace my
 			unsigned limits) const;
 
 		virtual unsigned collideHalfSpace(
-			const Vector3 & planeNormal,
-			float planeDist,
+			const Plane & plane,
 			float planeFriction,
 			float planeRestitution,
 			Contact * contacts,
@@ -476,8 +499,7 @@ namespace my
 	public:
 		static bool sphereAndHalfSpace(
 			const CollisionSphere & sphere,
-			const Vector3 & planeNormal,
-			float planeDist);
+			const Plane & plane);
 
 		static bool sphereAndSphere(
 			const CollisionSphere & sphere0,
@@ -487,8 +509,7 @@ namespace my
 
 		static bool boxAndHalfSpace(
 			const CollisionBox & box,
-			const Vector3 & planeNormal,
-			float planeDist);
+			const Plane & plane);
 
 		static bool _overlapOnAxis(
 			const CollisionBox & box0,
@@ -521,8 +542,7 @@ namespace my
 		static TestResult rayAndHalfSpace(
 			const Vector3 & pos,
 			const Vector3 & dir,
-			const Vector3 & planeNormal,
-			float planeDist);
+			const Plane & plane);
 
 		// ! the returned second matched un-normalized ray
 		static TestResult rayAndSphere(
@@ -552,6 +572,10 @@ namespace my
 			const Vector3 & v0,
 			const Vector3 & v1,
 			const Vector3 & v2);
+
+		static bool isInsideFrustum(const Frustum & frustum, const Vector3 & pt);
+
+		static bool isInsideFrustum(const Frustum & frustum, const AABB & aabb);
 	};
 
 	// /////////////////////////////////////////////////////////////////////////////////////
@@ -589,8 +613,7 @@ namespace my
 	public:
 		static unsigned sphereAndHalfSpace(
 			const CollisionSphere & sphere,
-			const Vector3 & planeNormal,
-			float planeDist,
+			const Plane & plane,
 			float planeFriction,
 			float planeRestitution,
 			Contact * contacts,
@@ -598,8 +621,7 @@ namespace my
 
 		static unsigned sphereAndTruePlane(
 			const CollisionSphere & sphere,
-			const Vector3 & planeNormal,
-			float planeDist,
+			const Plane & plane,
 			float planeFriction,
 			float planeRestitution,
 			Contact * contacts,
@@ -629,11 +651,6 @@ namespace my
 			const Vector3 & planePoint,
 			const Vector3 & planeNormal);
 
-		static float calculatePointPlaneDistance(
-			const Vector3 & point,
-			const Vector3 & planeNormal,
-			float planeDist);
-
 		static unsigned sphereAndTriangle(
 			const CollisionSphere & sphere,
 			const Vector3 & v0,
@@ -656,8 +673,7 @@ namespace my
 			RigidBody * pointBody,
 			float pointFriction,
 			float pointRestitution,
-			const Vector3 & planeNormal,
-			float planeDist,
+			const Plane & plane,
 			float planeFriction,
 			float planeRestitution,
 			Contact * contacts,
@@ -665,8 +681,7 @@ namespace my
 
 		static unsigned boxAndHalfSpace(
 			const CollisionBox & box,
-			const Vector3 & planeNormal,
-			float planeDist,
+			const Plane & plane,
 			float planeFriction,
 			float planeRestitution,
 			Contact * contacts,
