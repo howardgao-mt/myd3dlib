@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MeshComponent.h"
+#include "RenderComponent.h"
 
 class ApexResourceCallback
 	: public physx::apex::NxResourceCallback
@@ -95,7 +95,6 @@ public:
 
 class ApexRenderResource
 	: public physx::apex::NxUserRenderResource
-	, public MeshComponentBase
 {
 public:
 	ApexRenderResource(IDirect3DDevice9 * pd3dDevice, const physx::apex::NxUserRenderResourceDesc& desc);
@@ -126,7 +125,7 @@ public:
 
 	physx::apex::NxUserRenderSpriteBuffer* getSpriteBuffer() const {return NULL;}
 
-	virtual void Draw(DrawState State, const my::Matrix4 & ParentWorld = my::Matrix4::identity);
+	void Draw(void);
 
 	std::vector<ApexRenderVertexBuffer *> m_ApexVbs;
 

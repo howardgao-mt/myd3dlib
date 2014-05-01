@@ -1,6 +1,6 @@
 #pragma once
 
-class MeshComponentBase
+class RenderComponent
 {
 public:
 	enum DrawState
@@ -9,21 +9,26 @@ public:
 		DrawStateOpaque,
 	};
 
+	my::AABB m_AABB;
+
 public:
-	virtual ~MeshComponentBase(void)
+	RenderComponent(const my::AABB & aabb)
+		: m_AABB(aabb)
 	{
 	}
 
-	virtual void Draw(DrawState State, const my::Matrix4 & ParentWorld = my::Matrix4::identity) = 0;
+	virtual ~RenderComponent(void)
+	{
+	}
+
+	virtual void Draw(void) = 0;
 };
 
-typedef boost::shared_ptr<MeshComponentBase> MeshComponentBasePtr;
+typedef boost::shared_ptr<RenderComponent> RenderComponentBasePtr;
 
-class MeshComponent : public MeshComponentBase
+class MeshComponent : public RenderComponent
 {
 public:
-	my::OgreMeshPtr m_Mesh;
-
 	typedef std::pair<my::MaterialPtr, my::EffectPtr> MaterialPair;
 
 	typedef std::vector<MaterialPair> MaterialPairList;
@@ -32,12 +37,15 @@ public:
 
 	my::Matrix4 m_World;
 
+	my::OgreMeshPtr m_Mesh;
+
 public:
-	MeshComponent(void)
+	MeshComponent(const my::AABB & aabb)
+		: RenderComponent(aabb)
 	{
 	}
 
-	virtual void Draw(DrawState State, const my::Matrix4 & ParentWorld = my::Matrix4::identity);
+	virtual void Draw(void);
 };
 
 typedef boost::shared_ptr<MeshComponent> MeshComponentPtr;
@@ -48,11 +56,12 @@ public:
 	my::TransformList m_DualQuats;
 
 public:
-	SkeletonMeshComponent(void)
+	SkeletonMeshComponent(const my::AABB & aabb)
+		: MeshComponent(aabb)
 	{
 	}
 
-	virtual void Draw(DrawState State, const my::Matrix4 & ParentWorld = my::Matrix4::identity);
+	virtual void Draw(void);
 };
 
 typedef boost::shared_ptr<SkeletonMeshComponent> SkeletonMeshComponentPtr;
