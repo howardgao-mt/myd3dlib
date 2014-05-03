@@ -16,17 +16,19 @@ class Demo
 public:
 	EffectPtr m_SimpleSample;
 
-	SkeletonMeshComponentPtr m_mesh;
-	OgreSkeletonAnimationPtr m_skel_anim;
-	BoneList m_skel_pose;
-	BoneList m_skel_pose_heir1;
-	BoneList m_skel_pose_heir2;
+	//SkeletonMeshComponentPtr m_mesh;
+	//OgreSkeletonAnimationPtr m_skel_anim;
+	//BoneList m_skel_pose;
+	//BoneList m_skel_pose_heir1;
+	//BoneList m_skel_pose_heir2;
 
-	std::vector<physx_ptr<PxActor> > m_Actors;
-	physx_ptr<physx::apex::NxApexAsset> m_ApexAsset;
-	physx_ptr<physx::apex::NxDestructibleActor> m_DestructibleActor;
+	//std::vector<physx_ptr<PxActor> > m_Actors;
+	//physx_ptr<physx::apex::NxApexAsset> m_ApexAsset;
+	//physx_ptr<physx::apex::NxDestructibleActor> m_DestructibleActor;
 
-	my::FirstPersonCamera m_TestCam;
+	FirstPersonCamera m_TestCam;
+	OgreMeshSetPtr m_meshSet;
+	MaterialPtr m_lambert1;
 
 	Demo::Demo(void)
 		: m_TestCam(D3DXToRadian(75), 1.333333f, 1, 5)
@@ -139,6 +141,9 @@ public:
 		//NxParameterized::setParamVec3(*params, "scale", PxVec3(0.5f));
 		//m_DestructibleActor.reset(static_cast<physx::NxDestructibleActor *>(m_ApexAsset->createApexActor(*params, *m_ApexScene)));
 
+		m_meshSet = LoadMeshSet("mesh/scene1.mesh.xml");
+		m_lambert1 = LoadMaterial("material/lambert1.txt");
+
 		return S_OK;
 	}
 
@@ -160,10 +165,10 @@ public:
 
 	virtual void OnDestroyDevice(void)
 	{
-		// ×¢ÒâË³Ðò
-		m_DestructibleActor.reset();
-		m_ApexAsset.reset();
-		m_Actors.clear();
+		//// ×¢ÒâË³Ðò
+		//m_DestructibleActor.reset();
+		//m_ApexAsset.reset();
+		//m_Actors.clear();
 
 		Game::OnDestroyDevice();
 	}
@@ -214,71 +219,71 @@ public:
 		m_SimpleSample->SetMatrix("g_ViewProj", m_Camera->m_ViewProj);
 
 		DrawHelper::DrawGrid(pd3dDevice);
-		DrawHelper::DrawAABB(pd3dDevice, my::AABB(Vector3(-1,-1,-1), Vector3(1,1,1)), D3DCOLOR_ARGB(255,255,255,255), m_TestCam.m_InverseViewProj);
-		struct Vertex
-		{
-			float x, y, z;
-			D3DCOLOR color;
-			Vertex(float _x, float _y, float _z, D3DCOLOR _color)
-				: x(_x), y(_y), z(_z), color(_color)
-			{
-			}
-		};
-		std::vector<Vertex> v;
-		Frustum frustum(Frustum::ExtractMatrix(m_TestCam.m_ViewProj));
-		for(int i = -5; i <= 5; i++)
-		{
-			for(int j = -5; j <= 5; j++)
-			{
-				for(int k = -5; k <= 5; k++)
-				{
-					my::AABB aabb(Vector3(i,j,k)-0.3f,Vector3(i,j,k)+0.3f);
-					D3DCOLOR Color;
-					switch(IntersectionTests::IntersectAABBAndFrustum(aabb, frustum))
-					{
-					case IntersectionTests::IntersectionTypeInside:
-						Color = D3DCOLOR_ARGB(255,0,255,0);
-						break;
-					case IntersectionTests::IntersectionTypeIntersect:
-						Color = D3DCOLOR_ARGB(255,255,0,0);
-						break;
-					default:
-						Color = D3DCOLOR_ARGB(255,255,255,255);
-						break;
-					}
-					v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Min.z, Color));
+		//DrawHelper::DrawAABB(pd3dDevice, my::AABB(Vector3(-1,-1,-1), Vector3(1,1,1)), D3DCOLOR_ARGB(255,255,255,255), m_TestCam.m_InverseViewProj);
+		//struct Vertex
+		//{
+		//	float x, y, z;
+		//	D3DCOLOR color;
+		//	Vertex(float _x, float _y, float _z, D3DCOLOR _color)
+		//		: x(_x), y(_y), z(_z), color(_color)
+		//	{
+		//	}
+		//};
+		//std::vector<Vertex> v;
+		//Frustum frustum(Frustum::ExtractMatrix(m_TestCam.m_ViewProj));
+		//for(int i = -5; i <= 5; i++)
+		//{
+		//	for(int j = -5; j <= 5; j++)
+		//	{
+		//		for(int k = -5; k <= 5; k++)
+		//		{
+		//			my::AABB aabb(Vector3(i,j,k)-0.3f,Vector3(i,j,k)+0.3f);
+		//			D3DCOLOR Color;
+		//			switch(IntersectionTests::IntersectAABBAndFrustum(aabb, frustum))
+		//			{
+		//			case IntersectionTests::IntersectionTypeInside:
+		//				Color = D3DCOLOR_ARGB(255,0,255,0);
+		//				break;
+		//			case IntersectionTests::IntersectionTypeIntersect:
+		//				Color = D3DCOLOR_ARGB(255,255,0,0);
+		//				break;
+		//			default:
+		//				Color = D3DCOLOR_ARGB(255,255,255,255);
+		//				break;
+		//			}
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Min.z, Color));
 
-					v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Min.z, Color));
 
-					v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Max.z, Color));
-					v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Min.z, Color));
-					v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Min.z, Color));
-				}
-			}
-		}
-		pd3dDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
-		pd3dDevice->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE);
-		pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&Matrix4::identity);
-		pd3dDevice->DrawPrimitiveUP(D3DPT_LINELIST, v.size() / 2, &v[0], sizeof(v[0]));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Min.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Min.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Max.z, Color));
+		//			v.push_back(Vertex(aabb.Min.x, aabb.Max.y, aabb.Min.z, Color));
+		//			v.push_back(Vertex(aabb.Max.x, aabb.Max.y, aabb.Min.z, Color));
+		//		}
+		//	}
+		//}
+		//pd3dDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
+		//pd3dDevice->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE);
+		//pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&Matrix4::identity);
+		//pd3dDevice->DrawPrimitiveUP(D3DPT_LINELIST, v.size() / 2, &v[0], sizeof(v[0]));
 
 		//// ========================================================================================================
 		//// ²åÈë¹Ç÷À¶¯»­
@@ -300,6 +305,22 @@ public:
 		//m_DestructibleActor->unlockRenderResources();
 
 		////PhysXSceneContext::DrawRenderBuffer(pd3dDevice); // ! Do not use this method while the simulation is running
+
+		OgreMeshSet::OgreMeshPtrSet::iterator mesh_iter = m_meshSet->m_Submeshes.begin();
+		for(; mesh_iter != m_meshSet->m_Submeshes.end(); mesh_iter++)
+		{
+			m_SimpleSample->SetMatrix("g_World", Matrix4::identity);
+			m_SimpleSample->SetTexture("g_MeshTexture", m_lambert1->m_DiffuseTexture);
+			m_SimpleSample->SetTechnique("RenderScene");
+			UINT passes = m_SimpleSample->Begin();
+			for(UINT p = 0; p < passes; p++)
+			{
+				m_SimpleSample->BeginPass(p);
+				(*mesh_iter)->DrawSubset(0);
+				m_SimpleSample->EndPass();
+			}
+			m_SimpleSample->End();
+		}
 
 		// ========================================================================================================
 		// »æÖÆÁ£×Ó
