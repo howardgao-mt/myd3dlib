@@ -12,84 +12,37 @@ namespace my
 {
 	class DrawHelper
 	{
+	protected:
+		struct Vertex
+		{
+			float x, y, z;
+
+			D3DCOLOR color;
+
+			Vertex(const Vector3 & v, D3DCOLOR _color)
+				: x(v.x), y(v.y), z(v.z), color(_color)
+			{
+			}
+		};
+
+		std::vector<Vertex> m_vertices;
+
 	public:
-		static void DrawLine(
-			IDirect3DDevice9 * pd3dDevice,
-			const Vector3 & v0,
-			const Vector3 & v1,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
+		DrawHelper(void)
+		{
+		}
 
-		static void DrawSphere(
-			IDirect3DDevice9 * pd3dDevice,
-			float radius,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
+		void BeginLine(void);
 
-		static void DrawBox(
-			IDirect3DDevice9 * pd3dDevice,
-			const Vector3 & halfSize,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
+		void EndLine(IDirect3DDevice9 * pd3dDevice, const Matrix4 & Transform = Matrix4::identity);
 
-		static void DrawTriangle(
-			IDirect3DDevice9 * pd3dDevice,
-			const Vector3 & v0,
-			const Vector3 & v1,
-			const Vector3 & v2,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
+		void PushLine(const Vector3 & v0, const Vector3 & v1, D3DCOLOR Color);
 
-		static void DrawSpereStage(
-			IDirect3DDevice9 * pd3dDevice,
-			float radius,
-			int VSTAGE_BEGIN,
-			int VSTAGE_END,
-			float offsetY,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
+		void PushWireAABB(const AABB & aabb, D3DCOLOR Color);
 
-		static void DrawCylinderStage(
-			IDirect3DDevice9 * pd3dDevice,
-			float radius,
-			float y0,
-			float y1,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
+		void PushWireAABB(const AABB & aabb, D3DCOLOR Color, const Matrix4 & Transform);
 
-		static void DrawCylinder(
-			IDirect3DDevice9 * pd3dDevice,
-			float radius,
-			float height,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
-
-		static void DrawCapsule(
-			IDirect3DDevice9 * pd3dDevice,
-			float radius,
-			float height,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
-
-		static void DrawCone(
-			IDirect3DDevice9 * pd3dDevice,
-			float radius,
-			float height,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
-
-		static void DrawGrid(
-			IDirect3DDevice9 * pd3dDevice,
-			float length = 12,
-			float linesEvery = 5,
-			unsigned subLines = 5,
-			D3DCOLOR Color = D3DCOLOR_ARGB(255,127,127,127));
-
-		static void DrawAABB(
-			IDirect3DDevice9 * pd3dDevice,
-			const AABB & aabb,
-			D3DCOLOR Color,
-			const Matrix4 & world = Matrix4::identity);
+		void PushGrid(float length = 12, float linesEvery = 5, unsigned subLines = 5, D3DCOLOR GridColor = D3DCOLOR_ARGB(255,127,127,127), D3DCOLOR AxisColor = D3DCOLOR_ARGB(255,0,0,0));
 	};
 
 	class Timer
