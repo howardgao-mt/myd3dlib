@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include "PhysXContext.h"
-#include "Game.h"
 
 void * PhysXAllocator::allocate(size_t size, const char * typeName, const char * filename, int line)
 {
@@ -20,29 +19,9 @@ void PhysXAllocator::deallocate(void * ptr)
 #endif
 }
 
-void PhysXErrorCallback::reportError(PxErrorCode::Enum code, const char* message, const char* file, int line)
-{
-	switch(code)
-	{
-	case PxErrorCode::eDEBUG_INFO:
-		Game::getSingleton().AddLine(ms2ws(str_printf("%s (%d) : info: %s", file, line, message)));
-		break;
-
-	case PxErrorCode::eDEBUG_WARNING:
-	case PxErrorCode::ePERF_WARNING:
-		Game::getSingleton().AddLine(ms2ws(str_printf("%s (%d) : warning: %s", file, line, message)), D3DCOLOR_ARGB(255,255,255,0));
-		break;
-
-	default:
-		OutputDebugStringA(str_printf("%s (%d) : error: %s\n", file, line, message).c_str());
-		Game::getSingleton().AddLine(ms2ws(str_printf("%s, (%d) : error: %s", file, line, message)), D3DCOLOR_ARGB(255,255,0,0));
-		break;
-	}
-}
-
 bool PhysXContext::OnInit(void)
 {
-	if(!(m_Foundation.reset(PxCreateFoundation(PX_PHYSICS_VERSION, m_Allocator, m_ErrorCallback)), m_Foundation))
+	if(!(m_Foundation.reset(PxCreateFoundation(PX_PHYSICS_VERSION, m_Allocator, *this)), m_Foundation))
 	{
 		THROW_CUSEXCEPTION(_T("PxCreateFoundation failed"));
 	}
@@ -63,14 +42,14 @@ bool PhysXContext::OnInit(void)
 		THROW_CUSEXCEPTION(_T("PxCreateCooking failed"));
 	}
 
-	if(!(m_CpuDispatcher.reset(PxDefaultCpuDispatcherCreate(1, NULL)), m_CpuDispatcher))
-	{
-		THROW_CUSEXCEPTION(_T("PxDefaultCpuDispatcherCreate failed"));
-	}
-
 	if(!PxInitExtensions(*m_sdk))
 	{
 		THROW_CUSEXCEPTION(_T("PxInitExtensions failed"));
+	}
+
+	if(!(m_CpuDispatcher.reset(PxDefaultCpuDispatcherCreate(1, NULL)), m_CpuDispatcher))
+	{
+		THROW_CUSEXCEPTION(_T("PxDefaultCpuDispatcherCreate failed"));
 	}
 	return true;
 }
@@ -89,13 +68,113 @@ void PhysXContext::OnShutdown(void)
 	m_Foundation.reset();
 }
 
-void StepperTask::run(void)
+HRESULT PhysXResourceMgr::OnCreateDevice(
+	IDirect3DDevice9 * pd3dDevice,
+	const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
+{
+	HRESULT hr;
+	if (FAILED(hr = ResourceMgr::OnCreateDevice(pd3dDevice, pBackBufferSurfaceDesc)))
+	{
+		return hr;
+	}
+
+	OnInit();
+
+	return S_OK;
+}
+
+HRESULT PhysXResourceMgr::OnResetDevice(
+	IDirect3DDevice9 * pd3dDevice,
+	const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
+{
+	HRESULT hr;
+	if (FAILED(hr = ResourceMgr::OnResetDevice(pd3dDevice, pBackBufferSurfaceDesc)))
+	{
+		return hr;
+	}
+
+	return S_OK;
+}
+
+void PhysXResourceMgr::OnLostDevice(void)
+{
+	ResourceMgr::OnLostDevice();
+}
+
+void PhysXResourceMgr::OnDestroyDevice(void)
+{
+	OnShutdown();
+
+	ResourceMgr::OnDestroyDevice();
+}
+
+class PhysXOStream : public PxOutputStream
+{
+public:
+	my::OStreamPtr ostream;
+
+	PhysXOStream(my::OStreamPtr _ostream)
+		: ostream(_ostream)
+	{
+	}
+
+	virtual PxU32 write(const void* src, PxU32 count)
+	{
+		return ostream->write(src, count);
+	}
+};
+
+class PhysXIStream : public PxInputStream
+{
+public:
+	my::IStreamPtr istream;
+
+	PhysXIStream(my::IStreamPtr _istream)
+		: istream(_istream)
+	{
+	}
+
+	virtual PxU32 read(void* dest, PxU32 count)
+	{
+		return istream->read(dest, count);
+	}
+};
+
+void PhysXResourceMgr::CookTriangleMesh(my::OStreamPtr ostream, my::OgreMeshPtr mesh)
+{
+	PxTriangleMeshDesc desc;
+	desc.points.count = mesh->GetNumVertices();
+	desc.points.stride = mesh->GetNumBytesPerVertex();
+	desc.points.data = mesh->LockVertexBuffer();
+	desc.triangles.count = mesh->GetNumFaces();
+	if (mesh->GetOptions() & D3DXMESH_32BIT)
+	{
+		desc.triangles.stride = 3 * sizeof(DWORD);
+	}
+	else
+	{
+		desc.triangles.stride = 3 * sizeof(WORD);
+		desc.flags |= PxMeshFlag::e16_BIT_INDICES;
+	}
+	desc.triangles.data = mesh->LockIndexBuffer();
+	m_Cooking->cookTriangleMesh(desc, PhysXOStream(ostream));
+	mesh->UnlockIndexBuffer();
+	mesh->UnlockVertexBuffer();
+}
+
+PxTriangleMesh * PhysXResourceMgr::CreateTriangleMesh(my::IStreamPtr istream)
+{
+	// ! should be call at resource thread
+	return m_sdk->createTriangleMesh(PhysXIStream(istream));
+}
+
+void PhysXSceneContext::StepperTask::run(void)
 {
 	m_Scene->SubstepDone(this);
 	release();
 }
 
-const char * StepperTask::getName(void) const
+const char * PhysXSceneContext::StepperTask::getName(void) const
 {
 	return "Stepper Task";
 }
