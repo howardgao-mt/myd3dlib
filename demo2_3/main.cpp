@@ -17,9 +17,9 @@ public:
 
 	physx_ptr<PxMaterial> m_material;
 
-	// ========================================================================================================
-	// 骨骼动画
-	// ========================================================================================================
+	//// ========================================================================================================
+	//// 骨骼动画
+	//// ========================================================================================================
 	//SkeletonMeshComponentPtr m_mesh;
 	//OgreSkeletonAnimationPtr m_skel_anim;
 	//BoneList m_skel_pose;
@@ -36,6 +36,8 @@ public:
 	FirstPersonCamera m_TestCam;
 
 	physx_ptr<PxRigidActor> m_actor;
+
+	PxController * m_controller;
 
 	Demo::Demo(void)
 		: m_TestCam(D3DXToRadian(75), 1.333333f, 1, 5)
@@ -127,24 +129,36 @@ public:
 		//	m_scene->PushComponent(CreateMeshComponent(*mesh_iter), 0.1f);
 		//}
 
-		my::OgreMeshPtr mesh = LoadMesh("mesh/tube.mesh.xml");
-		FILE * fp;
-		if(0 != _tfopen_s(&fp, _T("aaa"), _T("wb")))
-		{
-			THROW_CUSEXCEPTION(_T("failed"));
-		}
-		my::OStreamPtr ofs(new my::FileOStream(fp));
-		CookTriangleMesh(ofs, mesh);
-		ofs.reset();
+		// ========================================================================================================
+		// 物理场景
+		// ========================================================================================================
+		//my::OgreMeshPtr mesh = LoadMesh("mesh/tube.mesh.xml");
+		//my::OStreamPtr ofs = my::FileOStream::Open(_T("aaa"));
+		//CookTriangleMesh(ofs, mesh);
+		//ofs.reset();
 
-		if(0 != _tfopen_s(&fp, _T("aaa"), _T("rb")))
-		{
-			THROW_CUSEXCEPTION(_T("failed"));
-		}
-		my::IStreamPtr ifs(new my::FileIStream(fp));
-		m_actor.reset(PxCreateStatic(
-			*m_sdk, PxTransform(PxVec3(0,0,0), PxQuat(0,0,0,1)), PxTriangleMeshGeometry(CreateTriangleMesh(ifs)), *m_material));
-		m_Scene->addActor(*m_actor);
+		//my::IStreamPtr ifs = my::FileIStream::Open(_T("aaa"));
+		//m_actor.reset(PxCreateStatic(
+		//	*m_sdk, PxTransform(PxVec3(0,0,0), PxQuat(0,0,0,1)), PxTriangleMeshGeometry(CreateTriangleMesh(ifs)), *m_material));
+		//ifs.reset();
+		my::IStreamPtr ifs = my::FileIStream::Open(_T("D:\\Works\\VC++\\D3DSolution\\demo2_3\\Media\\mesh\\scene_tm.phy"));
+		PxRigidActor * actor = m_sdk->createRigidStatic(PxTransform(PxVec3(0,0,0), PxQuat(0,0,0,1)));
+		PxShape * shape = actor->createShape(PxTriangleMeshGeometry(physx_ptr<PxTriangleMesh>(CreateTriangleMesh(ifs)).get()), *m_material);
+		shape->setFlag(PxShapeFlag::eVISUALIZATION, false);
+		m_Scene->addActor(*actor);
+
+		//for(int x = -10; x <= 10; x+= 2)
+		//	for(int z= -10; z <= 10; z+= 2)
+		//		m_Scene->addActor(*PxCreateDynamic(
+		//			*m_sdk, PxTransform(PxVec3(x,10,z),PxQuat(0,0,0,1)), PxSphereGeometry(0.3), *m_material, 1));
+
+		PxCapsuleControllerDesc cDesc;
+		cDesc.radius = 0.3f;
+		cDesc.height = 1.5f;
+		cDesc.position.y = 5;
+		cDesc.material = m_material.get();
+		m_controller = m_ControllerMgr->createController(*m_sdk, m_Scene.get(), cDesc);
+		_ASSERT(m_controller);
 
 		return S_OK;
 	}
@@ -208,6 +222,8 @@ public:
 		//m_mesh->m_DualQuats.clear();
 		//m_mesh->m_DualQuats.resize(m_skel_anim->m_boneBindPose.size());
 		//m_skel_pose_heir1.BuildDualQuaternionList(m_mesh->m_DualQuats, m_skel_pose_heir2);
+
+		m_controller->move(PxVec3(0,-9*fElapsedTime,0), 0.001f, fElapsedTime, PxControllerFilters());
 	}
 
 	virtual void OnFrameRender(
@@ -258,7 +274,7 @@ public:
 		//RenderObjList::iterator mesh_cmp_iter = m_RenderObjList.begin();
 		//for(; mesh_cmp_iter != m_RenderObjList.end(); mesh_cmp_iter++)
 		//{
-		//	(*mesh_cmp_iter)->Draw();
+		//	static_cast<MeshComponent *>(*mesh_cmp_iter)->Draw();
 		//}
 
 		//// ========================================================================================================

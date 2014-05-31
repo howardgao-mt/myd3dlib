@@ -51,6 +51,11 @@ bool PhysXContext::OnInit(void)
 	{
 		THROW_CUSEXCEPTION(_T("PxDefaultCpuDispatcherCreate failed"));
 	}
+
+	if(!(m_ControllerMgr.reset(PxCreateControllerManager(*m_Foundation)), m_ControllerMgr))
+	{
+		THROW_CUSEXCEPTION(_T("PxCreateControllerManager failed"));
+	}
 	return true;
 }
 
@@ -58,6 +63,8 @@ void PhysXContext::OnShutdown(void)
 {
 	if(m_sdk)
 		PxCloseExtensions();
+
+	m_ControllerMgr.reset();
 
 	m_CpuDispatcher.reset();
 
@@ -165,6 +172,11 @@ void PhysXResourceMgr::CookTriangleMesh(my::OStreamPtr ostream, my::OgreMeshPtr 
 	mesh->UnlockAttributeBuffer();
 }
 
+void PhysXResourceMgr::CookTriangleMeshToFile(std::string path, my::OgreMeshPtr mesh)
+{
+	CookTriangleMesh(my::FileOStream::Open(ms2ts(path).c_str()), mesh);
+}
+
 PxTriangleMesh * PhysXResourceMgr::CreateTriangleMesh(my::IStreamPtr istream)
 {
 	// ! should be call at resource thread
@@ -203,7 +215,7 @@ bool PhysXSceneContext::OnInit(PxPhysics * sdk, PxDefaultCpuDispatcher * dispatc
 
 void PhysXSceneContext::OnShutdown(void)
 {
-	_ASSERT(!m_Scene || 0 == m_Scene->getNbActors(PxActorTypeSelectionFlags(0xff)));
+	//_ASSERT(!m_Scene || 0 == m_Scene->getNbActors(PxActorTypeSelectionFlags(0xff)));
 
 	m_Scene.reset();
 }

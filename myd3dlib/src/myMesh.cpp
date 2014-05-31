@@ -623,13 +623,7 @@ void OgreMesh::CreateMeshFromOgreXmlInFile(
 	bool bComputeTangentFrame,
 	DWORD dwMeshOptions)
 {
-	FILE * fp;
-	if(0 != _tfopen_s(&fp, pFilename, _T("rb")))
-	{
-		THROW_CUSEXCEPTION(str_printf(_T("cannot open file archive: %s"), pFilename));
-	}
-
-	CachePtr cache = IStreamPtr(new FileIStream(fp))->GetWholeCache();
+	CachePtr cache = FileIStream::Open(pFilename)->GetWholeCache();
 	cache->push_back(0);
 
 	CreateMeshFromOgreXmlInMemory(pd3dDevice, (char *)&(*cache)[0], cache->size(), bComputeTangentFrame, dwMeshOptions);
@@ -691,7 +685,8 @@ void OgreMesh::CreateMeshFromOgreXmlNodes(
 
 	if((dwMeshOptions & ~D3DXMESH_32BIT) && vertexcount >= USHRT_MAX)
 	{
-		THROW_CUSEXCEPTION(_T("facecount overflow ( >= 2^16 - 1 )"));
+		//THROW_CUSEXCEPTION(_T("facecount overflow ( >= 65535 )"));
+		dwMeshOptions |= D3DXMESH_32BIT;
 	}
 
 	if(!positions)
@@ -1026,13 +1021,7 @@ void OgreMeshSet::CreateMeshSetFromOgreXmlInFile(
 	bool bComputeTangentFrame,
 	DWORD dwMeshSetOptions)
 {
-	FILE * fp;
-	if(0 != _tfopen_s(&fp, pFilename, _T("rb")))
-	{
-		THROW_CUSEXCEPTION(str_printf(_T("cannot open file archive: %s"), pFilename));
-	}
-
-	CachePtr cache = IStreamPtr(new FileIStream(fp))->GetWholeCache();
+	CachePtr cache = FileIStream::Open(pFilename)->GetWholeCache();
 	cache->push_back(0);
 
 	CreateMeshSetFromOgreXmlInMemory(pd3dDevice, (char *)&(*cache)[0], cache->size(), bComputeTangentFrame, dwMeshSetOptions);

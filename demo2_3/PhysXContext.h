@@ -28,6 +28,8 @@ protected:
 
 	physx_ptr<PxDefaultCpuDispatcher> m_CpuDispatcher;
 
+	physx_ptr<PxControllerManager> m_ControllerMgr;
+
 public:
 	PhysXContext(void)
 	{
@@ -56,6 +58,8 @@ public:
 	void OnDestroyDevice(void);
 
 	void CookTriangleMesh(my::OStreamPtr ostream, my::OgreMeshPtr mesh);
+
+	void CookTriangleMeshToFile(std::string path, my::OgreMeshPtr mesh);
 
 	PxTriangleMesh * CreateTriangleMesh(my::IStreamPtr istream);
 };
