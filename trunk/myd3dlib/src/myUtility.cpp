@@ -767,18 +767,32 @@ void InputMgr::Create(HINSTANCE hinst, HWND hwnd)
 	m_input->CreateInput(hinst);
 
 	m_keyboard.reset(new Keyboard);
-	m_keyboard->CreateKeyboard(m_input->m_ptr);
-	m_keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
-	m_keyboard->Acquire();
+	m_keyboard->CreateKeyboard(m_input->m_ptr, hwnd);
 
-	m_input->EnumDevices(DI8DEVCLASS_GAMECTRL, JoystickFinderCallback, this, DIEDFL_ATTACHEDONLY);
+	m_mouse.reset(new Mouse);
+	m_mouse->CreateMouse(m_input->m_ptr, hwnd);
+
+	JoystickEnumDesc desc;
+	desc.input = m_input->m_ptr;
+	desc.hwnd = hwnd;
+	desc.min_x = -255;
+	desc.max_x =  255;
+	desc.min_y = -255;
+	desc.max_y =  255;
+	desc.min_z = -255;
+	desc.max_z =  255;
+	desc.dead_zone = 10;
+	m_input->EnumDevices(DI8DEVCLASS_GAMECTRL, JoystickFinderCallback, &desc, DIEDFL_ATTACHEDONLY);
+	m_joystick = desc.joystick;
 }
 
 void InputMgr::Destroy(void)
 {
-	m_joystick.reset();
-
 	m_keyboard.reset();
+
+	m_mouse.reset();
+
+	m_joystick.reset();
 
 	m_input.reset();
 }
@@ -786,6 +800,8 @@ void InputMgr::Destroy(void)
 void InputMgr::Update(void)
 {
 	m_keyboard->Capture();
+
+	m_mouse->Capture();
 
 	if (m_joystick)
 	{
@@ -799,10 +815,12 @@ BOOL CALLBACK InputMgr::JoystickFinderCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID
 
 	if(lpddi->dwDevType & DI8DEVTYPE_JOYSTICK)
 	{
-		InputMgr * inputMgr = reinterpret_cast<InputMgr *>(pvRef);
+		JoystickEnumDesc * desc = static_cast<JoystickEnumDesc *>(pvRef);
 		JoystickPtr joystick(new Joystick);
-		joystick->CreateJoystick(inputMgr->m_input->m_ptr, lpddi->guidInstance, -255, 255, -255, 255, -255, 255, 10);
-		inputMgr->m_joystick = joystick;
+		joystick->CreateJoystick(
+			desc->input, desc->hwnd, lpddi->guidInstance, desc->min_x, desc->max_x, desc->min_y, desc->max_y, desc->min_z, desc->max_z, desc->dead_zone);
+		_ASSERT(!desc->joystick);
+		desc->joystick = joystick;
 		return DIENUM_STOP;
 	}
 
