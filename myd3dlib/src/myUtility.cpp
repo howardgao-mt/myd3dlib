@@ -21,10 +21,13 @@ void DrawHelper::BeginLine(void)
 
 void DrawHelper::EndLine(IDirect3DDevice9 * pd3dDevice, const Matrix4 & Transform)
 {
-	pd3dDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
-	pd3dDevice->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE);
-	pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&Transform);
-	pd3dDevice->DrawPrimitiveUP(D3DPT_LINELIST, m_vertices.size() / 2, &m_vertices[0], sizeof(m_vertices[0]));
+	if (!m_vertices.empty())
+	{
+		pd3dDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
+		pd3dDevice->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE);
+		pd3dDevice->SetTransform(D3DTS_WORLD, (D3DMATRIX *)&Transform);
+		pd3dDevice->DrawPrimitiveUP(D3DPT_LINELIST, m_vertices.size() / 2, &m_vertices[0], sizeof(m_vertices[0]));
+	}
 }
 
 void DrawHelper::PushLine(const Vector3 & v0, const Vector3 & v1, D3DCOLOR Color)
@@ -766,12 +769,6 @@ void InputMgr::Create(HINSTANCE hinst, HWND hwnd)
 	m_input.reset(new Input);
 	m_input->CreateInput(hinst);
 
-	//m_keyboard.reset(new Keyboard);
-	//m_keyboard->CreateKeyboard(m_input->m_ptr, hwnd);
-
-	//m_mouse.reset(new Mouse);
-	//m_mouse->CreateMouse(m_input->m_ptr, hwnd);
-
 	JoystickEnumDesc desc;
 	desc.input = m_input->m_ptr;
 	desc.hwnd = hwnd;
@@ -788,10 +785,6 @@ void InputMgr::Create(HINSTANCE hinst, HWND hwnd)
 
 void InputMgr::Destroy(void)
 {
-	//m_keyboard.reset();
-
-	//m_mouse.reset();
-
 	m_joystick.reset();
 
 	m_input.reset();
@@ -799,14 +792,15 @@ void InputMgr::Destroy(void)
 
 void InputMgr::Update(void)
 {
-	//m_keyboard->Capture();
-
-	//m_mouse->Capture();
-
 	if (m_joystick)
 	{
 		m_joystick->Capture();
 	}
+}
+
+bool InputMgr::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	return false;
 }
 
 BOOL CALLBACK InputMgr::JoystickFinderCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)

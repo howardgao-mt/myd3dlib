@@ -294,6 +294,25 @@ bool Static::ContainsPoint(const Vector2 & pt)
 	return false;
 }
 
+void ProgressBar::Draw(UIRender * ui_render, float fElapsedTime, const Vector2 & Offset)
+{
+	if(m_bVisible)
+	{
+		ProgressBarSkinPtr Skin = boost::dynamic_pointer_cast<ProgressBarSkin>(m_Skin);
+
+		if(Skin && m_Color & D3DCOLOR_ARGB(255,0,0,0))
+		{
+			Rectangle Rect(Rectangle::LeftTop(Offset + m_Location, m_Size));
+
+			Skin->DrawImage(ui_render, Skin->m_Image, Rect, m_Color);
+
+			m_BlendProgress = Lerp(m_BlendProgress, m_Progress, 1.0f - powf(0.8f, 30 * fElapsedTime));
+			Rect.r = Lerp(Rect.l, Rect.r, Max(0.0f, Min(1.0f, m_BlendProgress)));
+			Skin->DrawImage(ui_render, Skin->m_ForegroundImage, Rect, m_Color);
+		}
+	}
+}
+
 void Button::Draw(UIRender * ui_render, float fElapsedTime, const Vector2 & Offset)
 {
 	if(m_bVisible)
@@ -2109,10 +2128,7 @@ Vector2 DialogMgr::GetDlgViewport(void) const
 	return Vector2(-m_View._41*2, m_View._42*2);
 }
 
-void DialogMgr::Draw(
-	UIRender * ui_render,
-	double fTime,
-	float fElapsedTime)
+void DialogMgr::Draw(UIRender * ui_render, double fTime, float fElapsedTime)
 {
 	ui_render->SetViewProj(m_ViewProj);
 
@@ -2129,11 +2145,7 @@ void DialogMgr::Draw(
 	}
 }
 
-bool DialogMgr::MsgProc(
-	HWND hWnd,
-	UINT uMsg,
-	WPARAM wParam,
-	LPARAM lParam)
+bool DialogMgr::MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	ControlPtr ControlFocus = Dialog::s_ControlFocus.lock();
 	if(ControlFocus)

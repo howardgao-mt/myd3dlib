@@ -195,10 +195,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\MeshComponent.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\PhysXContext.cpp"
 				>
 			</File>
@@ -234,10 +230,6 @@
 			</File>
 			<File
 				RelativePath=".\Game.h"
-				>
-			</File>
-			<File
-				RelativePath=".\MeshComponent.h"
 				>
 			</File>
 			<File
@@ -312,14 +304,34 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="Character"
+			Name="Component"
 			>
 			<File
-				RelativePath=".\Character\LocalPlayer.cpp"
+				RelativePath=".\Component\MeshComponent.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\Character\LocalPlayer.h"
+				RelativePath=".\Component\MeshComponent.h"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="Logic"
+			>
+			<File
+				RelativePath=".\Logic\Character.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Logic\Character.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Logic\Logic.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Logic\Logic.h"
 				>
 			</File>
 		</Filter>
