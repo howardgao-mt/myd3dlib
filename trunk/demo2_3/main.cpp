@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Game.h"
-#include "MeshComponent.h"
-#include "Character/LocalPlayer.h"
+//#include "Logic/MeshComponent.h"
+#include "Logic/Logic.h"
 
 using namespace my;
 
@@ -11,11 +11,8 @@ using namespace my;
 
 class Demo
 	: public Game
-	, public DrawHelper
 {
 public:
-	EffectPtr m_SimpleSample;
-
 	//// ========================================================================================================
 	//// 骨骼动画
 	//// ========================================================================================================
@@ -24,13 +21,13 @@ public:
 	//BoneList m_skel_pose;
 	//BoneList m_skel_pose_heir1;
 	//BoneList m_skel_pose_heir2;
+	//typedef std::vector<my::Component *> RenderObjList;
+	//RenderObjList m_RenderObjList;
 
 	//// ========================================================================================================
 	//// 大场景
 	//// ========================================================================================================
 	//OgreMeshSetPtr m_meshSet;
-	//MaterialPtr m_lambert1;
-	//OctreeRootPtr m_scene;
 
 	//// ========================================================================================================
 	//// 布料系统
@@ -40,12 +37,12 @@ public:
 	//PxCloth * m_cloth;
 
 	// ========================================================================================================
-	// 角色系统
+	// 逻辑系统
 	// ========================================================================================================
-	LocalPlayerPtr m_localplayer;
+	LogicPtr m_Logic;
 
 	Demo::Demo(void)
-		: m_localplayer(new LocalPlayer)
+		: m_Logic(new Logic)
 	{
 	}
 
@@ -64,19 +61,19 @@ public:
 		}
 	}
 
-	MeshComponentPtr CreateMeshComponent(my::OgreMeshPtr mesh)
-	{
-		MeshComponentPtr comp(new MeshComponent(mesh->m_aabb));
-		comp->m_Mesh = mesh;
-		std::vector<std::string>::const_iterator mat_name_iter = comp->m_Mesh->m_MaterialNameList.begin();
-		for(; mat_name_iter != comp->m_Mesh->m_MaterialNameList.end(); mat_name_iter++)
-		{
-			comp->m_Materials.push_back(MeshComponent::MaterialPair(
-				LoadMaterial(str_printf("material/%s.txt", mat_name_iter->c_str())), LoadEffect("shader/SimpleSample.fx", EffectMacroPairList())));
-		}
-		comp->m_World = Matrix4::identity;
-		return comp;
-	}
+	//MeshComponentPtr CreateMeshComponent(my::OgreMeshPtr mesh)
+	//{
+	//	MeshComponentPtr comp(new MeshComponent(mesh->m_aabb));
+	//	comp->m_Mesh = mesh;
+	//	std::vector<std::string>::const_iterator mat_name_iter = comp->m_Mesh->m_MaterialNameList.begin();
+	//	for(; mat_name_iter != comp->m_Mesh->m_MaterialNameList.end(); mat_name_iter++)
+	//	{
+	//		comp->m_Materials.push_back(MeshComponent::MaterialPair(
+	//			LoadMaterial(str_printf("material/%s.txt", mat_name_iter->c_str())), LoadEffect("shader/SimpleSample.fx", EffectMacroPairList())));
+	//	}
+	//	comp->m_World = Matrix4::identity;
+	//	return comp;
+	//}
 
 	virtual HRESULT OnCreateDevice(
 		IDirect3DDevice9 * pd3dDevice,
@@ -87,14 +84,12 @@ public:
 			return hr;
 		}
 
-		ExecuteCode("dofile \"GameStateMain.lua\"");
-
-		m_SimpleSample = LoadEffect("shader/SimpleSample.fx", EffectMacroPairList());
-
 		m_Scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
 		m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1);
 		m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_FNORMALS, 1);
 		m_Scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, 1);
+
+		ExecuteCode("require \"Hud.lua\"");
 
 		//// ========================================================================================================
 		//// 骨骼动画
@@ -116,27 +111,11 @@ public:
 		//// 大场景
 		//// ========================================================================================================
 		//m_meshSet = LoadMeshSet("mesh/scene.mesh.xml");
-		//m_lambert1 = LoadMaterial("material/lambert1.txt");
-		//m_scene.reset(new OctreeRoot(my::AABB(Vector3(-256,-256,-256),Vector3(256,256,256))));
 		//OgreMeshSet::iterator mesh_iter = m_meshSet->begin();
 		//for(; mesh_iter != m_meshSet->end(); mesh_iter++)
 		//{
 		//	m_scene->PushComponent(CreateMeshComponent(*mesh_iter), 0.1f);
 		//}
-
-		// ========================================================================================================
-		// 物理场景
-		// ========================================================================================================
-		my::IStreamPtr ifs = my::FileIStream::Open(_T("D:\\Works\\VC++\\D3DSolution\\demo2_3\\Media\\mesh\\scene_tm.phy"));
-		PxRigidActor * actor = m_sdk->createRigidStatic(PxTransform::createIdentity());
-		PxShape * shape = actor->createShape(PxTriangleMeshGeometry(physx_ptr<PxTriangleMesh>(CreateTriangleMesh(ifs)).get()), *m_PxMaterial);
-		shape->setFlag(PxShapeFlag::eVISUALIZATION, false);
-		m_Scene->addActor(*actor);
-
-		//for(int x = -10; x <= 10; x+= 2)
-		//	for(int z= -10; z <= 10; z+= 2)
-		//		m_Scene->addActor(*PxCreateDynamic(
-		//			*m_sdk, PxTransform(PxVec3(x,10,z),PxQuat(0,0,0,1)), PxSphereGeometry(0.3), *m_PxMaterial, 1));
 
 		//// ========================================================================================================
 		//// 布料系统
@@ -170,9 +149,9 @@ public:
 		//m_Scene->addActor(*m_cloth);
 
 		// ========================================================================================================
-		// 角色系统
+		// 逻辑系统
 		// ========================================================================================================
-		m_localplayer->Create();
+		m_Logic->Create();
 
 		return S_OK;
 	}
@@ -196,7 +175,7 @@ public:
 	virtual void OnDestroyDevice(void)
 	{
 		// 注意顺序
-		m_localplayer->Destroy();
+		m_Logic->Destroy();
 
 		Game::OnDestroyDevice();
 	}
@@ -206,6 +185,8 @@ public:
 		float fElapsedTime)
 	{
 		Game::OnFrameMove(fTime, fElapsedTime);
+
+		m_ScrInfos[0] = str_printf(L"%.2f", m_fFps);
 
 		//// ========================================================================================================
 		//// 骨骼动画
@@ -255,9 +236,9 @@ public:
 		//m_clothMesh->m_World = Matrix4::Compose(Vector3(1,1,1),(Quaternion&)Trans.q, (Vector3&)Trans.p);
 
 		// ========================================================================================================
-		// 角色系统
+		// 逻辑系统
 		// ========================================================================================================
-		m_localplayer->Update(fElapsedTime);
+		m_Logic->Update(fElapsedTime);
 	}
 
 	virtual void OnFrameRender(
@@ -265,14 +246,10 @@ public:
 		double fTime,
 		float fElapsedTime)
 	{
-		pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&m_Camera->m_View);
-		pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&m_Camera->m_Proj);
-		m_SimpleSample->SetMatrix("g_ViewProj", m_Camera->m_ViewProj);
-
-		BeginLine();
-		PhysXSceneContext::PushRenderBuffer(this); // ! PxScene::getRenderBuffer() not allowed while simulation is running.
-		PushGrid();
-		EndLine(pd3dDevice, Matrix4::identity);
+		//pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&m_Camera->m_View);
+		//pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&m_Camera->m_Proj);
+		//m_SimpleSample->SetMatrix("g_ViewProj", m_Camera->m_ViewProj);
+		//PushGrid();
 
 		//// ========================================================================================================
 		//// 骨骼动画
@@ -286,43 +263,23 @@ public:
 		//}
 
 		//// ========================================================================================================
-		//// 大场景
-		//// ========================================================================================================
-		//struct QueryCallbackFunc
-		//{
-		//	void operator() (Component * comp)
-		//	{
-		//		static_cast<MeshComponent *>(comp)->Draw();
-		//	}
-		//};
-		//Frustum frustum(Frustum::ExtractMatrix(m_Camera->m_ViewProj));
-		//m_scene->QueryComponent(frustum, QueryCallbackFunc());
-
-		//// ========================================================================================================
 		//// 布料系统
 		//// ========================================================================================================
 		//m_clothMesh->Draw();
 
-		// ========================================================================================================
-		// 绘制粒子
-		// ========================================================================================================
-		m_EmitterInst->Begin();
-		EmitterMgr::Draw(m_EmitterInst.get(), m_Camera->m_ViewProj, m_Camera->m_Orientation, fTime, fElapsedTime);
-		m_EmitterInst->End();
+		Game::OnFrameRender(pd3dDevice, fTime, fElapsedTime);
+	}
 
-		// ========================================================================================================
-		// 绘制网格坐标
-		// ========================================================================================================
-		m_UIRender->Begin();
-		m_UIRender->SetWorld(Matrix4::identity);
-		m_UIRender->SetViewProj(DialogMgr::m_ViewProj);
-		DrawTextAtWorld(Vector3(12,0,0), L"x", D3DCOLOR_ARGB(255,255,255,0));
-		DrawTextAtWorld(Vector3(0,0,12), L"z", D3DCOLOR_ARGB(255,255,255,0));
-		DialogMgr::Draw(m_UIRender.get(), fTime, fElapsedTime);
-		_ASSERT(m_Font);
-		m_UIRender->SetWorld(Matrix4::identity);
-		m_Font->DrawString(m_UIRender.get(), m_strFPS, Rectangle::LeftTop(5,5,500,10), D3DCOLOR_ARGB(255,255,255,0));
-		m_UIRender->End();
+	virtual void OnUIRender(
+		my::UIRender * ui_render,
+		double fTime,
+		float fElapsedTime)
+	{
+		//// 绘制坐标
+		//DrawTextAtWorld(Vector3(12,0,0), L"x", D3DCOLOR_ARGB(255,255,255,0));
+		//DrawTextAtWorld(Vector3(0,0,12), L"z", D3DCOLOR_ARGB(255,255,255,0));
+
+		Game::OnUIRender(ui_render, fTime, fElapsedTime);
 	}
 
 	virtual LRESULT MsgProc(

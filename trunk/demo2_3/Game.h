@@ -74,9 +74,14 @@ class Game
 	, public PhysXResourceMgr
 	, public PhysXSceneContext
 	, public my::ParallelTaskManager
+	, public my::DrawHelper
 {
 public:
 	my::LuaContextPtr m_lua;
+
+	typedef std::map<int, std::wstring> ScrInfoType;
+
+	ScrInfoType m_ScrInfos;
 
 	my::UIRenderPtr m_UIRender;
 
@@ -92,13 +97,13 @@ public:
 
 	ConsolePtr m_Console;
 
-	physx_ptr<PxMaterial> m_PxMaterial;
+	my::EffectPtr m_SimpleSample;
 
 	my::CameraPtr m_Camera;
 
-	typedef std::vector<my::Component *> RenderObjList;
+	physx_ptr<PxMaterial> m_PxMaterial;
 
-	RenderObjList m_RenderObjList;
+	my::OctreeRootPtr m_OctScene;
 
 public:
 	Game(void);
@@ -142,6 +147,11 @@ public:
 
 	virtual void OnFrameRender(
 		IDirect3DDevice9 * pd3dDevice,
+		double fTime,
+		float fElapsedTime);
+
+	virtual void OnUIRender(
+		my::UIRender * ui_render,
 		double fTime,
 		float fElapsedTime);
 

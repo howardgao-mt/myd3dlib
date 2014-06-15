@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Game.h"
+#include "Component/MeshComponent.h"
 
 extern void Export2Lua(lua_State * L);
 
@@ -245,11 +246,15 @@ HRESULT Game::OnCreateDevice(
 
 	m_dlgSetMap[1].push_back(m_Console);
 
-	AddLine(L"Game::OnCreateDevice", D3DCOLOR_ARGB(255,255,255,0));
+	m_SimpleSample = LoadEffect("shader/SimpleSample.fx", EffectMacroPairList());
+
+	m_Camera.reset(new Camera(Vector3::zero, Quaternion::identity, D3DXToRadian(75), 1.333333f, 0.1f, 3000.0f));
 
 	m_PxMaterial.reset(m_sdk->createMaterial(0.5f, 0.5f, 0.1f));
 
-	m_Camera.reset(new Camera(Vector3::zero, Quaternion::identity, D3DXToRadian(75), 1.333333f, 0.1f, 3000.0f));
+	m_OctScene.reset(new OctreeRoot(my::AABB(Vector3(-256,-256,-256),Vector3(256,256,256))));
+
+	AddLine(L"Game::OnCreateDevice", D3DCOLOR_ARGB(255,255,255,0));
 
 	return S_OK;
 }
@@ -313,6 +318,8 @@ void Game::OnDestroyDevice(void)
 
 	ExecuteCode("collectgarbage(\"collect\")");
 
+	m_OctScene.reset();
+
 	m_PxMaterial.reset();
 
 	m_Console.reset();
@@ -356,6 +363,24 @@ void Game::OnFrameRender(
 	double fTime,
 	float fElapsedTime)
 {
+	pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&m_Camera->m_View);
+	pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&m_Camera->m_Proj);
+	m_SimpleSample->SetMatrix("g_ViewProj", m_Camera->m_ViewProj);
+
+	struct QueryCallbackFunc
+	{
+		void operator() (Component * comp)
+		{
+			MeshComponent * mesh_comp = static_cast<MeshComponent *>(comp);
+			mesh_comp->UpdateLod(1.f);
+			mesh_comp->Draw();
+		}
+	};
+	Frustum frustum(Frustum::ExtractMatrix(m_Camera->m_ViewProj));
+	m_OctScene->QueryComponent(frustum, QueryCallbackFunc());
+
+	DrawHelper::EndLine(m_d3dDevice, Matrix4::identity);
+
 	m_EmitterInst->Begin();
 
 	EmitterMgr::Draw(m_EmitterInst.get(), m_Camera->m_ViewProj, m_Camera->m_Orientation, fTime, fElapsedTime);
@@ -364,21 +389,41 @@ void Game::OnFrameRender(
 
 	m_UIRender->Begin();
 
+	m_UIRender->SetWorld(Matrix4::identity);
+
+	m_UIRender->SetViewProj(DialogMgr::m_ViewProj);
+
+	OnUIRender(m_UIRender.get(), fTime, fElapsedTime);
+
+	m_UIRender->End();
+}
+
+void Game::OnUIRender(
+	my::UIRender * ui_render,
+	double fTime,
+	float fElapsedTime)
+{
 	DialogMgr::Draw(m_UIRender.get(), fTime, fElapsedTime);
 
 	_ASSERT(m_Font);
 
 	m_UIRender->SetWorld(Matrix4::identity);
 
-	m_Font->DrawString(m_UIRender.get(), m_strFPS, Rectangle::LeftTop(5,5,500,10), D3DCOLOR_ARGB(255,255,255,0));
-
-	m_UIRender->End();
+	ScrInfoType::const_iterator info_iter = m_ScrInfos.begin();
+	for (int y = 5; info_iter != m_ScrInfos.end(); info_iter++, y += m_Font->m_LineHeight)
+	{
+		m_Font->DrawString(m_UIRender.get(), info_iter->second.c_str(), Rectangle::LeftTop(5,y,500,10), D3DCOLOR_ARGB(255,255,255,0));
+	}
 }
 
 void Game::OnFrameTick(
 	double fTime,
 	float fElapsedTime)
 {
+	DrawHelper::BeginLine();
+
+	PhysXSceneContext::PushRenderBuffer(this);
+
 	OnFrameMove(fTime, fElapsedTime);
 
 	PhysXSceneContext::OnTickPreRender(fElapsedTime);
@@ -522,10 +567,7 @@ void Game::reportError(PxErrorCode::Enum code, const char* message, const char* 
 
 	case PxErrorCode::eDEBUG_WARNING:
 	case PxErrorCode::ePERF_WARNING:
-		if (strncmp("PxScene::getRenderBuffer() not allowed while simulation is running.", message, 25))
-		{
-			AddLine(ms2ws(str_printf("%s (%d) : warning: %s", file, line, message)), D3DCOLOR_ARGB(255,255,255,0));
-		}
+		AddLine(ms2ws(str_printf("%s (%d) : warning: %s", file, line, message)), D3DCOLOR_ARGB(255,255,255,0));
 		break;
 
 	default:

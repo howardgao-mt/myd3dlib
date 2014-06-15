@@ -218,6 +218,36 @@ namespace my
 
 	typedef boost::shared_ptr<Static> StaticPtr;
 
+	class ProgressBarSkin : public ControlSkin
+	{
+	public:
+		ControlImagePtr m_ForegroundImage;
+
+	public:
+		ProgressBarSkin(void)
+		{
+		}
+	};
+
+	typedef boost::shared_ptr<ProgressBarSkin> ProgressBarSkinPtr;
+
+	class ProgressBar : public Static
+	{
+	public:
+		float m_Progress;
+
+		float m_BlendProgress;
+
+	public:
+		ProgressBar(void)
+			: m_Progress(0)
+			, m_BlendProgress(0)
+		{
+		}
+
+		virtual void Draw(UIRender * ui_render, float fElapsedTime, const Vector2 & Offset);
+	};
+
 	class ButtonSkin : public ControlSkin
 	{
 	public:
@@ -740,16 +770,9 @@ namespace my
 
 		Vector2 GetDlgViewport(void) const;
 
-		void Draw(
-			UIRender * ui_render,
-			double fTime,
-			float fElapsedTime);
+		void Draw(UIRender * ui_render, double fTime, float fElapsedTime);
 
-		bool MsgProc(
-			HWND hWnd,
-			UINT uMsg,
-			WPARAM wParam,
-			LPARAM lParam);
+		bool MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 		void InsertDlg(DialogPtr dlg);
 
