@@ -46,15 +46,13 @@ void Logic::OnEnterState(void)
 	case LogicStateMain:
 		{
 			Game::getSingleton().ExecuteCode("dofile \"StateMain.lua\"");
-			//Game::getSingleton().LoadMeshSetAsync("mesh/scene.mesh.xml", boost::bind(&Logic::OnSceneMeshLoaded, this, _1));
-			my::IStreamPtr ifs = Game::getSingleton().OpenIStream("mesh/scene_tm.phy");
+			PhysXTriangleMeshPtr tri_mesh = Game::getSingleton().LoadTriangleMesh("mesh/scene_tm.phy");
 			m_StaticSceneActor.reset(Game::getSingleton().m_sdk->createRigidStatic(PxTransform::createIdentity()));
-			PxShape * shape = m_StaticSceneActor->createShape(
-				PxTriangleMeshGeometry(physx_ptr<PxTriangleMesh>(Game::getSingleton().CreateTriangleMesh(ifs)).get()), *Game::getSingleton().m_PxMaterial);
+			PxShape * shape = m_StaticSceneActor->createShape(PxTriangleMeshGeometry(tri_mesh->m_ptr), *Game::getSingleton().m_PxMaterial);
 			shape->setFlag(PxShapeFlag::eVISUALIZATION, false);
 			Game::getSingleton().m_Scene->addActor(*m_StaticSceneActor);
 			m_LocalPlayer->Create();
-			Game::getSingleton().m_MouseMovedEvent = boost::bind(&Logic::OnMouseMove, this, _1, _2, _3);
+			Game::getSingleton().m_MouseMovedEvent = boost::bind(&Logic::OnMouseMove, this, _1);
 			Game::getSingleton().m_KeyPressedEvent = boost::bind(&Logic::OnKeyDown, this, _1);
 		}
 		break;
@@ -78,12 +76,14 @@ void Logic::OnLeaveState(void)
 	}
 }
 
-void Logic::OnMouseMove(LONG x, LONG y, LONG z)
+void Logic::OnMouseMove(InputEventArg * arg)
 {
-	Game::getSingleton().m_ScrInfos[1] = str_printf(L"%ld, %ld, %ld", x, y, z);
+	MouseMoveEventArg & mmarg = *dynamic_cast<MouseMoveEventArg *>(arg);
+	Game::getSingleton().m_ScrInfos[1] = str_printf(L"%ld, %ld, %ld", mmarg.x, mmarg.y, mmarg.z);
 }
 
-void Logic::OnKeyDown(DWORD vk)
+void Logic::OnKeyDown(InputEventArg * arg)
 {
-	Game::getSingleton().m_ScrInfos[2] = str_printf(L"%s", Keyboard::TranslateVirtualKey(vk));
+	KeyboardEventArg & karg = *dynamic_cast<KeyboardEventArg *>(arg);
+	Game::getSingleton().m_ScrInfos[2] = str_printf(L"%s", Keyboard::TranslateVirtualKey(karg.kc));
 }

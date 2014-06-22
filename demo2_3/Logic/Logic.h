@@ -40,9 +40,9 @@ public:
 
 	void OnLeaveState(void);
 
-	void OnMouseMove(LONG x, LONG y, LONG z);
+	void OnMouseMove(my::InputEventArg * arg);
 
-	void OnKeyDown(DWORD vk);
+	void OnKeyDown(my::InputEventArg * arg);
 };
 
 typedef boost::shared_ptr<Logic> LogicPtr;
