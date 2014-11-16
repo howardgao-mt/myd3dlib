@@ -239,7 +239,8 @@ HRESULT Game::OnCreateDevice(
 		return hr;
 	}
 
-	if(!(m_Font = LoadFont("font/wqy-microhei.ttc", 13)))
+	m_Font = LoadFont("font/wqy-microhei.ttc", 13);
+	if (!m_Font)
 	{
 		THROW_CUSEXCEPTION(m_LastErrorStr);
 	}
@@ -251,10 +252,15 @@ HRESULT Game::OnCreateDevice(
 	DialogMgr::InsertDlg(m_Console);
 
 	m_WhiteTex = LoadTexture("texture/white.bmp");
-
-	if(!(m_SimpleSample = Game::getSingleton().LoadEffect("shader/SimpleSample.fx", EffectMacroPairList())))
+	if (!m_WhiteTex)
 	{
-		THROW_CUSEXCEPTION(Game::getSingleton().m_LastErrorStr);
+		THROW_CUSEXCEPTION(m_LastErrorStr);
+	}
+
+	m_SimpleSample = Game::getSingleton().LoadEffect("shader/SimpleSample.fx", EffectMacroPairList());
+	if (!m_SimpleSample)
+	{
+		THROW_CUSEXCEPTION(m_LastErrorStr);
 	}
 
 	m_Camera.reset(new Camera(Vector3::zero, Quaternion::identity, D3DXToRadian(75), 1.333333f, 0.1f, 3000.0f));
@@ -569,10 +575,19 @@ void Game::OnShaderLoaded(my::DeviceRelatedObjectBasePtr res, ShaderKeyType key)
 	m_ShaderCache.insert(ShaderCacheMap::value_type(key, boost::dynamic_pointer_cast<my::Effect>(res)));
 }
 
+static size_t hash_value(const Game::ShaderKeyType & key)
+{
+	size_t seed = 0;
+	boost::hash_combine(seed, key.get<0>());
+	boost::hash_combine(seed, key.get<1>());
+	boost::hash_combine(seed, key.get<2>());
+	return seed;
+}
+
 my::EffectPtr Game::QueryShader(MeshComponent::MeshType mesh_type, MeshComponent::DrawStage draw_stage, const my::Material * material)
 {
-	// ! make sure hash_value(std::pair<.., std::pair<..,..>>) is valid
-	ShaderKeyType key(mesh_type, std::make_pair(draw_stage, material));
+	// ! make sure hash_value(ShaderKeyType ..) is valid
+	ShaderKeyType key = boost::make_tuple(mesh_type, draw_stage, material);
 
 	ShaderCacheMap::iterator shader_iter = m_ShaderCache.find(key);
 	if (shader_iter != m_ShaderCache.end())
@@ -585,7 +600,6 @@ my::EffectPtr Game::QueryShader(MeshComponent::MeshType mesh_type, MeshComponent
 	case MeshComponent::DrawStageCBuffer:
 		{
 			EffectMacroPairList macros;
-			macros.push_back(EffectMacroPair("VS_SKINED_AAAA",""));
 			if (mesh_type == MeshComponent::MeshTypeAnimation)
 			{
 				macros.push_back(EffectMacroPair("VS_SKINED_DQ",""));
