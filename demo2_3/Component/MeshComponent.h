@@ -1,5 +1,7 @@
 #pragma once
 
+#include "myOctree.h"
+
 class MeshLOD
 {
 public:
@@ -26,7 +28,7 @@ public:
 
 typedef boost::shared_ptr<MeshLOD> MeshLODPtr;
 
-class MeshComponent
+class MeshComponent : public my::AABBComponent
 {
 public:
 	enum MeshType
@@ -37,20 +39,18 @@ public:
 
 	const MeshType m_MeshType;
 
-	typedef std::vector<MeshLODPtr> MeshLODPtrList;
+	typedef boost::unordered_map<int, MeshLODPtr> MeshLODPtrMap;
 
-	MeshLODPtrList m_Lod;
-
-	DWORD m_LodLevel;
+	MeshLODPtrMap m_Lod;
 
 public:
 	MeshComponent(MeshType mesh_type)
-		: m_MeshType(mesh_type)
-		, m_LodLevel(0)
+		: AABBComponent(my::Vector3(-1,-1,-1), my::Vector3(1,1,1))
+		, m_MeshType(mesh_type)
 	{
 	}
 
-	virtual void OnPreRender(my::Effect * shader, DWORD draw_stage);
+	virtual void OnPreRender(my::Effect * shader, DWORD draw_stage) = 0;
 };
 
 typedef boost::shared_ptr<MeshComponent> MeshComponentPtr;
