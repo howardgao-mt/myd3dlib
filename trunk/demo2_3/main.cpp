@@ -256,7 +256,7 @@ public:
 		// ¹Ç÷À¶¯»­
 		// ========================================================================================================
 		m_SimpleSample->SetMatrix("g_ViewProj", m_Camera->m_ViewProj);
-		float dist_sq = sqrt((m_Camera->m_Position - m_mesh->m_World[3].xyz).magnitudeSq());
+		float dist_sq = -m_mesh->m_World[3].xyz.transform(m_Camera->m_View).z;
 		DWORD lod;
 		if (dist_sq < 15)
 		{
