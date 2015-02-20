@@ -3,6 +3,46 @@
 #include "myOctree.h"
 #include "RenderPipeline.h"
 
+class Material
+	: public my::DeviceRelatedObjectBase
+{
+public:
+	boost::shared_ptr<my::BaseTexture> m_DiffuseTexture;
+
+	boost::shared_ptr<my::BaseTexture> m_NormalTexture;
+
+	boost::shared_ptr<my::BaseTexture> m_SpecularTexture;
+
+public:
+	Material(void)
+	{
+	}
+
+	virtual void OnResetDevice(void)
+	{
+	}
+
+	virtual void OnLostDevice(void)
+	{
+	}
+
+	virtual void OnDestroyDevice(void)
+	{
+	}
+
+	virtual void OnQueryMesh(
+		RenderPipeline * pipeline,
+		RenderPipeline::DrawStage stage,
+		RenderPipeline::MeshType mesh_type,
+		my::Mesh * mesh,
+		DWORD AttribId,
+		RenderPipeline::IShaderSetter * setter);
+};
+
+typedef boost::shared_ptr<Material> MaterialPtr;
+
+typedef std::vector<MaterialPtr> MaterialPtrList;
+	
 class MeshComponent
 	: public my::AABBComponent
 	, public RenderPipeline::IShaderSetter
@@ -11,8 +51,6 @@ public:
 	class LOD
 	{
 	public:
-		typedef std::vector<my::MaterialPtr> MaterialPtrList;
-	
 		MaterialPtrList m_Materials;
 	
 		my::OgreMeshPtr m_Mesh;
