@@ -24,6 +24,7 @@ public:
 
 	//MeshInstancePtr m_mesh_ins;
 	MeshComponentPtr m_mesh_ins;
+	EmitterMeshComponentPtr m_emitter;
 
 	//// ========================================================================================================
 	//// 大场景
@@ -96,7 +97,7 @@ public:
 		}
 	}
 
-	MeshComponentPtr CreateMeshComponent(my::OgreMeshPtr mesh, bool cloth, bool bInstance)
+	MeshComponentPtr CreateMeshComponent(my::OgreMeshPtr mesh, bool cloth)
 	{
 		MeshComponentPtr mesh_cmp(new MeshComponent(mesh->m_aabb));
 		MeshComponent::LODPtr lod;
@@ -109,11 +110,6 @@ public:
 			lod.reset(new MeshComponent::LOD(mesh_cmp.get()));
 		}
 		lod->m_Mesh = mesh;
-		if (bInstance)
-		{
-			lod->m_Mesh->CreateInstance(Game::GetD3D9Device());
-			lod->m_bInstance = true;
-		}
 		std::vector<std::string>::const_iterator mat_name_iter = lod->m_Mesh->m_MaterialNameList.begin();
 		for(; mat_name_iter != lod->m_Mesh->m_MaterialNameList.end(); mat_name_iter++)
 		{
@@ -160,7 +156,7 @@ public:
 
 		//m_mesh_ins = LoadMesh("mesh/tube.mesh.xml");
 		//m_mesh_ins->CreateInstance(pd3dDevice);
-		m_mesh_ins = CreateMeshComponent(LoadMesh("mesh/tube.mesh.xml"), false, true);
+		m_mesh_ins = CreateMeshComponent(LoadMesh("mesh/tube.mesh.xml"), false);
 
 		//// ========================================================================================================
 		//// 大场景
@@ -194,7 +190,7 @@ public:
 
 		m_cloth_anim = LoadSkeleton("mesh/cloth.skeleton.xml");
 
-		m_cloth_mesh = CreateMeshComponent(LoadMesh("mesh/cloth.mesh.xml"), true, false);
+		m_cloth_mesh = CreateMeshComponent(LoadMesh("mesh/cloth.mesh.xml"), true);
 		dynamic_pointer_cast<ClothMeshComponentLOD>(m_cloth_mesh->m_lods[0])->CreateCloth(
 			this, m_cloth_anim->m_boneHierarchy, m_cloth_anim->GetBoneIndex("joint5"), PxClothCollisionData());
 		//m_cloth_mesh_vertices.reset(new Cache(
@@ -231,6 +227,10 @@ public:
 		//}
 		//m_deform_mesh->m_World = Matrix4::Scaling(0.05f,0.05f,0.05f);
 		//AddResource("___trwrwr342423", m_deform_mesh);
+
+		m_emitter.reset(new EmitterMeshComponent(AABB(-1,1)));
+		m_emitter->m_Emitter = LoadEmitter("emitter/emitter_01.xml");
+		m_emitter->m_Material = LoadMaterial("material/lambert1.xml");
 
 		//// ========================================================================================================
 		//// 逻辑系统
@@ -365,6 +365,9 @@ public:
 		//m_skel_mesh->m_Animator->m_DualQuats.resize(m_skel_anim->m_boneBindPose.size());
 		//m_skel_pose_heir1.BuildDualQuaternionList(m_skel_mesh->m_Animator->m_DualQuats, m_skel_pose_heir2);
 
+		if (m_emitter->m_Emitter)
+			m_emitter->m_Emitter->Update(fTime, fElapsedTime);
+
 		//// ========================================================================================================
 		//// 逻辑系统
 		//// ========================================================================================================
@@ -421,6 +424,7 @@ public:
 		//m_SimpleSampleSkel->End();
 
 		//m_deform_mesh->QueryMesh(this, RenderPipeline::DrawStageCBuffer);
+		m_emitter->QueryMesh(this,  RenderPipeline::DrawStageCBuffer);
 
 		Game::OnFrameRender(pd3dDevice, fTime, fElapsedTime);
 	}
