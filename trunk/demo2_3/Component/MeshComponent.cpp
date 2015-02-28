@@ -16,11 +16,11 @@ void MeshComponent::LOD::QueryMesh(RenderPipeline * pipeline, RenderPipeline::Dr
 				{
 					if (m_bInstance)
 					{
-						pipeline->PushOpaqueMesh(m_Mesh.get(), i, shader, m_owner);
+						pipeline->PushOpaqueMeshInstance(m_Mesh.get(), i, m_owner->m_World, shader, m_owner);
 					}
 					else
 					{
-						pipeline->PushOpaqueMeshInstance(m_Mesh.get(), i, m_owner->m_World, shader, m_owner);
+						pipeline->PushOpaqueMesh(m_Mesh.get(), i, shader, m_owner);
 					}
 				}
 			}
@@ -83,7 +83,7 @@ void EmitterMeshComponent::QueryMesh(RenderPipeline * pipeline, RenderPipeline::
 			my::Effect * shader = m_Material->QueryShader(pipeline, stage, RenderPipeline::MeshTypeParticle, true);
 			if (shader)
 			{
-				pipeline->PushEmitter(m_Emitter.get(), shader, this);
+				pipeline->PushOpaqueEmitter(m_Emitter.get(), shader, this);
 			}
 		}
 	}
@@ -101,22 +101,23 @@ void EmitterMeshComponent::OnSetShader(my::Effect * shader, DWORD AttribId)
 		break;
 	}
 
-	const Matrix4 View(Matrix4::Identity());
 	Vector3 Up, Right, Dir;
+	const Matrix4 View = shader->GetMatrix("g_View");
 	switch (m_Emitter->m_DirectionType)
 	{
 	case my::Emitter::DirectionTypeCamera:
-		Up = View.column<2>().xyz;
-		Right = View.column<1>().xyz;
-		Dir = View.column<0>().xyz;
+		Dir = View.column<2>().xyz;
+		Up = View.column<1>().xyz;
+		Right = View.column<0>().xyz;
 		break;
 
 	case my::Emitter::DirectionTypeVertical:
 		Up = Vector3(0,1,0);
-		Right = Up.cross(Vector3(View._13,View._23,View._33));
+		Right = Up.cross(View.column<2>().xyz);
 		Dir = Right.cross(Up);
 		break;
 	}
+
 	shader->SetVector("g_ParticleDir", Dir);
 	shader->SetVector("g_ParticleUp", Up);
 	shader->SetVector("g_ParticleRight", Right);
