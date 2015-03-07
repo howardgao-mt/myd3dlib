@@ -1,42 +1,80 @@
 #include "StdAfx.h"
-#include "MeshComponent.h"
+#include "ActorComponent.h"
 
 using namespace my;
 
-void MeshComponent::LOD::QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage, RenderPipeline::MeshType mesh_type)
+void MeshComponent::MeshLOD::QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage, RenderPipeline::MeshType mesh_type)
 {
 	if (m_Mesh)
 	{
-		for (DWORD i = 0; i < m_Materials.size(); i++)
+		if (m_Material)
 		{
-			if (m_Materials[i])
+			my::Effect * shader = m_Material->QueryShader(pipeline, stage, mesh_type, m_bInstance);
+			if (shader)
 			{
-				my::Effect * shader = m_Materials[i]->QueryShader(pipeline, stage, mesh_type, m_bInstance);
-				if (shader)
+				if (m_bInstance)
 				{
-					if (m_bInstance)
-					{
-						pipeline->PushOpaqueMeshInstance(m_Mesh.get(), i, m_owner->m_World, shader, m_owner);
-					}
-					else
-					{
-						pipeline->PushOpaqueMesh(m_Mesh.get(), i, shader, m_owner);
-					}
+					pipeline->PushOpaqueMeshInstance(m_Mesh.get(), m_AttribId, m_owner->m_World, shader, m_owner);
+				}
+				else
+				{
+					pipeline->PushOpaqueMesh(m_Mesh.get(), m_AttribId, shader, m_owner);
 				}
 			}
 		}
 	}
 }
 
-void MeshComponent::LOD::OnSetShader(my::Effect * shader, DWORD AttribId)
+void MeshComponent::MeshLOD::OnSetShader(my::Effect * shader, DWORD AttribId)
 {
-	if (m_Mesh)
+	_ASSERT(m_Mesh);
+	_ASSERT(AttribId == m_AttribId);
+	m_Material->OnSetShader(shader, AttribId);
+}
+
+void MeshComponent::IndexdPrimitiveUPLOD::OnResetDevice(void)
+{
+}
+
+void MeshComponent::IndexdPrimitiveUPLOD::OnLostDevice(void)
+{
+}
+
+void MeshComponent::IndexdPrimitiveUPLOD::OnDestroyDevice(void)
+{
+	m_Decl.Release();
+}
+
+void MeshComponent::IndexdPrimitiveUPLOD::QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage, RenderPipeline::MeshType mesh_type)
+{
+	if (!m_VertexData.empty())
 	{
-		if (AttribId < m_Materials.size())
+		_ASSERT(0 != m_VertexStride);
+		_ASSERT(!m_IndexData.empty());
+		if (m_Material)
 		{
-			m_Materials[AttribId]->OnSetShader(shader, AttribId);
+			my::Effect * shader = m_Material->QueryShader(pipeline, stage, mesh_type, false);
+			if (shader)
+			{
+				pipeline->PushOpaqueIndexedPrimitiveUP(m_Decl, D3DPT_TRIANGLELIST,
+					m_AttribRange.VertexStart,
+					m_AttribRange.VertexCount,
+					m_AttribRange.FaceCount,
+					&m_IndexData[m_AttribRange.FaceStart * 3],
+					D3DFMT_INDEX16,
+					&m_VertexData[0],
+					m_VertexStride,
+					m_AttribRange.AttribId, shader, m_owner);
+			}
 		}
 	}
+}
+
+void MeshComponent::IndexdPrimitiveUPLOD::OnSetShader(my::Effect * shader, DWORD AttribId)
+{
+	_ASSERT(!m_VertexData.empty());
+	_ASSERT(AttribId == m_AttribRange.AttribId);
+	m_Material->OnSetShader(shader, AttribId);
 }
 
 void MeshComponent::QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage)
@@ -91,11 +129,12 @@ void EmitterMeshComponent::QueryMesh(RenderPipeline * pipeline, RenderPipeline::
 
 void EmitterMeshComponent::OnSetShader(my::Effect * shader, DWORD AttribId)
 {
-	switch (m_Emitter->m_WorldType)
+	switch (m_WorldType)
 	{
-	case my::Emitter::WorldTypeLocal:
-		shader->SetMatrix("g_World", Matrix4::Compose(Vector3(1,1,1), m_Emitter->m_Orientation, m_Emitter->m_Position));
+	case WorldTypeLocal:
+		shader->SetMatrix("g_World", m_World);
 		break;
+
 	default:
 		shader->SetMatrix("g_World", Matrix4::identity);
 		break;
@@ -103,15 +142,15 @@ void EmitterMeshComponent::OnSetShader(my::Effect * shader, DWORD AttribId)
 
 	Vector3 Up, Right, Dir;
 	const Matrix4 View = shader->GetMatrix("g_View");
-	switch (m_Emitter->m_DirectionType)
+	switch (m_DirectionType)
 	{
-	case my::Emitter::DirectionTypeCamera:
+	case DirectionTypeCamera:
 		Dir = View.column<2>().xyz;
 		Up = View.column<1>().xyz;
 		Right = View.column<0>().xyz;
 		break;
 
-	case my::Emitter::DirectionTypeVertical:
+	case DirectionTypeVertical:
 		Up = Vector3(0,1,0);
 		Right = Up.cross(View.column<2>().xyz);
 		Dir = Right.cross(Up);
@@ -121,8 +160,6 @@ void EmitterMeshComponent::OnSetShader(my::Effect * shader, DWORD AttribId)
 	shader->SetVector("g_ParticleDir", Dir);
 	shader->SetVector("g_ParticleUp", Up);
 	shader->SetVector("g_ParticleRight", Right);
-	shader->SetFloatArray("g_AnimationColumnRow",
-		&Vector2(m_Emitter->m_ParticleAnimColumn, m_Emitter->m_ParticleAnimRow)[0], 2);
 
 	m_Material->OnSetShader(shader, AttribId);
 }
