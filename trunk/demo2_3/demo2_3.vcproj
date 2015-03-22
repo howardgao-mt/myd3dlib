@@ -315,6 +315,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Component\ComponentResMgr.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Component\ComponentResMgr.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Component\RenderComponent.cpp"
 				>
 			</File>
