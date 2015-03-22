@@ -4,6 +4,7 @@
 #include "PhysXContext.h"
 #include "Component/RenderPipeline.h"
 #include "Component/RenderComponent.h"
+#include "Component/ComponentResMgr.h"
 
 class EffectUIRender
 	: public my::UIRender
@@ -40,7 +41,7 @@ class Game
 	, public my::TimerMgr
 	, public my::DialogMgr
 	, public my::InputMgr
-	, public my::ResourceMgr
+	, public ComponentResMgr
 	, public RenderPipeline
 	, public PhysXContext
 	, public PhysXSceneContext
@@ -153,17 +154,11 @@ public:
 
 	virtual my::Effect * QueryShader(RenderPipeline::MeshType mesh_type, RenderPipeline::DrawStage draw_stage, bool bInstance, const Material * material);
 
-	void LoadMaterialAsync(const std::string & path, const my::ResourceCallback & callback);
+	//void LoadTriangleMeshAsync(const std::string & path, const my::ResourceCallback & callback);
 
-	boost::shared_ptr<Material> LoadMaterial(const std::string & path);
+	//PhysXTriangleMeshPtr LoadTriangleMesh(const std::string & path);
 
-	void SaveMaterial(const std::string & path, MaterialPtr material);
+	//void LoadClothFabricAsync(const std::string & path, const my::ResourceCallback & callback);
 
-	void LoadTriangleMeshAsync(const std::string & path, const my::ResourceCallback & callback);
-
-	PhysXTriangleMeshPtr LoadTriangleMesh(const std::string & path);
-
-	void LoadClothFabricAsync(const std::string & path, const my::ResourceCallback & callback);
-
-	PhysXClothFabricPtr LoadClothFabric(const std::string & path);
+	//PhysXClothFabricPtr LoadClothFabric(const std::string & path);
 };
