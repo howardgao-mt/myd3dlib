@@ -21,7 +21,9 @@ namespace my
 
 		virtual int read(void * buff, unsigned read_size) = 0;
 
-		virtual CachePtr GetWholeCache(void) = 0;
+		virtual unsigned long GetSize(void) = 0;
+
+		virtual CachePtr GetWholeCache(void);
 	};
 
 	typedef boost::shared_ptr<IStream> IStreamPtr;
@@ -52,7 +54,7 @@ namespace my
 
 		virtual int read(void * buff, unsigned read_size);
 
-		virtual CachePtr GetWholeCache(void);
+		virtual unsigned long GetSize(void);
 	};
 
 	class FileIStream : public IStream
@@ -69,7 +71,7 @@ namespace my
 
 		virtual int read(void * buff, unsigned read_size);
 
-		virtual CachePtr GetWholeCache(void);
+		virtual unsigned long GetSize(void);
 	};
 
 	class FileOStream : public OStream
@@ -101,7 +103,7 @@ namespace my
 
 		virtual int read(void * buff, unsigned read_size);
 
-		virtual CachePtr GetWholeCache(void);
+		virtual unsigned long GetSize(void);
 	};
 
 	class MemoryOStream : public OStream
@@ -419,7 +421,7 @@ namespace my
 			return boost::dynamic_pointer_cast<T>(request->m_res);
 		}
 
-		virtual void OnResourceFailed(const std::basic_string<TCHAR> & error_str);
+		virtual void OnResourceFailed(const std::string & error_str);
 
 		void LoadTextureAsync(const std::string & path, const ResourceCallback & callback);
 

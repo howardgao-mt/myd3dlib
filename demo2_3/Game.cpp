@@ -84,8 +84,8 @@ Game::Game(void)
 
 Game::~Game(void)
 {
-	// ! Must manually call destructors at specific order
-	OnDestroyDevice();
+	//// ! Must manually call destructors at specific order
+	//OnDestroyDevice();
 }
 
 bool Game::IsDeviceAcceptable(
@@ -152,24 +152,29 @@ HRESULT Game::OnCreateDevice(
 
 	if(!PhysXContext::OnInit())
 	{
-		THROW_CUSEXCEPTION(_T("PhysXContext::OnInit failed"));
+		THROW_CUSEXCEPTION("PhysXContext::OnInit failed");
 	}
 
 	if(!PhysXSceneContext::OnInit(m_sdk.get(), m_CpuDispatcher.get()))
 	{
-		THROW_CUSEXCEPTION(_T("PhysXSceneContext::OnInit failed"));
+		THROW_CUSEXCEPTION("PhysXSceneContext::OnInit failed");
+	}
+
+	if (!FModContext::OnInit())
+	{
+		THROW_CUSEXCEPTION("FModContext::OnInit failed");
 	}
 
 	m_UIRender.reset(new EffectUIRender(pd3dDevice, LoadEffect("shader/UIEffect.fx", "")));
 
 	if (!(m_SimpleSample = LoadEffect("shader/SimpleSample.fx", "")))
 	{
-		THROW_CUSEXCEPTION(m_LastErrorStr);
+		THROW_CUSEXCEPTION("create m_SimpleSample failed");
 	}
 
 	if (!(m_Font = LoadFont("font/wqy-microhei.ttc", 13)))
 	{
-		THROW_CUSEXCEPTION(m_LastErrorStr);
+		THROW_CUSEXCEPTION("create m_Font failed");
 	}
 
 	m_Console = ConsolePtr(new Console());
@@ -180,12 +185,12 @@ HRESULT Game::OnCreateDevice(
 
 	if (!(m_WhiteTex = LoadTexture("texture/white.bmp")))
 	{
-		THROW_CUSEXCEPTION(m_LastErrorStr);
+		THROW_CUSEXCEPTION("create m_WhiteTex failed");
 	}
 
 	if (!(m_TexChecker = LoadTexture("texture/Checker.bmp")))
 	{
-		THROW_CUSEXCEPTION(m_LastErrorStr);
+		THROW_CUSEXCEPTION("create m_TexChecker failed");
 	}
 
 	//m_OctScene.reset(new OctRoot(Vector3(-1000,-1000,-1000), Vector3(1000,1000,1000), 1.1f));
@@ -264,6 +269,8 @@ void Game::OnDestroyDevice(void)
 
 	PhysXContext::OnShutdown();
 
+	FModContext::OnShutdown();
+
 	RenderPipeline::OnDestroyDevice();
 
 	ComponentResMgr::OnDestroyDevice();
@@ -304,7 +311,7 @@ void Game::OnFrameRender(
 	//	{
 	//	}
 
-	//	void operator() (AABBComponent * cmp, IntersectionTests::IntersectionType type)
+	//	void operator() (AABBNode * cmp, IntersectionTests::IntersectionType type)
 	//	{
 	//		MeshComponent * mesh_cmp = static_cast<MeshComponent *>(cmp);
 	//		device.DrawMesh(mesh_cmp, 0);
@@ -372,6 +379,8 @@ void Game::OnFrameTick(
 
 		V(m_d3dDevice->EndScene());
 	}
+
+	m_FModSystem->update();
 
 	Present(NULL,NULL,NULL,NULL);
 
@@ -481,11 +490,13 @@ static int dostring (lua_State *L, const char *s, const char *name) {
   return luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
 }
 
-void Game::OnResourceFailed(const std::basic_string<TCHAR> & error_str)
+void Game::OnResourceFailed(const std::string & error_str)
 {
+	m_LastErrorStr = error_str;
+
 	_ASSERT(m_Console && m_Console->m_Panel);
 
-	AddLine(error_str, D3DCOLOR_ARGB(255,255,255,255));
+	AddLine(ms2ws(error_str), D3DCOLOR_ARGB(255,255,255,255));
 
 	if(m_Console && !m_Console->GetVisible())
 	{
@@ -515,11 +526,9 @@ void Game::reportError(PxErrorCode::Enum code, const char* message, const char* 
 
 void Game::AddLine(const std::wstring & str, D3DCOLOR Color)
 {
-	m_LastErrorStr = str;
-
 	if (m_Console)
 	{
-		m_Console->m_Panel->AddLine(m_LastErrorStr, Color);
+		m_Console->m_Panel->AddLine(str, Color);
 	}
 }
 
@@ -535,9 +544,9 @@ bool Game::ExecuteCode(const char * code) throw()
 {
 	if(dostring(m_lua->_state, code, "Game::ExecuteCode") && !lua_isnil(m_lua->_state, -1))
 	{
-		std::wstring msg = ms2ws(lua_tostring(m_lua->_state, -1));
+		std::string msg = lua_tostring(m_lua->_state, -1);
 		if(msg.empty())
-			msg = L"(error object is not a string)";
+			msg = "error object is not a string";
 		lua_pop(m_lua->_state, 1);
 
 		OnResourceFailed(msg);
@@ -601,109 +610,3 @@ my::Effect * Game::QueryShader(RenderPipeline::MeshType mesh_type, RenderPipelin
 
 	return NULL;
 }
-//
-//class TriangleMeshIORequest : public my::IORequest
-//{
-//protected:
-//	std::string m_path;
-//
-//	Game * m_arc;
-//
-//	my::CachePtr m_cache;
-//
-//public:
-//	TriangleMeshIORequest(const my::ResourceCallback & callback, const std::string & path, Game * arc)
-//		: m_path(path)
-//		, m_arc(arc)
-//	{
-//		if(callback)
-//		{
-//			m_callbacks.push_back(callback);
-//		}
-//	}
-//
-//	virtual void DoLoad(void)
-//	{
-//		if(m_arc->CheckPath(m_path))
-//		{
-//			m_cache = m_arc->OpenIStream(m_path)->GetWholeCache();
-//		}
-//	}
-//
-//	virtual void BuildResource(LPDIRECT3DDEVICE9 pd3dDevice)
-//	{
-//		if(!m_cache)
-//		{
-//			THROW_CUSEXCEPTION(str_printf(_T("failed open %s"), ms2ts(m_path).c_str()));
-//		}
-//		PxTriangleMesh * ptr = m_arc->CreateTriangleMesh(my::IStreamPtr(new my::MemoryIStream(&(*m_cache)[0], m_cache->size())));
-//		if (!ptr)
-//		{
-//			THROW_CUSEXCEPTION(str_printf(_T("CreateTriangleMesh failed")));
-//		}
-//		m_res.reset(new PhysXTriangleMesh(ptr));
-//	}
-//};
-//
-//void Game::LoadTriangleMeshAsync(const std::string & path, const my::ResourceCallback & callback)
-//{
-//	LoadResourceAsync(path, my::IORequestPtr(new TriangleMeshIORequest(callback, path, this)), false);
-//}
-//
-//PhysXTriangleMeshPtr Game::LoadTriangleMesh(const std::string & path)
-//{
-//	return LoadResource<PhysXTriangleMesh>(path, my::IORequestPtr(new TriangleMeshIORequest(my::ResourceCallback(), path, this)));
-//}
-//
-//class ClothFabricIORequest : public my::IORequest
-//{
-//protected:
-//	std::string m_path;
-//
-//	Game * m_arc;
-//
-//	my::CachePtr m_cache;
-//
-//public:
-//	ClothFabricIORequest(const my::ResourceCallback & callback, const std::string & path, Game * arc)
-//		: m_path(path)
-//		, m_arc(arc)
-//	{
-//		if(callback)
-//		{
-//			m_callbacks.push_back(callback);
-//		}
-//	}
-//
-//	virtual void DoLoad(void)
-//	{
-//		if(m_arc->CheckPath(m_path))
-//		{
-//			m_cache = m_arc->OpenIStream(m_path)->GetWholeCache();
-//		}
-//	}
-//
-//	virtual void BuildResource(LPDIRECT3DDEVICE9 pd3dDevice)
-//	{
-//		if(!m_cache)
-//		{
-//			THROW_CUSEXCEPTION(str_printf(_T("failed open %s"), ms2ts(m_path).c_str()));
-//		}
-//		PxClothFabric * ptr = m_arc->CreateClothFabric(my::IStreamPtr(new my::MemoryIStream(&(*m_cache)[0], m_cache->size())));
-//		if (!ptr)
-//		{
-//			THROW_CUSEXCEPTION(str_printf(_T("CreateClothFabric failed")));
-//		}
-//		m_res.reset(new PhysXClothFabric(ptr));
-//	}
-//};
-//
-//void Game::LoadClothFabricAsync(const std::string & path, const my::ResourceCallback & callback)
-//{
-//	LoadResourceAsync(path, my::IORequestPtr(new ClothFabricIORequest(callback, path, this)), false);
-//}
-//
-//PhysXClothFabricPtr Game::LoadClothFabric(const std::string & path)
-//{
-//	return LoadResource<PhysXClothFabric>(path, my::IORequestPtr(new ClothFabricIORequest(my::ResourceCallback(), path, this)));
-//}
