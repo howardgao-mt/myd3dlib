@@ -139,7 +139,7 @@ void ComponentResMgr::OnClothComponentMeshLoaded(
 			cmp_ptr->m_IndexData.resize(mesh->GetNumFaces() * 3);
 			if (cmp_ptr->m_IndexData.size() > USHRT_MAX)
 			{
-				THROW_CUSEXCEPTION(str_printf(_T("create deformation mesh with overflow index size %u"), cmp_ptr->m_IndexData.size()));
+				THROW_CUSEXCEPTION(str_printf("create deformation mesh with overflow index size %u", cmp_ptr->m_IndexData.size()));
 			}
 			VOID * pIndices = mesh->LockIndexBuffer();
 			for (unsigned int face_i = 0; face_i < mesh->GetNumFaces(); face_i++)
@@ -346,7 +346,7 @@ public:
 	{
 		if(!m_res)
 		{
-			THROW_CUSEXCEPTION(str_printf(_T("failed open %s"), ms2ts(m_path).c_str()));
+			THROW_CUSEXCEPTION(str_printf("failed open %s", m_path.c_str()));
 		}
 	}
 };
@@ -396,4 +396,21 @@ ClothComponentPtr ComponentResMgr::CreateClothComponentFromFile(
 		root_i,
 		boost::shared_ptr<PxClothCollisionData>(new PxClothCollisionData(collData))));
 	return ret;
+}
+
+FMOD::Sound * ComponentResMgr::CreateFModSound(FMOD::System * system, const std::string & path, FMOD_MODE mode)
+{
+	if (CheckPath(path))
+	{
+		CachePtr m_cache = OpenIStream(path)->GetWholeCache();
+		FMOD_CREATESOUNDEXINFO info = {0};
+		info.cbsize = sizeof(info);
+		info.length = m_cache->size();
+		FMOD_RESULT result;
+		FMOD::Sound * sound = NULL;
+		result = system->createSound((char *)&(*m_cache)[0], mode | FMOD_OPENMEMORY, &info, &sound);
+		FMOD_ERRCHECK(result);
+		return sound;
+	}
+	return NULL;
 }
