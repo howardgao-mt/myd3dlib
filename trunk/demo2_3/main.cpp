@@ -125,6 +125,11 @@ public:
 		IDirect3DDevice9 * pd3dDevice,
 		const D3DSURFACE_DESC * pBackBufferSurfaceDesc)
 	{
+		RegisterFileDir("Media");
+		RegisterZipDir("Media.zip");
+		RegisterFileDir("..\\demo2_3\\Media");
+		RegisterZipDir("..\\demo2_3\\Media.zip");
+
 		if(FAILED(hr = Game::OnCreateDevice(pd3dDevice, pBackBufferSurfaceDesc)))
 		{
 			return hr;
@@ -253,16 +258,17 @@ public:
 		//// ========================================================================================================
 		//m_Logic->Create();
 
-		//// ========================================================================================================
-		//// 声音系统
-		//// ========================================================================================================
-		//FMOD::Sound      *sound1;
-		//FMOD::Channel    *channel = 0;
-		//sound1 = CreateFModSound(m_FModSystem, "sound/drumloop.wav", FMOD_HARDWARE);
-		//result = sound1->setMode(FMOD_LOOP_NORMAL);    /* drumloop.wav has embedded loop points which automatically makes looping turn on, */
-		//FMOD_ERRCHECK(result);                           /* so turn it off here.  We could have also just put FMOD_LOOP_OFF in the above CreateSound call. */
-		//result = m_FModSystem->playSound(FMOD_CHANNEL_FREE, sound1, false, &channel);
-		//FMOD_ERRCHECK(result);
+		// ========================================================================================================
+		// 声音系统
+		// ========================================================================================================
+		FMOD::Sound      *sound1;
+		FMOD::Channel    *channel = 0;
+		result = m_FModSystem->createSound("sound/drumloop.wav", FMOD_HARDWARE, NULL, &sound1);
+		FMOD_ERRCHECK(result);
+		result = sound1->setMode(FMOD_LOOP_NORMAL);    /* drumloop.wav has embedded loop points which automatically makes looping turn on, */
+		FMOD_ERRCHECK(result);                           /* so turn it off here.  We could have also just put FMOD_LOOP_OFF in the above CreateSound call. */
+		result = m_FModSystem->playSound(FMOD_CHANNEL_FREE, sound1, false, &channel);
+		FMOD_ERRCHECK(result);
 
 		ExecuteCode("dofile \"StateMain.lua\"");
 
