@@ -25,7 +25,7 @@ public:
 
 	//MeshInstancePtr m_mesh_ins;
 	MeshComponentPtr m_mesh_ins;
-	EmitterMeshComponentPtr m_emitter;
+	EmitterComponentPtr m_emitter;
 
 	//// ========================================================================================================
 	//// ´ó³¡¾°
@@ -168,7 +168,7 @@ public:
 		//m_mesh_ins->m_lods.push_back(CreateMeshComponentLOD(m_mesh_ins.get(), LoadMesh("mesh/tube.mesh.xml"), 0, false));
 		m_mesh_ins = CreateMeshComponentFromFile("mesh/tube.mesh.xml",true);
 
-		//m_emitter.reset(new EmitterMeshComponent());
+		//m_emitter.reset(new EmitterComponent());
 		//m_emitter->m_EmitterList.push_back(LoadEmitter("emitter/emitter_01.xml"));
 		//m_emitter->m_MaterialList.push_back(LoadMaterial("material/lambert1.xml"));
 		m_emitter = CreateEmitterComponentFromFile("emitter/emitter_01.xml");

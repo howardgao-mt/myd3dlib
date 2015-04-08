@@ -61,10 +61,10 @@ void ComponentResMgr::OnMeshComponentMeshLoaded(
 }
 
 void ComponentResMgr::OnEmitterComponentEmitterLoaded(
-	boost::weak_ptr<EmitterMeshComponent> weak_cmp_ptr,
+	boost::weak_ptr<EmitterComponent> weak_cmp_ptr,
 	my::DeviceRelatedObjectBasePtr res)
 {
-	EmitterMeshComponentPtr cmp_ptr = weak_cmp_ptr.lock();
+	EmitterComponentPtr cmp_ptr = weak_cmp_ptr.lock();
 	if (cmp_ptr)
 	{
 		cmp_ptr->m_Emitter = boost::dynamic_pointer_cast<Emitter>(res);
@@ -72,10 +72,10 @@ void ComponentResMgr::OnEmitterComponentEmitterLoaded(
 }
 
 void ComponentResMgr::OnEmitterComponentMaterialLoaded(
-	boost::weak_ptr<EmitterMeshComponent> weak_cmp_ptr,
+	boost::weak_ptr<EmitterComponent> weak_cmp_ptr,
 	my::DeviceRelatedObjectBasePtr res)
 {
-	EmitterMeshComponentPtr cmp_ptr = weak_cmp_ptr.lock();
+	EmitterComponentPtr cmp_ptr = weak_cmp_ptr.lock();
 	if (cmp_ptr)
 	{
 		cmp_ptr->m_Material = boost::dynamic_pointer_cast<Material>(res);
@@ -375,9 +375,9 @@ MeshComponentPtr ComponentResMgr::CreateMeshComponentFromFile(const std::string 
 	return ret;
 }
 
-EmitterMeshComponentPtr ComponentResMgr::CreateEmitterComponentFromFile(const std::string & path)
+EmitterComponentPtr ComponentResMgr::CreateEmitterComponentFromFile(const std::string & path)
 {
-	EmitterMeshComponentPtr ret(new EmitterMeshComponent());
+	EmitterComponentPtr ret(new EmitterComponent());
 	LoadEmitterAsync(path, boost::bind(&ComponentResMgr::OnEmitterComponentEmitterLoaded, this, ret, _1));
 	LoadMaterialAsync("material/lambert1.xml", boost::bind(&ComponentResMgr::OnEmitterComponentMaterialLoaded, this, ret, _1));
 	return ret;

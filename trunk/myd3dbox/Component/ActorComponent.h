@@ -2,18 +2,15 @@
 
 #include "myOctree.h"
 #include "RenderPipeline.h"
-//#include "Animator.h"
+#include "Actor.h"
 
 class ActorComponent
-	: public my::AABBNode
+	: public my::AABBComponent
+	, public Actor::Attacher
 {
 public:
-	my::Matrix4 m_World;
-
-public:
 	ActorComponent(void)
-		: AABBNode(my::AABB(FLT_MIN,FLT_MAX))
-		, m_World(my::Matrix4::Identity())
+		: AABBComponent(my::AABB(FLT_MIN,FLT_MAX))
 	{
 	}
 
@@ -64,25 +61,22 @@ public:
 };
 
 typedef boost::shared_ptr<MeshComponent> MeshComponentPtr;
-//
-//class SkeletonMeshComponent
-//	: public MeshComponent
-//{
-//public:
-//	AnimatorPtr m_Animator;
-//
-//public:
-//	SkeletonMeshComponent(void)
-//		: MeshComponent()
-//	{
-//	}
-//
-//	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage);
-//
-//	virtual void OnSetShader(my::Effect * shader, DWORD AttribId);
-//};
-//
-//typedef boost::shared_ptr<SkeletonMeshComponent> SkeletonMeshComponentPtr;
+
+class SkeletonMeshComponent
+	: public MeshComponent
+{
+public:
+	SkeletonMeshComponent(void)
+		: MeshComponent()
+	{
+	}
+
+	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage);
+
+	virtual void OnSetShader(my::Effect * shader, DWORD AttribId);
+};
+
+typedef boost::shared_ptr<SkeletonMeshComponent> SkeletonMeshComponentPtr;
 
 class IndexdPrimitiveUPComponent
 	: public RenderComponent
@@ -138,7 +132,7 @@ public:
 
 typedef boost::shared_ptr<ClothComponent> ClothComponentPtr;
 
-class EmitterMeshComponent
+class EmitterComponent
 	: public RenderComponent
 {
 public:
@@ -164,7 +158,7 @@ public:
 	MaterialPtr m_Material;
 
 public:
-	EmitterMeshComponent(void)
+	EmitterComponent(void)
 		: RenderComponent()
 		, m_WorldType(WorldTypeWorld)
 		, m_DirectionType(DirectionTypeCamera)
@@ -176,4 +170,4 @@ public:
 	virtual void OnSetShader(my::Effect * shader, DWORD AttribId);
 };
 
-typedef boost::shared_ptr<EmitterMeshComponent> EmitterMeshComponentPtr;
+typedef boost::shared_ptr<EmitterComponent> EmitterComponentPtr;
