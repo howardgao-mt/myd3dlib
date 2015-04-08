@@ -6,23 +6,14 @@ using namespace my;
 
 void Actor::Attacher::UpdateWorld(void)
 {
-	switch (m_Type)
+	_ASSERT(m_Owner);
+	if (m_Owner->m_Animator && m_SlotId < m_Owner->m_Animator->m_DualQuats.size())
 	{
-	case AttachTypeWorld:
-		{
-			m_World = m_Offset * m_Owner->m_World;
-		}
-		break;
-	case AttachTypeSlot:
-		{
-			my::Matrix4 Slot = BoneList::UDQtoRM(m_Owner->m_Animator->m_DualQuats[m_SlotId]);
-			m_World = m_Offset * Slot * m_Owner->m_World;
-		}
-		break;
-	case AttachTypeAnimation:
-		{
-			m_World = m_Owner->m_World;
-		}
-		break;
+		my::Matrix4 Slot = BoneList::UDQtoRM(m_Owner->m_Animator->m_DualQuats[m_SlotId]);
+		m_World = Slot * m_Owner->m_World;
+	}
+	else
+	{
+		m_World = m_Owner->m_World;
 	}
 }

@@ -25,11 +25,11 @@ protected:
 		bool bInstance);
 
 	void OnEmitterComponentEmitterLoaded(
-		boost::weak_ptr<EmitterMeshComponent> weak_cmp_ptr,
+		boost::weak_ptr<EmitterComponent> weak_cmp_ptr,
 		my::DeviceRelatedObjectBasePtr res);
 
 	void OnEmitterComponentMaterialLoaded(
-		boost::weak_ptr<EmitterMeshComponent> weak_cmp_ptr,
+		boost::weak_ptr<EmitterComponent> weak_cmp_ptr,
 		my::DeviceRelatedObjectBasePtr res);
 
 	void OnClothComponentMaterialLoaded(
@@ -74,7 +74,7 @@ public:
 
 	MeshComponentPtr CreateMeshComponentFromFile(const std::string & path, bool bInstance);
 
-	EmitterMeshComponentPtr CreateEmitterComponentFromFile(const std::string & path);
+	EmitterComponentPtr CreateEmitterComponentFromFile(const std::string & path);
 
 	ClothComponentPtr CreateClothComponentFromFile(
 		boost::tuple<PxCooking *, PxPhysics *, PxScene *> PxContext,

@@ -11,33 +11,19 @@ public:
 	public:
 		Actor * m_Owner;
 
-		enum AttachType
-		{
-			AttachTypeWorld,
-			AttachTypeSlot,
-			AttachTypeAnimation,
-		};
-
-		AttachType m_Type;
-
-		my::Matrix4 m_Offset;
-
 		unsigned int m_SlotId;
 
 		my::Matrix4 m_World;
 
 	public:
-		Attacher(Actor * Owner)
-			: m_Owner(Owner)
-			, m_Type(AttachTypeWorld)
-			, m_Offset(my::Matrix4::Identity())
+		Attacher(void)
+			: m_Owner(NULL)
 			, m_SlotId(0)
+			, m_World(my::Matrix4::Identity())
 		{
 		}
 
 		void UpdateWorld(void);
-
-		void OnSetShader(my::Effect * shader, DWORD AttribId);
 	};
 
 	my::Matrix4 m_World;
