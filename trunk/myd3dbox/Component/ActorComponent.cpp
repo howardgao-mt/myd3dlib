@@ -91,6 +91,15 @@ void IndexdPrimitiveUPComponent::OnSetShader(my::Effect * shader, DWORD AttribId
 	m_MaterialList[AttribId]->OnSetShader(shader, AttribId);
 }
 
+void ClothComponent::Update(float fElapsedTime)
+{
+	_ASSERT(m_Owner);
+	if (m_Owner->m_Animator)
+	{
+		UpdateCloth(m_Owner->m_Animator->m_DualQuats);
+	}
+}
+
 void ClothComponent::UpdateCloth(const my::TransformList & dualQuaternionList)
 {
 	if (m_Cloth)
@@ -131,6 +140,14 @@ void ClothComponent::UpdateCloth(const my::TransformList & dualQuaternionList)
 			my::OgreMesh::ComputeTangentFrame(
 				pVertices, NbParticles, m_VertexStride, &m_IndexData[0], true, m_IndexData.size() / 3, m_VertexElems);
 		}
+	}
+}
+
+void EmitterComponent::Update(float fElapsedTime)
+{
+	if (m_Emitter)
+	{
+		m_Emitter->Update(fElapsedTime);
 	}
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RenderPipeline.h"
+
 class Animator;
 
 class Actor
@@ -16,8 +18,8 @@ public:
 		my::Matrix4 m_World;
 
 	public:
-		Attacher(void)
-			: m_Owner(NULL)
+		Attacher(Actor * Owner)
+			: m_Owner(Owner)
 			, m_SlotId(0)
 			, m_World(my::Matrix4::Identity())
 		{
@@ -33,12 +35,17 @@ public:
 public:
 	Actor(void)
 		: OctRoot(my::AABB(FLT_MIN,FLT_MAX), 1.1f)
+		, m_World(my::Matrix4::Identity())
 	{
 	}
 
 	virtual ~Actor(void)
 	{
 	}
+
+	virtual void Update(float fElapsedTime);
+
+	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage);
 };
 
 typedef boost::shared_ptr<Actor> ActorPtr;
