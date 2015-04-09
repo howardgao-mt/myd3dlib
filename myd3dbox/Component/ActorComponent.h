@@ -9,12 +9,17 @@ class ActorComponent
 	, public Actor::Attacher
 {
 public:
-	ActorComponent(void)
+	ActorComponent(Actor * Owner)
 		: AABBComponent(my::AABB(FLT_MIN,FLT_MAX))
+		, Attacher(Owner)
 	{
 	}
 
 	virtual ~ActorComponent(void)
+	{
+	}
+
+	virtual void Update(float fElapsedTime)
 	{
 	}
 };
@@ -26,8 +31,8 @@ class RenderComponent
 	, public RenderPipeline::IShaderSetter
 {
 public:
-	RenderComponent(void)
-		: ActorComponent()
+	RenderComponent(Actor * Owner)
+		: ActorComponent(Owner)
 	{
 	}
 
@@ -47,8 +52,8 @@ public:
 	bool m_bInstance;
 
 public:
-	MeshComponent(void)
-		: RenderComponent()
+	MeshComponent(Actor * Owner)
+		: RenderComponent(Owner)
 		, m_bInstance(false)
 	{
 	}
@@ -66,8 +71,8 @@ class SkeletonMeshComponent
 	: public MeshComponent
 {
 public:
-	SkeletonMeshComponent(void)
-		: MeshComponent()
+	SkeletonMeshComponent(Actor * Owner)
+		: MeshComponent(Owner)
 	{
 	}
 
@@ -95,8 +100,8 @@ public:
 	MaterialPtrList m_MaterialList;
 
 public:
-	IndexdPrimitiveUPComponent(void)
-		: RenderComponent()
+	IndexdPrimitiveUPComponent(Actor * Owner)
+		: RenderComponent(Owner)
 		, m_VertexStride(0)
 	{
 	}
@@ -121,11 +126,13 @@ public:
 	PxCloth * m_Cloth;
 
 public:
-	ClothComponent(void)
-		: IndexdPrimitiveUPComponent()
+	ClothComponent(Actor * Owner)
+		: IndexdPrimitiveUPComponent(Owner)
 		, m_Cloth(NULL)
 	{
 	}
+
+	virtual void Update(float fElapsedTime);
 
 	void UpdateCloth(const my::TransformList & dualQuaternionList);
 };
@@ -158,12 +165,14 @@ public:
 	MaterialPtr m_Material;
 
 public:
-	EmitterComponent(void)
-		: RenderComponent()
+	EmitterComponent(Actor * Owner)
+		: RenderComponent(Owner)
 		, m_WorldType(WorldTypeWorld)
 		, m_DirectionType(DirectionTypeCamera)
 	{
 	}
+
+	virtual void Update(float fElapsedTime);
 
 	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage);
 

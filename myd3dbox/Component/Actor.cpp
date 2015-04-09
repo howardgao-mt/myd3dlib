@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Actor.h"
 #include "Animator.h"
+#include "ActorComponent.h"
 
 using namespace my;
 
@@ -15,5 +16,30 @@ void Actor::Attacher::UpdateWorld(void)
 	else
 	{
 		m_World = m_Owner->m_World;
+	}
+}
+
+void Actor::Update(float fElapsedTime)
+{
+	if (m_Animator)
+	{
+		m_Animator->Update(fElapsedTime);
+	}
+
+	AABBComponentPtrList::iterator cmp_iter = m_ComponentList.begin();
+	for (; cmp_iter != m_ComponentList.end(); cmp_iter++)
+	{
+		ActorComponent * cmp = static_cast<ActorComponent *>(cmp_iter->get());
+		cmp->Update(fElapsedTime);
+	}
+}
+
+void Actor::QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage)
+{
+	AABBComponentPtrList::iterator cmp_iter = m_ComponentList.begin();
+	for (; cmp_iter != m_ComponentList.end(); cmp_iter++)
+	{
+		RenderComponent * cmp = dynamic_cast<RenderComponent *>(cmp_iter->get());
+		cmp->QueryMesh(pipeline, stage);
 	}
 }
