@@ -219,10 +219,8 @@ public:
 		//	m_cloth_mesh_anim->m_Animation->m_boneHierarchy,
 		//	m_cloth_mesh_anim->m_Animation->GetBoneIndex("joint5"),
 		//	PxClothCollisionData());
-		m_cloth_mesh = CreateClothComponentFromFile(m_actor.get(), boost::make_tuple(m_Cooking.get(), m_sdk.get(), m_PxScene.get()), "mesh/cloth.mesh.xml",
-			m_actor->m_Animator->m_Animation->m_boneHierarchy,
-			m_actor->m_Animator->m_Animation->GetBoneIndex("joint5"),
-			PxClothCollisionData());
+		m_cloth_mesh = CreateClothComponentFromFile(m_actor.get(),
+			boost::make_tuple(m_Cooking.get(), m_sdk.get(), m_PxScene.get()), "mesh/cloth.mesh.xml", "mesh/cloth.skeleton.xml", "joint5", PxClothCollisionData());
 		//m_cloth_mesh_vertices.reset(new Cache(
 		//	m_cloth_mesh->m_lods[0]->m_Mesh->GetNumVertices() * m_cloth_mesh->m_lods[0]->m_Mesh->GetNumBytesPerVertex()));
 		//memcpy(&(*m_cloth_mesh_vertices)[0], m_cloth_mesh->m_lods[0]->m_Mesh->LockVertexBuffer(), m_cloth_mesh_vertices->size());
@@ -361,6 +359,8 @@ public:
 		//m_cloth_mesh->UpdateCloth(m_cloth_mesh_anim->m_DualQuats);
 		//PxTransform pose = pose = dynamic_pointer_cast<ClothMeshComponentLOD>(m_cloth_mesh->m_lods[0])->m_cloth->getGlobalPose();
 		//m_cloth_mesh->m_World = Matrix4::Compose(Vector3(1,1,1), (Quaternion &)pose.q, (Vector3 &)pose.p);
+
+		m_actor->OnPxThreadSubstep(fElapsedTime);
 	}
 
 	virtual void OnFrameMove(
