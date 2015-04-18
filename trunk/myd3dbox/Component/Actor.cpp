@@ -19,6 +19,23 @@ void Actor::Attacher::UpdateWorld(void)
 	}
 }
 
+void Actor::OnResetDevice(void)
+{
+}
+
+void Actor::OnLostDevice(void)
+{
+}
+
+void Actor::OnDestroyDevice(void)
+{
+	ClothComponentPtrList::iterator cloth_iter = m_Clothes.begin();
+	for (; cloth_iter != m_Clothes.end(); cloth_iter++)
+	{
+		(*cloth_iter)->m_Decl.Release();
+	}
+}
+
 void Actor::Update(float fElapsedTime)
 {
 	if (m_Animator)
@@ -26,27 +43,54 @@ void Actor::Update(float fElapsedTime)
 		m_Animator->Update(fElapsedTime);
 	}
 
-	RenderComponentPtrList::iterator cmp_iter = m_ComponentList.begin();
-	for (; cmp_iter != m_ComponentList.end(); cmp_iter++)
+	struct CallBack : public my::IQueryCallback
 	{
-		(*cmp_iter)->Update(fElapsedTime);
-	}
+		float m_fElapsedTime;
+
+		CallBack(float fElapsedTime)
+			: m_fElapsedTime(fElapsedTime)
+		{
+		}
+
+		void operator() (AABBComponent * comp, IntersectionTests::IntersectionType)
+		{
+			_ASSERT(dynamic_cast<RenderComponent *>(comp));
+			static_cast<RenderComponent *>(comp)->Update(m_fElapsedTime);
+		}
+	};
+
+	QueryComponentAll(&CallBack(fElapsedTime));
 }
 
-void Actor::OnPxThreadSubstep(float fElapsedTime)
+void Actor::OnPxThreadSubstep(float dtime)
 {
 	ClothComponentPtrList::iterator cloth_iter = m_Clothes.begin();
 	for (; cloth_iter != m_Clothes.end(); cloth_iter++)
 	{
-		(*cloth_iter)->OnPxThreadSubstep(fElapsedTime);
+		(*cloth_iter)->OnPxThreadSubstep(dtime);
 	}
 }
 
 void Actor::QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage)
 {
-	RenderComponentPtrList::iterator cmp_iter = m_ComponentList.begin();
-	for (; cmp_iter != m_ComponentList.end(); cmp_iter++)
+	struct CallBack : public my::IQueryCallback
 	{
-		(*cmp_iter)->QueryMesh(pipeline, stage);
-	}
+		RenderPipeline * m_pipeline;
+
+		RenderPipeline::DrawStage m_stage;
+
+		CallBack(RenderPipeline * pipeline, RenderPipeline::DrawStage stage)
+			: m_pipeline(pipeline)
+			, m_stage(stage)
+		{
+		}
+
+		void operator() (AABBComponent * comp, IntersectionTests::IntersectionType)
+		{
+			_ASSERT(dynamic_cast<RenderComponent *>(comp));
+			static_cast<RenderComponent *>(comp)->QueryMesh(m_pipeline, m_stage);
+		}
+	};
+
+	QueryComponentAll(&CallBack(pipeline, stage));
 }
