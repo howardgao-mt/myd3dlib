@@ -76,9 +76,11 @@ public:
 
 	my::BaseTexturePtr m_TexChecker;
 
-	//my::OctRootPtr m_OctScene;
+	typedef std::vector<ActorPtr> ActorPtrList;
 
 	my::CameraPtr m_Camera;
+
+	ActorPtrList m_Actors;
 
 public:
 	Game(void);
@@ -115,6 +117,8 @@ public:
 	virtual void OnLostDevice(void);
 
 	virtual void OnDestroyDevice(void);
+
+	virtual void OnPxThreadSubstep(float dtime);
 
 	virtual void OnFrameMove(
 		double fTime,
@@ -154,4 +158,12 @@ public:
 	void OnShaderLoaded(my::DeviceRelatedObjectBasePtr res, ShaderCacheKey key);
 
 	virtual my::Effect * QueryShader(RenderPipeline::MeshType mesh_type, RenderPipeline::DrawStage draw_stage, bool bInstance, const Material * material);
+
+	void AddActor(ActorPtr actor);
+
+	void RemoveActor(ActorPtr actor);
+
+	void RemoveAllActors(void);
+
+	ClothComponentPtr AddClothComponentFromFile(Actor * owner, const std::string & mesh_path, const std::string & skel_path, const std::string & root_name);
 };

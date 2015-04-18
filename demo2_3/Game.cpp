@@ -191,8 +191,6 @@ HRESULT Game::OnCreateDevice(
 		THROW_CUSEXCEPTION("create m_TexChecker failed");
 	}
 
-	//m_OctScene.reset(new OctRoot(Vector3(-1000,-1000,-1000), Vector3(1000,1000,1000), 1.1f));
-
 	m_Camera.reset(new Camera(D3DXToRadian(75), 1.333333f, 0.1f, 3000.0f));
 
 	AddLine(L"Game::OnCreateDevice", D3DCOLOR_ARGB(255,255,255,0));
@@ -227,12 +225,24 @@ HRESULT Game::OnResetDevice(
 		m_Camera->EventAlign(&EventArgs());
 	}
 
+	ActorPtrList::iterator actor_iter = m_Actors.begin();
+	for (; actor_iter != m_Actors.end(); actor_iter++)
+	{
+		(*actor_iter)->OnResetDevice();
+	}
+
 	return S_OK;
 }
 
 void Game::OnLostDevice(void)
 {
 	AddLine(L"Game::OnLostDevice", D3DCOLOR_ARGB(255,255,255,0));
+
+	ActorPtrList::iterator actor_iter = m_Actors.begin();
+	for (; actor_iter != m_Actors.end(); actor_iter++)
+	{
+		(*actor_iter)->OnLostDevice();
+	}
 
 	RenderPipeline::OnLostDevice();
 
@@ -245,11 +255,17 @@ void Game::OnDestroyDevice(void)
 
 	ParallelTaskManager::StopParallelThread();
 
+	ActorPtrList::iterator actor_iter = m_Actors.begin();
+	for (; actor_iter != m_Actors.end(); actor_iter++)
+	{
+		(*actor_iter)->OnDestroyDevice();
+	}
+
 	ExecuteCode("collectgarbage(\"collect\")");
 
-	m_Camera.reset();
+	m_Actors.clear();
 
-	//m_OctScene.reset();
+	m_Camera.reset();
 
 	m_Console.reset();
 
@@ -278,6 +294,15 @@ void Game::OnDestroyDevice(void)
 	ImeEditBox::Uninitialize();
 }
 
+void Game::OnPxThreadSubstep(float dtime)
+{
+	ActorPtrList::iterator actor_iter = m_Actors.begin();
+	for (; actor_iter != m_Actors.end(); actor_iter++)
+	{
+		(*actor_iter)->OnPxThreadSubstep(dtime);
+	}
+}
+
 void Game::OnFrameMove(
 	double fTime,
 	float fElapsedTime)
@@ -286,9 +311,15 @@ void Game::OnFrameMove(
 
 	ActorResourceMgr::CheckRequests();
 
+	TimerMgr::OnFrameMove(fTime, fElapsedTime);
+
 	//m_Camera->OnFrameMove(fTime, fElapsedTime);
 
-	TimerMgr::OnFrameMove(fTime, fElapsedTime);
+	ActorPtrList::iterator actor_iter = m_Actors.begin();
+	for (; actor_iter != m_Actors.end(); actor_iter++)
+	{
+		(*actor_iter)->Update(fElapsedTime);
+	}
 }
 
 void Game::OnFrameRender(
@@ -296,28 +327,16 @@ void Game::OnFrameRender(
 	double fTime,
 	float fElapsedTime)
 {
+	ActorPtrList::iterator actor_iter = m_Actors.begin();
+	for (; actor_iter != m_Actors.end(); actor_iter++)
+	{
+		(*actor_iter)->QueryMesh(this, RenderPipeline::DrawStageCBuffer);
+	}
+
 	pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&m_Camera->m_View);
 	pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&m_Camera->m_Proj);
 	m_SimpleSample->SetMatrix("g_View", m_Camera->m_View);
 	m_SimpleSample->SetMatrix("g_ViewProj", m_Camera->m_ViewProj);
-
-	//struct QueryCallbackFunc
-	//{
-	//	Game & device;
-	//	QueryCallbackFunc(Game & _device)
-	//		: device(_device)
-	//	{
-	//	}
-
-	//	void operator() (AABBComponent * cmp, IntersectionTests::IntersectionType type)
-	//	{
-	//		MeshComponent * mesh_cmp = static_cast<MeshComponent *>(cmp);
-	//		device.DrawMesh(mesh_cmp, 0);
-	//	}
-	//};
-
-	//Frustum frustum(Frustum::ExtractMatrix(m_Camera->m_ViewProj));
-	//m_OctScene->QueryComponent(frustum, QueryCallbackFunc(*this));
 
 	RenderPipeline::RenderAllObjects(pd3dDevice, fTime, fElapsedTime);
 
@@ -609,4 +628,28 @@ my::Effect * Game::QueryShader(RenderPipeline::MeshType mesh_type, RenderPipelin
 	m_ShaderCache.insert(std::make_pair(key, my::EffectPtr()));
 
 	return NULL;
+}
+
+void Game::AddActor(ActorPtr actor)
+{
+	_ASSERT(std::find(m_Actors.begin(), m_Actors.end(), actor) == m_Actors.end());
+	m_Actors.push_back(actor);
+}
+
+void Game::RemoveActor(ActorPtr actor)
+{
+	ActorPtrList::iterator actor_iter = std::find(m_Actors.begin(), m_Actors.end(), actor);
+	_ASSERT(actor_iter != m_Actors.end());
+	m_Actors.erase(actor_iter);
+}
+
+void Game::RemoveAllActors(void)
+{
+	m_Actors.clear();
+}
+
+ClothComponentPtr Game::AddClothComponentFromFile(Actor * owner, const std::string & mesh_path, const std::string & skel_path, const std::string & root_name)
+{
+	return ActorResourceMgr::AddClothComponentFromFile(
+		owner, boost::make_tuple(m_Cooking.get(), m_sdk.get(), m_PxScene.get()), mesh_path, skel_path, root_name, PxClothCollisionData());
 }

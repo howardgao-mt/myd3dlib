@@ -14,40 +14,6 @@ class Demo
 	: public Game
 {
 public:
-	// ========================================================================================================
-	// ¹Ç÷À¶¯»­
-	// ========================================================================================================
-	ActorPtr m_actor;
-	MeshComponentPtr m_mesh_ins;
-	EmitterComponentPtr m_emitter;
-	ClothComponentPtr m_cloth_mesh;
-
-	void OnKeyDown(my::InputEventArg * arg)
-	{
-		KeyboardEventArg & karg = *dynamic_cast<KeyboardEventArg *>(arg);
-		Vector3 scale, pos; Quaternion rot;
-		m_cloth_mesh->m_World.Decompose(scale, rot, pos);
-		switch (karg.kc)
-		{
-		case VK_UP:
-			pos.x += 1;
-			m_cloth_mesh->m_World = Matrix4::Compose(scale, rot, pos);
-			break;
-		case VK_DOWN:
-			pos.x -= 1;
-			m_cloth_mesh->m_World = Matrix4::Compose(scale, rot, pos);
-			break;
-		case VK_LEFT:
-			rot *= Quaternion::RotationAxis(Vector3(1,0,0), D3DXToRadian(30));
-			m_cloth_mesh->m_World = Matrix4::Compose(scale, rot, pos);
-			break;
-		case VK_RIGHT:
-			rot *= Quaternion::RotationAxis(Vector3(1,0,0), D3DXToRadian(-30));
-			m_cloth_mesh->m_World = Matrix4::Compose(scale, rot, pos);
-			break;
-		}
-	}
-
 	Demo::Demo(void)
 	{
 	}
@@ -88,32 +54,19 @@ public:
 
 		ExecuteCode("dofile \"Hud.lua\"");
 
-		// ========================================================================================================
-		// ¹Ç÷À¶¯»­
-		// ========================================================================================================
-		m_actor.reset(new Actor());
-		m_actor->m_Animator.reset(new SimpleAnimator());
-		m_actor->m_Animator->m_Animation = LoadSkeleton("mesh/cloth.skeleton.xml");
-		m_mesh_ins = CreateMeshComponentFromFile(m_actor.get(), "mesh/tube.mesh.xml",true);
-		m_emitter = CreateEmitterComponentFromFile(m_actor.get(), "emitter/emitter_01.xml");
-		m_cloth_mesh = CreateClothComponentFromFile(m_actor.get(),
-			boost::make_tuple(m_Cooking.get(), m_sdk.get(), m_PxScene.get()), "mesh/cloth.mesh.xml", "mesh/cloth.skeleton.xml", "joint5", PxClothCollisionData());
-
-		// ========================================================================================================
-		// ÉùÒôÏµÍ³
-		// ========================================================================================================
-		FMOD::Sound      *sound1;
-		FMOD::Channel    *channel = 0;
-		result = m_FModSystem->createSound("sound/drumloop.wav", FMOD_HARDWARE, NULL, &sound1);
-		FMOD_ERRCHECK(result);
-		result = sound1->setMode(FMOD_LOOP_NORMAL);    /* drumloop.wav has embedded loop points which automatically makes looping turn on, */
-		FMOD_ERRCHECK(result);                           /* so turn it off here.  We could have also just put FMOD_LOOP_OFF in the above CreateSound call. */
-		result = m_FModSystem->playSound(FMOD_CHANNEL_FREE, sound1, false, &channel);
-		FMOD_ERRCHECK(result);
-
 		ExecuteCode("dofile \"StateMain.lua\"");
 
-		Game::getSingleton().m_KeyPressedEvent = boost::bind(&Demo::OnKeyDown, this, _1);
+		//// ========================================================================================================
+		//// ÉùÒôÏµÍ³
+		//// ========================================================================================================
+		//FMOD::Sound      *sound1;
+		//FMOD::Channel    *channel = 0;
+		//result = m_FModSystem->createSound("sound/drumloop.wav", FMOD_HARDWARE, NULL, &sound1);
+		//FMOD_ERRCHECK(result);
+		//result = sound1->setMode(FMOD_LOOP_NORMAL);    /* drumloop.wav has embedded loop points which automatically makes looping turn on, */
+		//FMOD_ERRCHECK(result);                           /* so turn it off here.  We could have also just put FMOD_LOOP_OFF in the above CreateSound call. */
+		//result = m_FModSystem->playSound(FMOD_CHANNEL_FREE, sound1, false, &channel);
+		//FMOD_ERRCHECK(result);
 
 		return S_OK;
 	}
@@ -136,19 +89,7 @@ public:
 
 	virtual void OnDestroyDevice(void)
 	{
-		// ×¢ÒâË³Ðò
-		m_cloth_mesh.reset();
-		m_actor.reset();
-
 		Game::OnDestroyDevice();
-	}
-
-	virtual void OnPxThreadSubstep(float fElapsedTime)
-	{
-		// ========================================================================================================
-		// ¹Ç÷À¶¯»­
-		// ========================================================================================================
-		m_actor->OnPxThreadSubstep(fElapsedTime);
 	}
 
 	virtual void OnFrameMove(
@@ -163,11 +104,6 @@ public:
 		}
 
 		m_ScrInfos[0] = str_printf(L"%.2f", m_fFps);
-
-		// ========================================================================================================
-		// ¹Ç÷À¶¯»­
-		// ========================================================================================================
-		m_actor->Update(fElapsedTime);
 	}
 
 	virtual void OnFrameRender(
@@ -175,15 +111,7 @@ public:
 		double fTime,
 		float fElapsedTime)
 	{
-		pd3dDevice->SetTransform(D3DTS_VIEW, (D3DMATRIX *)&m_Camera->m_View);
-		pd3dDevice->SetTransform(D3DTS_PROJECTION, (D3DMATRIX *)&m_Camera->m_Proj);
-		m_SimpleSample->SetMatrix("g_ViewProj", m_Camera->m_ViewProj);
 		PushGrid();
-
-		// ========================================================================================================
-		// ¹Ç÷À¶¯»­
-		// ========================================================================================================
-		m_actor->QueryMesh(this, RenderPipeline::DrawStageCBuffer);
 
 		Game::OnFrameRender(pd3dDevice, fTime, fElapsedTime);
 	}

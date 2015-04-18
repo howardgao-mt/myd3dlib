@@ -32,6 +32,12 @@ game.Camera=camera
 -- end
 -- game:InsertTimer(t)
 
--- game:LoadMeshSetAsync("mesh/scene.mesh.xml", function (res)
-	-- game:PushMeshSetToOctScene(res2mesh_set(res))
--- end)
+local actor = Actor()
+game:AddActor(actor)
+game:CreateAnimatorFromFile(actor,"mesh/cloth.skeleton.xml")
+game:AddMeshComponentFromFile(actor,"mesh/tube.mesh.xml",true)
+game:AddEmitterComponentFromFile(actor,"emitter/emitter_01.xml")
+game:AddClothComponentFromFile(actor,"mesh/cloth.mesh.xml","mesh/cloth.skeleton.xml","joint5")
+game:LoadMeshSetAsync("mesh/scene.mesh.xml", function (res)
+	game:AddMeshComponentList(actor, res2mesh_set(res))
+end)
