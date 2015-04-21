@@ -3,6 +3,7 @@
 #include "myOctree.h"
 #include "RenderPipeline.h"
 #include "Actor.h"
+#include "physx_ptr.hpp"
 
 class ActorComponent
 	: public my::AABBComponent
@@ -36,7 +37,7 @@ public:
 	{
 	}
 
-	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage) = 0;
+	virtual void QueryMesh(RenderPipeline * pipeline, Material::DrawStage stage) = 0;
 };
 
 typedef boost::shared_ptr<RenderComponent> RenderComponentPtr;
@@ -58,9 +59,9 @@ public:
 	{
 	}
 
-	void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage, RenderPipeline::MeshType mesh_type);
+	void QueryMesh(RenderPipeline * pipeline, Material::DrawStage stage, Material::MeshType mesh_type);
 
-	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage);
+	virtual void QueryMesh(RenderPipeline * pipeline, Material::DrawStage stage);
 
 	virtual void OnSetShader(my::Effect * shader, DWORD AttribId);
 };
@@ -76,7 +77,7 @@ public:
 	{
 	}
 
-	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage);
+	virtual void QueryMesh(RenderPipeline * pipeline, Material::DrawStage stage);
 
 	virtual void OnSetShader(my::Effect * shader, DWORD AttribId);
 };
@@ -106,7 +107,7 @@ public:
 	{
 	}
 
-	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage);
+	virtual void QueryMesh(RenderPipeline * pipeline, Material::DrawStage stage);
 
 	virtual void OnSetShader(my::Effect * shader, DWORD AttribId);
 };
@@ -123,12 +124,11 @@ public:
 
 	std::vector<PxClothParticle> m_NewParticles;
 
-	PxCloth * m_Cloth;
+	physx_ptr<PxCloth> m_Cloth;
 
 public:
 	ClothComponent(Actor * Owner)
 		: IndexdPrimitiveUPComponent(Owner)
-		, m_Cloth(NULL)
 	{
 	}
 
@@ -174,7 +174,7 @@ public:
 
 	virtual void Update(float fElapsedTime);
 
-	virtual void QueryMesh(RenderPipeline * pipeline, RenderPipeline::DrawStage stage);
+	virtual void QueryMesh(RenderPipeline * pipeline, Material::DrawStage stage);
 
 	virtual void OnSetShader(my::Effect * shader, DWORD AttribId);
 };
