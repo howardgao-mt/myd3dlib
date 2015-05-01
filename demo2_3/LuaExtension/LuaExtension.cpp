@@ -343,32 +343,8 @@ void Export2Lua(lua_State * L)
 
 	module(L)
 	[
-		class_<my::BaseCamera, boost::shared_ptr<my::BaseCamera> >("BaseCamera")
-			.def_readonly("View", &my::BaseCamera::m_View)
-			.def_readonly("Proj", &my::BaseCamera::m_Proj)
-			.def_readonly("ViewProj", &my::BaseCamera::m_ViewProj)
-			.def_readonly("InverseViewProj", &my::BaseCamera::m_InverseViewProj)
 
-		, class_<my::Camera, my::BaseCamera, boost::shared_ptr<my::Camera> >("Camera")
-			.def(constructor<float, float, float, float>())
-			.def_readwrite("Fov", &my::Camera::m_Fov)
-			.def_readwrite("Aspect", &my::Camera::m_Aspect)
-			.def_readwrite("Nz", &my::Camera::m_Nz)
-			.def_readwrite("Fz", &my::Camera::m_Fz)
-			.def_readwrite("EventAlign", &my::Camera::EventAlign)
-
-		, class_<my::ModelViewerCamera, my::Camera, boost::shared_ptr<my::Camera> >("ModelViewerCamera")
-			.def(constructor<float, float, float, float>())
-			.def_readwrite("LookAt", &my::ModelViewerCamera::m_LookAt)
-			.def_readwrite("Eular", &my::ModelViewerCamera::m_Eular)
-			.def_readwrite("Distance", &my::ModelViewerCamera::m_Distance)
-
-		, class_<my::FirstPersonCamera, my::Camera, boost::shared_ptr<my::Camera> >("FirstPersonCamera")
-			.def(constructor<float, float, float, float>())
-			.def_readwrite("Eye", &my::FirstPersonCamera::m_Eye)
-			.def_readwrite("Eular", &my::FirstPersonCamera::m_Eular)
-
-		//, class_<MessagePanel, my::Control, boost::shared_ptr<my::Control> >("MessagePanel")
+		//class_<MessagePanel, my::Control, boost::shared_ptr<my::Control> >("MessagePanel")
 		//	.def_readonly("lbegin", &MessagePanel::m_lbegin)
 		//	.def_readonly("lend", &MessagePanel::m_lend)
 		//	.def_readonly("scrollbar", &MessagePanel::m_scrollbar)
@@ -379,7 +355,7 @@ void Export2Lua(lua_State * L)
 		//	.def_readwrite("EventKeyUp", &ConsoleEditBox::EventKeyUp)
 		//	.def_readwrite("EventKeyDown", &ConsoleEditBox::EventKeyDown)
 
-		, class_<Console, my::Dialog, boost::shared_ptr<my::Control> >("Console")
+		class_<Console, my::Dialog, boost::shared_ptr<my::Control> >("Console")
 			//.def_readonly("Edit", &Console::m_Edit)
 			//.def_readonly("Panel", &Console::m_Panel)
 
@@ -396,16 +372,22 @@ void Export2Lua(lua_State * L)
 
 		, class_<Actor, boost::shared_ptr<Actor> >("Actor")
 			.def(constructor<>())
+			.def_readwrite("World", &Actor::m_World)
 
 		, class_<ActorComponent, boost::shared_ptr<ActorComponent> >("ActorComponent")
+			.def_readwrite("World", &ActorComponent::m_World)
 
-		, class_<MeshComponent, boost::shared_ptr<MeshComponent> >("MeshComponent")
+		, class_<RenderComponent, ActorComponent, boost::shared_ptr<RenderComponent> >("RenderComponent")
 
-		, class_<SkeletonMeshComponent, boost::shared_ptr<SkeletonMeshComponent> >("SkeletonMeshComponent")
+		, class_<MeshComponent, RenderComponent, boost::shared_ptr<MeshComponent> >("MeshComponent")
 
-		, class_<ClothComponent, boost::shared_ptr<ClothComponent> >("ClothComponent")
+		, class_<SkeletonMeshComponent, MeshComponent, boost::shared_ptr<SkeletonMeshComponent> >("SkeletonMeshComponent")
 
-		, class_<EmitterComponent, boost::shared_ptr<EmitterComponent> >("EmitterComponent")
+		, class_<IndexdPrimitiveUPComponent, RenderComponent, boost::shared_ptr<MeshComponent> >("MeshComponent")
+
+		, class_<ClothComponent, IndexdPrimitiveUPComponent, boost::shared_ptr<ClothComponent> >("ClothComponent")
+
+		, class_<EmitterComponent, RenderComponent, boost::shared_ptr<EmitterComponent> >("EmitterComponent")
 
 		, class_<Animator, boost::shared_ptr<Animator> >("Animator")
 
@@ -436,6 +418,7 @@ void Export2Lua(lua_State * L)
 			.def("CookClothFabricToFile", &Game::CookClothFabricToFile)
 			.def_readonly("Console", &Game::m_Console)
 			.def_readwrite("Camera", &Game::m_Camera)
+			.def_readwrite("SkyLight", &Game::m_SkyLight)
 			.def("ExecuteCode", &Game::ExecuteCode)
 			.def("AddActor", &Game::AddActor)
 			.def("RemoveActor", &Game::RemoveActor)
