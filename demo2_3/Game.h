@@ -64,6 +64,10 @@ public:
 
 	my::SurfacePtr m_ShadowDS;
 
+	my::Texture2DPtr m_NormalRT;
+
+	my::Texture2DPtr m_DiffuseRT;
+
 	typedef boost::tuple<Material::MeshType, bool, unsigned int> ShaderCacheKey;
 
 	typedef boost::unordered_map<ShaderCacheKey, my::EffectPtr> ShaderCacheMap;
@@ -162,6 +166,8 @@ public:
 	bool ExecuteCode(const char * code) throw();
 
 	virtual my::Effect * QueryShader(Material::MeshType mesh_type, unsigned int PassID, bool bInstance, const Material * material);
+
+	void ClearAllShaders(void);
 
 	void AddActor(ActorPtr actor);
 
