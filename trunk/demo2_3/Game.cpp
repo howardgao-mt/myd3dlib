@@ -385,7 +385,7 @@ void Game::OnFrameRender(
 	ActorPtrList::iterator actor_iter = m_Actors.begin();
 	for (; actor_iter != m_Actors.end(); actor_iter++)
 	{
-		(*actor_iter)->QueryComponent(frustum, this, Material::PassIDToMask(Material::PassTypeShadow));
+		(*actor_iter)->QueryComponent(frustum, this, Material::PassTypeToMask(Material::PassTypeShadow));
 	}
 
 	V(pd3dDevice->SetRenderTarget(0, m_ShadowRT->GetSurfaceLevel(0)));
@@ -404,10 +404,10 @@ void Game::OnFrameRender(
 	for (; actor_iter != m_Actors.end(); actor_iter++)
 	{
 		(*actor_iter)->QueryComponent(frustum, this,
-			Material::PassIDToMask(Material::PassTypeNormalDepth)
-			| Material::PassIDToMask(Material::PassTypeDiffuseSpec)
-			| Material::PassIDToMask(Material::PassTypeTextureColor)
-			| Material::PassIDToMask(Material::PassTypeTransparent));
+			Material::PassTypeToMask(Material::PassTypeNormalDepth)
+			| Material::PassTypeToMask(Material::PassTypeDiffuseSpec)
+			| Material::PassTypeToMask(Material::PassTypeTextureColor)
+			| Material::PassTypeToMask(Material::PassTypeTransparent));
 	}
 
 	V(pd3dDevice->SetRenderTarget(0, m_NormalRT->GetSurfaceLevel(0)));
@@ -420,7 +420,7 @@ void Game::OnFrameRender(
 		m_SimpleSample->SetMatrix("g_InvViewProj", m_Camera.m_InverseViewProj);
 		m_SimpleSample->SetVector("g_SkyLightDir", -m_SkyLight.m_View.column<2>().xyz); // ! RH -z
 		m_SimpleSample->SetMatrix("g_SkyLightViewProj", m_SkyLight.m_ViewProj);
-		m_SimpleSample->SetTexture("g_ShadowTexture", m_ShadowRT);
+		m_SimpleSample->SetTexture("g_ShadowRT", m_ShadowRT);
 		RenderPipeline::RenderAllObjects(Material::PassTypeNormalDepth, pd3dDevice, fTime, fElapsedTime);
 		V(m_d3dDevice->EndScene());
 	}
@@ -429,7 +429,7 @@ void Game::OnFrameRender(
 	V(m_d3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, 0, 0, 0));
 	if(SUCCEEDED(hr = m_d3dDevice->BeginScene()))
 	{
-		m_SimpleSample->SetTexture("g_NormalTexture", m_NormalRT);
+		m_SimpleSample->SetTexture("g_NormalRT", m_NormalRT);
 		V(pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE));
 		V(pd3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE));
 		V(pd3dDevice->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD));
@@ -445,7 +445,7 @@ void Game::OnFrameRender(
 	V(m_d3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0,45,50,170), 0, 0));
 	if(SUCCEEDED(hr = m_d3dDevice->BeginScene()))
 	{
-		m_SimpleSample->SetTexture("g_DiffuseTexture", m_DiffuseRT);
+		m_SimpleSample->SetTexture("g_DiffuseRT", m_DiffuseRT);
 		RenderPipeline::RenderAllObjects(Material::PassTypeTextureColor, pd3dDevice, fTime, fElapsedTime);
 		V(m_d3dDevice->EndScene());
 	}
@@ -691,14 +691,15 @@ static size_t hash_value(const Game::ShaderCacheKey & key)
 	boost::hash_combine(seed, key.get<0>());
 	boost::hash_combine(seed, key.get<1>());
 	boost::hash_combine(seed, key.get<2>());
+	boost::hash_combine(seed, key.get<3>());
 	return seed;
 }
 
 my::Effect * Game::QueryShader(Material::MeshType mesh_type, unsigned int PassID, bool bInstance, const Material * material)
 {
-	_ASSERT(material);
+	_ASSERT(material && 0 != material->m_TextureMask);
 
-	ShaderCacheKey key(mesh_type, bInstance, PassID);
+	ShaderCacheKey key(mesh_type, bInstance, PassID, material->m_TextureMask);
 	ShaderCacheMap::iterator shader_iter = m_ShaderCache.find(key);
 	if (shader_iter != m_ShaderCache.end())
 	{
@@ -734,6 +735,18 @@ my::Effect * Game::QueryShader(Material::MeshType mesh_type, unsigned int PassID
 			}
 			return "PassTextureColor.fx";
 		}
+
+		static const char * tx_macro(unsigned int texture_type)
+		{
+			switch (texture_type)
+			{
+			case Material::TextureTypeNormal:
+				return "TEXTURE_TYPE_NORMAL";
+			case Material::TextureTypeSpecular:
+				return "TEXTURE_TYPE_SPECULAR";
+			}
+			return "TEXTURE_TYPE_DIFFUSE";
+		}
 	};
 
 	std::ostringstream oss;
@@ -749,8 +762,23 @@ my::Effect * Game::QueryShader(Material::MeshType mesh_type, unsigned int PassID
 	std::string source = oss.str();
 
 	std::vector<D3DXMACRO> macros;
+	for (unsigned int texture_type = 0; texture_type < Material::TextureTypeNum; texture_type++)
+	{
+		if (material->m_TextureMask & Material::TextureTypeToMask(texture_type))
+		{
+			D3DXMACRO macro = {Header::tx_macro(texture_type), 0};
+			macros.push_back(macro);
+		}
+	}
 	D3DXMACRO end = {0};
 	macros.push_back(end);
+
+	CComPtr<ID3DXBuffer> buff;
+	if (SUCCEEDED(D3DXPreprocessShader(source.c_str(), source.length(), &macros[0], this, &buff, NULL)))
+	{
+		OStreamPtr ostr = FileOStream::Open(str_printf(_T("shader_%u_%u_%u_%u.fx"), bInstance, mesh_type, PassID, material->m_TextureMask).c_str());
+		ostr->write(buff->GetBufferPointer(), buff->GetBufferSize()-1);
+	}
 
 	EffectPtr shader(new Effect());
 	try
