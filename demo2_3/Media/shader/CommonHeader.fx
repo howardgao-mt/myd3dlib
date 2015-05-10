@@ -6,10 +6,36 @@ shared float4x4 g_InvViewProj;
 shared float2 g_ScreenDim;
 shared float3 g_SkyLightDir;
 shared float4x4 g_SkyLightViewProj;
+shared texture g_ShadowRT;
+shared texture g_NormalRT;
+shared texture g_DiffuseRT;
 shared texture g_MeshTexture;
-shared texture g_ShadowTexture;
 shared texture g_NormalTexture;
-shared texture g_DiffuseTexture;
+shared texture g_SpecularTexture;
+
+sampler ShadowRTSampler = sampler_state
+{
+	Texture = <g_ShadowRT>;
+	MipFilter = NONE;
+	MinFilter = POINT;
+	MagFilter = POINT;
+};
+
+sampler NormalRTSampler = sampler_state
+{
+	Texture = <g_NormalRT>;
+	MipFilter = NONE;
+	MinFilter = POINT;
+	MagFilter = POINT;
+};
+
+sampler DiffuseRTSampler = sampler_state
+{
+	Texture = <g_DiffuseRT>;
+	MipFilter = NONE;
+	MinFilter = POINT;
+	MagFilter = POINT;
+};
 
 sampler MeshTextureSampler = sampler_state
 {
@@ -19,26 +45,18 @@ sampler MeshTextureSampler = sampler_state
     MagFilter = LINEAR;
 };
 
-sampler ShadowTextureSampler = sampler_state
-{
-	Texture = <g_ShadowTexture>;
-	MipFilter = NONE;
-	MinFilter = POINT;
-	MagFilter = POINT;
-};
-
 sampler NormalTextureSampler = sampler_state
 {
 	Texture = <g_NormalTexture>;
-	MipFilter = NONE;
-	MinFilter = POINT;
-	MagFilter = POINT;
+	MipFilter = LINEAR;
+	MinFilter = LINEAR;
+	MagFilter = LINEAR;
 };
 
-sampler DiffuseTextureSampler = sampler_state
+sampler SpecularTextureSampler = sampler_state
 {
-	Texture = <g_DiffuseTexture>;
-	MipFilter = NONE;
-	MinFilter = POINT;
-	MagFilter = POINT;
+	Texture = <g_SpecularTexture>;
+	MipFilter = LINEAR;
+	MinFilter = LINEAR;
+	MagFilter = LINEAR;
 };
